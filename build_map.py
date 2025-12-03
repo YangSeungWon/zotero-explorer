@@ -190,12 +190,20 @@ def main():
     parser.add_argument("--clusters", type=int, default=10, help="Number of clusters")
     parser.add_argument("--dim-reduction", choices=["tsne", "pca"], default="tsne",
                         help="Dimensionality reduction method")
+    parser.add_argument("--notes-only", action="store_true",
+                        help="Only include items with notes")
     args = parser.parse_args()
 
     # 1. CSV 로드
     print(f"\n[1/5] Loading {args.input}...")
     df = pd.read_csv(args.input)
     print(f"  Loaded {len(df)} items")
+
+    # 노트 있는 것만 필터링
+    if args.notes_only:
+        df = df[df["Notes"].notna() & (df["Notes"].str.len() > 50)]
+        df = df.reset_index(drop=True)
+        print(f"  Filtered to {len(df)} items with notes")
 
     # 2. 메타데이터 처리
     print("\n[2/5] Processing metadata...")
@@ -292,6 +300,17 @@ def main():
         cluster_labels[i] = ", ".join(keywords)
         print(f"  Cluster {i}: {cluster_labels[i]}")
 
+    # 6.5. 클러스터 중심점 계산 (2D 좌표 기준)
+    print("\nCalculating cluster centroids...")
+    cluster_centroids = {}
+    for i in range(args.clusters):
+        cluster_points = df[df["cluster"] == i][["x", "y"]].values
+        if len(cluster_points) > 0:
+            centroid_x = float(np.mean(cluster_points[:, 0]))
+            centroid_y = float(np.mean(cluster_points[:, 1]))
+            cluster_centroids[i] = {"x": centroid_x, "y": centroid_y}
+            print(f"  Cluster {i}: ({centroid_x:.2f}, {centroid_y:.2f})")
+
     # 7. JSON 출력
     print(f"\nWriting {args.output}...")
     records = []
@@ -314,11 +333,19 @@ def main():
             "abstract": str(row.get("Abstract Note", "") or "")[:500],  # 길이 제한
             "tags": str(row.get("Manual Tags", "") or ""),
             "has_notes": bool(pd.notna(row.get("Notes")) and len(str(row.get("Notes", ""))) > 50),
+            "notes": extract_text_from_html(row.get("Notes", ""))[:2000] if pd.notna(row.get("Notes")) else "",
         }
         records.append(rec)
 
+    # 출력 데이터에 클러스터 중심점 포함
+    output_data = {
+        "papers": records,
+        "cluster_centroids": cluster_centroids,
+        "cluster_labels": cluster_labels
+    }
+
     with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
+        json.dump(output_data, f, ensure_ascii=False, indent=2)
 
     print(f"\n✅ Done! Generated {args.output} with {len(records)} items")
     print(f"   - Papers: {sum(1 for r in records if r['is_paper'])}")

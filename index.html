@@ -152,6 +152,36 @@
       margin-right: 12px;
     }
     .detail-panel .links a:hover { text-decoration: underline; }
+    .detail-panel .similar-papers {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #30363d;
+    }
+    .detail-panel .similar-papers h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #8b949e;
+      margin-bottom: 8px;
+    }
+    .detail-panel .similar-papers ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .detail-panel .similar-papers li {
+      font-size: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid #21262d;
+      cursor: pointer;
+      color: #c9d1d9;
+    }
+    .detail-panel .similar-papers li:hover {
+      color: #58a6ff;
+    }
+    .detail-panel .similar-papers .year {
+      color: #8b949e;
+      font-size: 11px;
+    }
 
     /* Legend */
     .legend {
@@ -220,6 +250,25 @@
         <input type="checkbox" id="notesOnly">
         <label for="notesOnly">With notes</label>
       </div>
+      <div class="control-group">
+        <label>Tag:</label>
+        <input type="text" id="tagFilter" placeholder="e.g. impact-high" style="width: 100px;">
+      </div>
+      <div class="control-group">
+        <label>Search:</label>
+        <input type="text" id="searchFilter" placeholder="keyword in notes" style="width: 120px;">
+      </div>
+      <div class="control-group" style="border-left: 1px solid #30363d; padding-left: 16px;">
+        <label>Intersection:</label>
+        <select id="intersectCluster1" style="width: 90px;">
+          <option value="">C1</option>
+        </select>
+        <span style="color: #8b949e;">↔</span>
+        <select id="intersectCluster2" style="width: 90px;">
+          <option value="">C2</option>
+        </select>
+        <button id="findIntersection" style="background: #8b5cf6;">Find</button>
+      </div>
       <button id="applyFilter">Apply</button>
       <button id="resetFilter" style="background: #30363d;">Reset</button>
     </div>
@@ -232,12 +281,15 @@
       <div class="meta" id="detailMeta"></div>
       <div class="links" id="detailLinks"></div>
       <div class="abstract" id="detailAbstract"></div>
+      <div class="similar-papers" id="similarPapers"></div>
     </div>
   </div>
 
   <script>
     let allPapers = [];
     let currentFiltered = [];
+    let clusterCentroids = {};
+    let clusterLabels = {};
     const CLUSTER_COLORS = [
       '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7',
       '#dfe6e9', '#a29bfe', '#fd79a8', '#00b894', '#e17055',
@@ -247,18 +299,44 @@
     async function loadData() {
       try {
         const resp = await fetch('papers.json');
-        allPapers = await resp.json();
+        const data = await resp.json();
+
+        // 새 포맷 (papers 배열 + centroids) vs 기존 포맷 (배열만)
+        if (data.papers) {
+          allPapers = data.papers;
+          clusterCentroids = data.cluster_centroids || {};
+          clusterLabels = data.cluster_labels || {};
+        } else {
+          allPapers = data;
+        }
 
         // Populate cluster filter with labels
         const clusters = [...new Set(allPapers.map(p => p.cluster))].sort((a,b) => a-b);
         const clusterSelect = document.getElementById('clusterFilter');
+        const intersect1 = document.getElementById('intersectCluster1');
+        const intersect2 = document.getElementById('intersectCluster2');
+
         clusters.forEach(c => {
           const sample = allPapers.find(p => p.cluster === c);
-          const label = sample?.cluster_label || '';
+          const label = clusterLabels[c] || sample?.cluster_label || '';
+
+          // 기존 클러스터 필터
           const opt = document.createElement('option');
           opt.value = c;
           opt.textContent = `${c}: ${label}`;
           clusterSelect.appendChild(opt);
+
+          // 교차점 선택 1
+          const opt1 = document.createElement('option');
+          opt1.value = c;
+          opt1.textContent = `${c}: ${label.substring(0, 20)}`;
+          intersect1.appendChild(opt1);
+
+          // 교차점 선택 2
+          const opt2 = document.createElement('option');
+          opt2.value = c;
+          opt2.textContent = `${c}: ${label.substring(0, 20)}`;
+          intersect2.appendChild(opt2);
         });
 
         currentFiltered = [...allPapers];
@@ -276,6 +354,8 @@
       const clusterVal = document.getElementById('clusterFilter').value;
       const papersOnly = document.getElementById('papersOnly').checked;
       const notesOnly = document.getElementById('notesOnly').checked;
+      const tagFilter = document.getElementById('tagFilter').value.toLowerCase().trim();
+      const searchFilter = document.getElementById('searchFilter').value.toLowerCase().trim();
 
       return allPapers.filter(p => {
         if (p.year && p.year < minYear) return false;
@@ -283,6 +363,11 @@
         if (clusterVal !== 'all' && p.cluster !== parseInt(clusterVal)) return false;
         if (papersOnly && !p.is_paper) return false;
         if (notesOnly && !p.has_notes) return false;
+        if (tagFilter && (!p.tags || !p.tags.toLowerCase().includes(tagFilter))) return false;
+        if (searchFilter) {
+          const searchText = `${p.title} ${p.abstract} ${p.notes || ''}`.toLowerCase();
+          if (!searchText.includes(searchFilter)) return false;
+        }
         return true;
       });
     }
@@ -414,6 +499,79 @@
 
       document.getElementById('detailAbstract').textContent =
         item.abstract || 'No abstract available.';
+
+      // Find similar papers (closest by x,y coordinates)
+      const similar = findSimilarPapers(item, allPapers, 5);
+      let similarHtml = '<h3>Similar Papers</h3><ul>';
+      similar.forEach(p => {
+        const title = p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title;
+        similarHtml += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
+      });
+      similarHtml += '</ul>';
+      document.getElementById('similarPapers').innerHTML = similarHtml;
+
+      // Click handler for similar papers
+      document.querySelectorAll('#similarPapers li').forEach(li => {
+        li.addEventListener('click', () => {
+          const paperId = parseInt(li.dataset.id);
+          const paper = allPapers.find(p => p.id === paperId);
+          if (paper) showDetail(paper);
+        });
+      });
+    }
+
+    function findSimilarPapers(target, papers, n = 5) {
+      return papers
+        .filter(p => p.id !== target.id)
+        .map(p => ({
+          ...p,
+          distance: Math.sqrt(Math.pow(p.x - target.x, 2) + Math.pow(p.y - target.y, 2))
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, n);
+    }
+
+    function findIntersectionPapers(cluster1, cluster2, threshold = 0.3) {
+      // 두 클러스터의 중심점 가져오기
+      const c1 = clusterCentroids[cluster1];
+      const c2 = clusterCentroids[cluster2];
+
+      if (!c1 || !c2) {
+        // centroids가 없으면 papers에서 직접 계산
+        const c1Papers = allPapers.filter(p => p.cluster === cluster1);
+        const c2Papers = allPapers.filter(p => p.cluster === cluster2);
+
+        const centroid1 = {
+          x: c1Papers.reduce((s, p) => s + p.x, 0) / c1Papers.length,
+          y: c1Papers.reduce((s, p) => s + p.y, 0) / c1Papers.length
+        };
+        const centroid2 = {
+          x: c2Papers.reduce((s, p) => s + p.x, 0) / c2Papers.length,
+          y: c2Papers.reduce((s, p) => s + p.y, 0) / c2Papers.length
+        };
+
+        return findPapersNearBothCentroids(centroid1, centroid2, threshold);
+      }
+
+      return findPapersNearBothCentroids(c1, c2, threshold);
+    }
+
+    function findPapersNearBothCentroids(c1, c2, threshold) {
+      // 두 중심점 사이의 거리
+      const distBetween = Math.sqrt(Math.pow(c2.x - c1.x, 2) + Math.pow(c2.y - c1.y, 2));
+
+      // 각 논문에서 두 중심점까지의 거리 계산
+      return allPapers
+        .map(p => {
+          const d1 = Math.sqrt(Math.pow(p.x - c1.x, 2) + Math.pow(p.y - c1.y, 2));
+          const d2 = Math.sqrt(Math.pow(p.x - c2.x, 2) + Math.pow(p.y - c2.y, 2));
+          // 두 거리의 합이 두 중심점 거리의 (1 + threshold) 배 이내면 "교차점"
+          // 즉, 두 클러스터 사이 경로에 가까운 논문들
+          const ratio = (d1 + d2) / distBetween;
+          return { ...p, intersectionScore: ratio, d1, d2 };
+        })
+        .filter(p => p.intersectionScore <= 1 + threshold)
+        .sort((a, b) => a.intersectionScore - b.intersectionScore);
     }
 
     // Event handlers
@@ -429,9 +587,43 @@
       document.getElementById('clusterFilter').value = 'all';
       document.getElementById('papersOnly').checked = false;
       document.getElementById('notesOnly').checked = false;
+      document.getElementById('tagFilter').value = '';
+      document.getElementById('searchFilter').value = '';
+      document.getElementById('intersectCluster1').value = '';
+      document.getElementById('intersectCluster2').value = '';
       currentFiltered = [...allPapers];
       render(currentFiltered);
       updateStats(currentFiltered);
+    });
+
+    document.getElementById('findIntersection').addEventListener('click', () => {
+      const c1 = document.getElementById('intersectCluster1').value;
+      const c2 = document.getElementById('intersectCluster2').value;
+
+      if (!c1 || !c2) {
+        alert('두 클러스터를 선택하세요');
+        return;
+      }
+      if (c1 === c2) {
+        alert('서로 다른 클러스터를 선택하세요');
+        return;
+      }
+
+      const intersectionPapers = findIntersectionPapers(parseInt(c1), parseInt(c2));
+      if (intersectionPapers.length === 0) {
+        alert('교차점 논문이 없습니다');
+        return;
+      }
+
+      currentFiltered = intersectionPapers;
+      render(currentFiltered);
+      updateStats(currentFiltered);
+
+      // 클러스터 라벨 표시
+      const label1 = clusterLabels[c1] || '';
+      const label2 = clusterLabels[c2] || '';
+      document.getElementById('stats').textContent +=
+        ` | Intersection: C${c1} ↔ C${c2}`;
     });
 
     // Load data
