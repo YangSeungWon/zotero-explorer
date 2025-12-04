@@ -313,6 +313,10 @@
         </select>
         <button id="findIntersection" style="background: #8b5cf6;">Find</button>
       </div>
+      <div class="control-group">
+        <input type="checkbox" id="showCitations" checked>
+        <label for="showCitations">Citations</label>
+      </div>
       <button id="applyFilter">Apply</button>
       <button id="resetFilter" style="background: #30363d;">Reset</button>
     </div>
@@ -334,6 +338,8 @@
     let currentFiltered = [];
     let clusterCentroids = {};
     let clusterLabels = {};
+    let citationLinks = [];
+    let showCitations = true;
     const CLUSTER_COLORS = [
       '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7',
       '#dfe6e9', '#a29bfe', '#fd79a8', '#00b894', '#e17055',
@@ -350,6 +356,7 @@
           allPapers = data.papers;
           clusterCentroids = data.cluster_centroids || {};
           clusterLabels = data.cluster_labels || {};
+          citationLinks = data.citation_links || [];
         } else {
           allPapers = data;
         }
@@ -442,7 +449,11 @@
         type: 'scatter',
         name: 'Papers',
         marker: {
-          size: paperItems.map(p => 8 + p.venue_quality * 2),
+          size: paperItems.map(p => {
+            const baseSize = 8 + p.venue_quality * 2;
+            const citationBonus = p.citation_count ? Math.log10(p.citation_count + 1) * 3 : 0;
+            return baseSize + citationBonus;
+          }),
           color: paperItems.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
           opacity: 0.8,
           line: { width: 1, color: '#0d1117' }
@@ -508,8 +519,40 @@
         modeBarButtonsToRemove: ['lasso2d', 'select2d']
       };
 
+      // 인용 관계 선 추가
+      const traces = [paperTrace, appTrace];
+
+      if (showCitations && citationLinks.length > 0) {
+        // 현재 필터된 논문들의 ID 맵
+        const filteredIds = new Set(papers.map(p => p.id));
+        const idToPos = {};
+        papers.forEach(p => { idToPos[p.id] = { x: p.x, y: p.y }; });
+
+        // 필터된 논문들 사이의 인용 관계만 표시
+        const relevantLinks = citationLinks.filter(
+          link => filteredIds.has(link.source) && filteredIds.has(link.target)
+        );
+
+        // 각 링크를 선으로 그리기
+        relevantLinks.forEach(link => {
+          const source = idToPos[link.source];
+          const target = idToPos[link.target];
+          if (source && target) {
+            traces.push({
+              x: [source.x, target.x],
+              y: [source.y, target.y],
+              mode: 'lines',
+              type: 'scatter',
+              line: { color: 'rgba(255, 165, 0, 0.3)', width: 1 },
+              hoverinfo: 'none',
+              showlegend: false
+            });
+          }
+        });
+      }
+
       const plotDiv = document.getElementById('plot');
-      Plotly.newPlot(plotDiv, [paperTrace, appTrace], layout, config).then(function() {
+      Plotly.newPlot(plotDiv, traces, layout, config).then(function() {
         plotDiv.on('plotly_click', function(data) {
           if (data.points && data.points[0]) {
             showDetail(data.points[0].customdata);
@@ -528,13 +571,19 @@
       const typeClass = item.is_paper ? 'paper' : 'app';
       const typeLabel = item.is_paper ? 'Paper' : 'App/Service';
 
+      const citationBadge = item.citation_count !== null && item.citation_count !== undefined
+        ? `<span class="badge" style="background: #ffd70033; color: #ffd700;">Cited: ${item.citation_count}</span>`
+        : '';
+
       document.getElementById('detailMeta').innerHTML = `
         <span class="badge ${typeClass}">${typeLabel}</span>
         <span class="badge cluster">Cluster ${item.cluster}: ${item.cluster_label || ''}</span>
+        ${citationBadge}
         <br><br>
         <span><strong>Year:</strong> ${item.year || 'N/A'}</span>
         <span><strong>Venue:</strong> ${item.venue || 'N/A'}</span>
         <span><strong>Quality:</strong> ${item.venue_quality}/5</span>
+        ${item.citation_count !== null ? `<span><strong>Citations:</strong> ${item.citation_count}</span>` : ''}
         ${item.authors ? `<br><span><strong>Authors:</strong> ${item.authors.substring(0, 100)}${item.authors.length > 100 ? '...' : ''}</span>` : ''}
         ${item.tags ? `<br><span><strong>Tags:</strong> ${item.tags}</span>` : ''}
       `;
@@ -642,9 +691,16 @@
       document.getElementById('searchFilter').value = '';
       document.getElementById('intersectCluster1').value = '';
       document.getElementById('intersectCluster2').value = '';
+      document.getElementById('showCitations').checked = true;
+      showCitations = true;
       currentFiltered = [...allPapers];
       render(currentFiltered);
       updateStats(currentFiltered);
+    });
+
+    document.getElementById('showCitations').addEventListener('change', (e) => {
+      showCitations = e.target.checked;
+      render(currentFiltered);
     });
 
     document.getElementById('findIntersection').addEventListener('click', () => {
