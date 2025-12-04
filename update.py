@@ -17,7 +17,7 @@ def run(cmd):
 
 def main():
     # 1. 맵 생성
-    if not run("python build_map.py --notes-only --clusters 10"):
+    if not run("python build_map.py --notes-only --embedding local-large --clusters 0"):
         print("❌ build_map.py 실패")
         sys.exit(1)
 

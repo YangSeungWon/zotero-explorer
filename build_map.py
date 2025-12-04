@@ -23,6 +23,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, DBSCAN
+from sklearn.metrics import silhouette_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # ============================================================
@@ -187,9 +188,10 @@ def embed_with_openai(texts: list, model: str = "text-embedding-3-small") -> np.
 def main():
     parser = argparse.ArgumentParser(description="Build paper map from Zotero CSV")
     parser.add_argument("--output", default="papers.json", help="Output JSON file")
-    parser.add_argument("--embedding", choices=["local", "openai"], default="local",
-                        help="Embedding method: local (sentence-transformers) or openai")
-    parser.add_argument("--clusters", type=int, default=10, help="Number of clusters")
+    parser.add_argument("--embedding", choices=["local", "local-large", "openai"], default="local",
+                        help="Embedding: local (MiniLM), local-large (mpnet, 더 정확), openai")
+    parser.add_argument("--clusters", type=int, default=0,
+                        help="Number of clusters (0 = auto-detect optimal k)")
     parser.add_argument("--dim-reduction", choices=["tsne", "pca"], default="tsne",
                         help="Dimensionality reduction method")
     parser.add_argument("--notes-only", action="store_true",
@@ -246,7 +248,9 @@ def main():
     texts = [build_text_for_embedding(row) for _, row in df.iterrows()]
 
     if args.embedding == "local":
-        embeddings = embed_with_sentence_transformers(texts)
+        embeddings = embed_with_sentence_transformers(texts, "all-MiniLM-L6-v2")
+    elif args.embedding == "local-large":
+        embeddings = embed_with_sentence_transformers(texts, "all-mpnet-base-v2")
     else:
         embeddings = embed_with_openai(texts)
 
@@ -291,8 +295,31 @@ def main():
     df["y"] = coords[:, 1]
 
     # 5. 클러스터링
-    print(f"\n[5/5] Clustering into {args.clusters} clusters...")
-    kmeans = KMeans(n_clusters=args.clusters, random_state=42, n_init=10)
+    n_clusters = args.clusters
+    if n_clusters == 0:
+        # 최적 k 탐색 (Silhouette score)
+        print("\n[5/5] Finding optimal number of clusters...")
+        k_range = range(5, min(20, len(df) // 10))
+        best_k = 10
+        best_score = -1
+        scores = []
+
+        for k in k_range:
+            kmeans_test = KMeans(n_clusters=k, random_state=42, n_init=10)
+            labels = kmeans_test.fit_predict(combined)
+            score = silhouette_score(combined, labels)
+            scores.append((k, score))
+            print(f"  k={k}: silhouette={score:.3f}")
+            if score > best_score:
+                best_score = score
+                best_k = k
+
+        n_clusters = best_k
+        print(f"\n  → Best k={best_k} (silhouette={best_score:.3f})")
+    else:
+        print(f"\n[5/5] Clustering into {n_clusters} clusters...")
+
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
     df["cluster"] = kmeans.fit_predict(combined)
 
     # 6. 클러스터 라벨 생성 (TF-IDF 키워드)
@@ -303,7 +330,7 @@ def main():
         text = f"{row.get('Title', '')} {row.get('Abstract Note', '')}"
         cluster_texts[c] = cluster_texts.get(c, "") + " " + str(text)
 
-    corpus = [cluster_texts.get(i, "") for i in range(args.clusters)]
+    corpus = [cluster_texts.get(i, "") for i in range(n_clusters)]
     tfidf_vec = TfidfVectorizer(
         max_features=500,
         stop_words='english',
@@ -314,7 +341,7 @@ def main():
     feature_names = tfidf_vec.get_feature_names_out()
 
     cluster_labels = {}
-    for i in range(args.clusters):
+    for i in range(n_clusters):
         scores = tfidf_matrix[i].toarray().flatten()
         top_idx = scores.argsort()[-3:][::-1]  # 상위 3개 키워드
         keywords = [feature_names[j] for j in top_idx]
@@ -324,7 +351,7 @@ def main():
     # 6.5. 클러스터 중심점 계산 (2D 좌표 기준)
     print("\nCalculating cluster centroids...")
     cluster_centroids = {}
-    for i in range(args.clusters):
+    for i in range(n_clusters):
         cluster_points = df[df["cluster"] == i][["x", "y"]].values
         if len(cluster_points) > 0:
             centroid_x = float(np.mean(cluster_points[:, 0]))
@@ -405,7 +432,7 @@ def main():
             "map_built": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "total_papers": sum(1 for r in records if r['is_paper']),
             "total_apps": sum(1 for r in records if not r['is_paper']),
-            "clusters": args.clusters
+            "clusters": n_clusters
         }
     }
 
@@ -415,7 +442,7 @@ def main():
     print(f"\n✅ Done! Generated {args.output} with {len(records)} items")
     print(f"   - Papers: {sum(1 for r in records if r['is_paper'])}")
     print(f"   - Apps/Services: {sum(1 for r in records if not r['is_paper'])}")
-    print(f"   - Clusters: {args.clusters}")
+    print(f"   - Clusters: {n_clusters}")
 
 
 if __name__ == "__main__":
