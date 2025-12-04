@@ -165,6 +165,22 @@
     .resize-handle.dragging {
       background: var(--accent);
     }
+    .close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .close-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
     .detail-panel h2 {
       font-size: 15px;
       font-weight: 600;
@@ -501,6 +517,7 @@
     <div id="plot"></div>
     <div class="detail-panel" id="detailPanel">
       <div class="resize-handle" id="resizeHandle"></div>
+      <button class="close-btn" id="closeDetail" title="Close">✕</button>
       <h2 id="detailTitle">-</h2>
       <div class="meta" id="detailMeta"></div>
       <div class="links" id="detailLinks"></div>
@@ -848,7 +865,9 @@
     function clearSelection() {
       selectedPaper = null;
       connectedPapers = new Set();
-      document.getElementById('detailPanel').classList.remove('active');
+      const panel = document.getElementById('detailPanel');
+      panel.classList.remove('active');
+      panel.style.width = '';  // 인라인 스타일 제거
       setTimeout(() => Plotly.Plots.resize('plot'), 10);
       render(currentFiltered);
     }
@@ -1125,6 +1144,9 @@
       document.documentElement.dataset.theme = 'light';
       document.getElementById('themeToggle').textContent = '☀️';
     }
+
+    // 사이드패널 닫기 버튼
+    document.getElementById('closeDetail').addEventListener('click', clearSelection);
 
     // 클러스터 패널 접기/펼치기
     const clusterPanel = document.getElementById('clusterPanel');
