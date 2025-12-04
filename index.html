@@ -249,6 +249,54 @@
       background: #bc8cff;
       transform: rotate(45deg);
     }
+
+    /* Cluster Panel */
+    .cluster-panel {
+      width: 200px;
+      min-width: 200px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      overflow-y: auto;
+      padding: 12px;
+    }
+    .cluster-panel h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+    .cluster-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .cluster-item:hover {
+      background: var(--bg-tertiary);
+    }
+    .cluster-item.active {
+      background: var(--bg-tertiary);
+      outline: 2px solid var(--accent);
+    }
+    .cluster-item .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .cluster-item .label {
+      flex: 1;
+      line-height: 1.3;
+    }
+    .cluster-item .count {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -278,12 +326,6 @@
           <option value="3">3+</option>
           <option value="4">4+</option>
           <option value="5">5 only</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label>Cluster:</label>
-        <select id="clusterFilter">
-          <option value="all">All</option>
         </select>
       </div>
       <div class="control-group">
@@ -323,6 +365,10 @@
   </header>
 
   <div class="main-content">
+    <div class="cluster-panel" id="clusterPanel">
+      <h3>Clusters</h3>
+      <div id="clusterList"></div>
+    </div>
     <div id="plot"></div>
     <div class="detail-panel" id="detailPanel">
       <h2 id="detailTitle">-</h2>
@@ -340,6 +386,7 @@
     let clusterLabels = {};
     let citationLinks = [];
     let showCitations = true;
+    let highlightCluster = null;  // null = 전체, 숫자 = 해당 클러스터 하이라이트
     const CLUSTER_COLORS = [
       '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7',
       '#dfe6e9', '#a29bfe', '#fd79a8', '#00b894', '#e17055',
@@ -363,19 +410,14 @@
 
         // Populate cluster filter with labels
         const clusters = [...new Set(allPapers.map(p => p.cluster))].sort((a,b) => a-b);
-        const clusterSelect = document.getElementById('clusterFilter');
         const intersect1 = document.getElementById('intersectCluster1');
         const intersect2 = document.getElementById('intersectCluster2');
+        const clusterListEl = document.getElementById('clusterList');
 
         clusters.forEach(c => {
           const sample = allPapers.find(p => p.cluster === c);
           const label = clusterLabels[c] || sample?.cluster_label || '';
-
-          // 기존 클러스터 필터
-          const opt = document.createElement('option');
-          opt.value = c;
-          opt.textContent = `${c}: ${label}`;
-          clusterSelect.appendChild(opt);
+          const count = allPapers.filter(p => p.cluster === c).length;
 
           // 교차점 선택 1
           const opt1 = document.createElement('option');
@@ -388,6 +430,28 @@
           opt2.value = c;
           opt2.textContent = `${c}: ${label.substring(0, 20)}`;
           intersect2.appendChild(opt2);
+
+          // 클러스터 패널 아이템
+          const item = document.createElement('div');
+          item.className = 'cluster-item';
+          item.dataset.cluster = c;
+          item.innerHTML = `
+            <div class="dot" style="background: ${CLUSTER_COLORS[c % CLUSTER_COLORS.length]}"></div>
+            <div class="label">${label || 'Cluster ' + c}</div>
+            <div class="count">${count}</div>
+          `;
+          item.addEventListener('click', () => {
+            if (highlightCluster === c) {
+              highlightCluster = null;
+              item.classList.remove('active');
+            } else {
+              document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
+              highlightCluster = c;
+              item.classList.add('active');
+            }
+            render(currentFiltered);
+          });
+          clusterListEl.appendChild(item);
         });
 
         currentFiltered = [...allPapers];
@@ -402,7 +466,6 @@
     function filterPapers() {
       const minYear = parseInt(document.getElementById('minYear').value) || 0;
       const minVenue = parseFloat(document.getElementById('minVenue').value) || 0;
-      const clusterVal = document.getElementById('clusterFilter').value;
       const papersOnly = document.getElementById('papersOnly').checked;
       const notesOnly = document.getElementById('notesOnly').checked;
       const tagFilter = document.getElementById('tagFilter').value.toLowerCase().trim();
@@ -411,7 +474,6 @@
       return allPapers.filter(p => {
         if (p.year && p.year < minYear) return false;
         if (p.venue_quality < minVenue) return false;
-        if (clusterVal !== 'all' && p.cluster !== parseInt(clusterVal)) return false;
         if (papersOnly && !p.is_paper) return false;
         if (notesOnly && !p.has_notes) return false;
         if (tagFilter && (!p.tags || !p.tags.toLowerCase().includes(tagFilter))) return false;
@@ -455,7 +517,9 @@
             return baseSize + citationBonus;
           }),
           color: paperItems.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
-          opacity: 0.8,
+          opacity: paperItems.map(p =>
+            highlightCluster === null ? 0.8 : (p.cluster === highlightCluster ? 1 : 0.15)
+          ),
           line: { width: 1, color: '#0d1117' }
         },
         hovertemplate: '%{text}<extra></extra>'
@@ -478,7 +542,9 @@
           size: 14,
           symbol: 'diamond',
           color: appItems.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
-          opacity: 0.9,
+          opacity: appItems.map(p =>
+            highlightCluster === null ? 0.9 : (p.cluster === highlightCluster ? 1 : 0.15)
+          ),
           line: { width: 2, color: '#bc8cff' }
         },
         hovertemplate: '%{text}<extra></extra>'
@@ -684,7 +750,6 @@
     document.getElementById('resetFilter').addEventListener('click', () => {
       document.getElementById('minYear').value = '1990';
       document.getElementById('minVenue').value = '0';
-      document.getElementById('clusterFilter').value = 'all';
       document.getElementById('papersOnly').checked = false;
       document.getElementById('notesOnly').checked = false;
       document.getElementById('tagFilter').value = '';
@@ -693,6 +758,8 @@
       document.getElementById('intersectCluster2').value = '';
       document.getElementById('showCitations').checked = true;
       showCitations = true;
+      highlightCluster = null;
+      document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
       currentFiltered = [...allPapers];
       render(currentFiltered);
       updateStats(currentFiltered);
