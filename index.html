@@ -1035,7 +1035,7 @@
         text: paperItems.map(p => {
           const wrappedTitle = wrapText(p.title || '', 28);
           const firstNote = getFirstParagraph(p.notes);
-          const notePreview = firstNote ? `<br><i>"${wrapText(firstNote, 40)}"</i>` : '';
+          const notePreview = firstNote ? `<br><br><i>"${wrapText(firstNote, 28)}"</i>` : '';
           return `<b>${wrappedTitle}</b><br><br>` +
             `${p.year || 'N/A'}<br>` +
             `${(p.venue || '').substring(0, 30)}<br>` +
@@ -1117,8 +1117,8 @@
         modeBarButtonsToRemove: ['lasso2d', 'select2d']
       };
 
-      // 인용 관계 선 추가
-      const traces = [paperTrace, appTrace];
+      // 인용 관계 선 추가 (노드보다 먼저 그려서 노드가 위에 오도록)
+      const traces = [];
 
       if (showCitations && citationLinks.length > 0) {
         // 현재 필터된 논문들의 ID 맵
@@ -1211,6 +1211,9 @@
           });
         }
       }
+
+      // 노드는 선 위에 그리기
+      traces.push(paperTrace, appTrace);
 
       const plotDiv = document.getElementById('plot');
 
