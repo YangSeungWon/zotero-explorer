@@ -672,6 +672,7 @@
     <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
     <div class="stats" id="stats">Loading...</div>
     <span class="filter-status" id="filterStatus"></span>
+    <button class="missing-btn" id="showGlobalStats" title="전체 통계">📈 Stats</button>
     <button class="missing-btn" id="showClassics" title="많이 인용된 기초 논문" style="color: #58a6ff;">📚 Classics</button>
     <button class="missing-btn" id="showNewWork" title="내 논문을 인용하는 최신작" style="color: #f97316;">🆕 New</button>
     <div class="legend">
@@ -784,6 +785,7 @@
     let clusterCentroids = {};
     let clusterLabels = {};
     let citationLinks = [];
+    let dataMeta = {};  // CSV 업데이트 시간 등
     let showCitations = true;
     let highlightCluster = null;  // null = 전체, 숫자 = 해당 클러스터 하이라이트
     let filterMode = 'highlight';  // 'filter' = 숨김, 'highlight' = 흐리게
@@ -806,6 +808,7 @@
           clusterCentroids = data.cluster_centroids || {};
           clusterLabels = data.cluster_labels || {};
           citationLinks = data.citation_links || [];
+          dataMeta = data.meta || {};
         } else {
           allPapers = data;
         }
@@ -1704,6 +1707,118 @@
     // Missing papers modal
     const missingModal = document.getElementById('missingModal');
     const missingList = document.getElementById('missingList');
+
+    // Global stats: 전체 통계
+    document.getElementById('showGlobalStats').addEventListener('click', () => {
+      // 기본 통계
+      const papers = allPapers.filter(p => p.is_paper);
+      const apps = allPapers.filter(p => !p.is_paper);
+      const years = papers.map(p => p.year).filter(y => y);
+      const citations = papers.map(p => p.citation_count).filter(c => c !== null && c !== undefined);
+      const withNotes = allPapers.filter(p => p.has_notes).length;
+
+      // 클러스터별 개수
+      const clusterCounts = {};
+      allPapers.forEach(p => {
+        clusterCounts[p.cluster] = (clusterCounts[p.cluster] || 0) + 1;
+      });
+
+      // 연도 분포
+      const yearCounts = {};
+      years.forEach(y => {
+        const decade = Math.floor(y / 5) * 5;  // 5년 단위
+        yearCounts[decade] = (yearCounts[decade] || 0) + 1;
+      });
+
+      let html = '<h4 style="font-size: 14px; margin-bottom: 12px;">📈 Library Statistics</h4>';
+
+      // 업데이트 정보
+      if (dataMeta.csv_updated || dataMeta.map_built) {
+        html += '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px;">';
+        if (dataMeta.csv_updated) html += `📁 CSV: ${dataMeta.csv_updated}<br>`;
+        if (dataMeta.map_built) html += `🗺️ Map: ${dataMeta.map_built}`;
+        html += '</div>';
+      }
+
+      // 기본 통계
+      html += `
+        <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
+          <div style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Total Items</span><strong>${allPapers.length}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Papers</span><strong>${papers.length}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Apps/Services</span><strong>${apps.length}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>With Notes</span><strong>${withNotes} (${Math.round(withNotes/allPapers.length*100)}%)</strong>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 연도 통계
+      if (years.length > 0) {
+        html += `
+          <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 6px;">📅 Years</div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                <span>Range</span><strong>${Math.min(...years)} - ${Math.max(...years)}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                <span>Average</span><strong>${Math.round(years.reduce((a,b)=>a+b,0)/years.length)}</strong>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // 인용 통계
+      if (citations.length > 0) {
+        const totalCitations = citations.reduce((a,b) => a+b, 0);
+        html += `
+          <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 6px;">📊 Citations</div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                <span>Total</span><strong>${totalCitations.toLocaleString()}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                <span>Average</span><strong>${Math.round(totalCitations/citations.length)}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                <span>Max</span><strong>${Math.max(...citations).toLocaleString()}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                <span>Papers with data</span><strong>${citations.length} / ${papers.length}</strong>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Citation links
+      html += `
+        <div class="missing-item">
+          <div style="flex: 1;">
+            <div style="font-weight: 600; margin-bottom: 6px;">🔗 Internal Links</div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Citation Links</span><strong>${citationLinks.length}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Clusters</span><strong>${Object.keys(clusterCounts).length}</strong>
+            </div>
+          </div>
+        </div>
+      `;
+
+      missingList.innerHTML = html;
+      missingModal.classList.add('active');
+    });
 
     // Classics: 내 논문들이 많이 인용하는 것
     document.getElementById('showClassics').addEventListener('click', () => {

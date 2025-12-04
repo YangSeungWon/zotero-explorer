@@ -14,6 +14,8 @@ import json
 import re
 import math
 import argparse
+import os
+from datetime import datetime
 from pathlib import Path
 from bs4 import BeautifulSoup
 from sklearn.preprocessing import StandardScaler
@@ -369,12 +371,23 @@ def main():
 
         records.append(rec)
 
+    # CSV 파일 수정 시간
+    csv_mtime = os.path.getmtime(args.input)
+    csv_updated = datetime.fromtimestamp(csv_mtime).strftime("%Y-%m-%d %H:%M")
+
     # 출력 데이터에 클러스터 중심점 포함
     output_data = {
         "papers": records,
         "cluster_centroids": cluster_centroids,
         "cluster_labels": cluster_labels,
-        "citation_links": existing_citation_links  # 기존 citation links 보존
+        "citation_links": existing_citation_links,  # 기존 citation links 보존
+        "meta": {
+            "csv_updated": csv_updated,
+            "map_built": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "total_papers": sum(1 for r in records if r['is_paper']),
+            "total_apps": sum(1 for r in records if not r['is_paper']),
+            "clusters": args.clusters
+        }
     }
 
     with open(args.output, "w", encoding="utf-8") as f:
