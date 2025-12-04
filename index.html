@@ -655,7 +655,7 @@
       </div>
       <div class="control-group">
         <label>Search:</label>
-        <input type="text" id="searchFilter" placeholder="keyword in notes" style="width: 120px;">
+        <input type="text" id="searchFilter" placeholder="제목/저자/초록/노트" style="width: 120px;">
       </div>
       <div class="control-group" style="border-left: 1px solid #30363d; padding-left: 16px;">
         <label>Intersection:</label>
@@ -862,7 +862,7 @@
           if (!paperTags.includes(tagFilter.toLowerCase())) return false;
         }
         if (searchFilter) {
-          const searchText = `${p.title} ${p.abstract} ${p.notes || ''}`.toLowerCase();
+          const searchText = `${p.title} ${p.authors || ''} ${p.abstract} ${p.notes || ''}`.toLowerCase();
           if (!searchText.includes(searchFilter)) return false;
         }
         return true;
