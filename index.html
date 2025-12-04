@@ -297,6 +297,46 @@
       color: var(--text-muted);
       font-size: 11px;
     }
+
+    /* Filter status */
+    .filter-status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+    .filter-status.updating {
+      background: #f59e0b33;
+      color: #f59e0b;
+    }
+    .filter-status.done {
+      background: #10b98133;
+      color: #10b981;
+    }
+
+    /* Mode toggle */
+    .mode-toggle {
+      display: flex;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .mode-option {
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+    .mode-option:hover {
+      color: var(--text-secondary);
+    }
+    .mode-option.active {
+      background: var(--accent);
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -304,6 +344,7 @@
     <h1>Paper Map</h1>
     <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
     <div class="stats" id="stats">Loading...</div>
+    <span class="filter-status" id="filterStatus"></span>
     <div class="legend">
       <div class="legend-item">
         <div class="legend-dot" style="background: #58a6ff;"></div>
@@ -333,12 +374,10 @@
         <label for="papersOnly">Papers only</label>
       </div>
       <div class="control-group">
-        <input type="checkbox" id="notesOnly">
-        <label for="notesOnly">With notes</label>
-      </div>
-      <div class="control-group">
         <label>Tag:</label>
-        <input type="text" id="tagFilter" placeholder="e.g. impact-high" style="width: 100px;">
+        <select id="tagFilter" style="width: 120px;">
+          <option value="">All tags</option>
+        </select>
       </div>
       <div class="control-group">
         <label>Search:</label>
@@ -359,8 +398,11 @@
         <input type="checkbox" id="showCitations" checked>
         <label for="showCitations">Citations</label>
       </div>
-      <button id="applyFilter">Apply</button>
       <button id="resetFilter" style="background: #30363d;">Reset</button>
+      <div class="mode-toggle" id="modeToggle">
+        <span class="mode-option" data-mode="highlight">Highlight</span>
+        <span class="mode-option" data-mode="filter">Filter</span>
+      </div>
     </div>
   </header>
 
@@ -387,6 +429,7 @@
     let citationLinks = [];
     let showCitations = true;
     let highlightCluster = null;  // null = 전체, 숫자 = 해당 클러스터 하이라이트
+    let filterMode = 'highlight';  // 'filter' = 숨김, 'highlight' = 흐리게
     const CLUSTER_COLORS = [
       '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7',
       '#dfe6e9', '#a29bfe', '#fd79a8', '#00b894', '#e17055',
@@ -407,6 +450,25 @@
         } else {
           allPapers = data;
         }
+
+        // Populate tag filter
+        const tagFilterEl = document.getElementById('tagFilter');
+        const allTags = new Set();
+        allPapers.forEach(p => {
+          if (p.tags) {
+            // tags는 "tag1; tag2; tag3" 또는 "tag1, tag2" 형식일 수 있음
+            p.tags.split(/[;,]/).forEach(t => {
+              const tag = t.trim();
+              if (tag) allTags.add(tag);
+            });
+          }
+        });
+        [...allTags].sort().forEach(tag => {
+          const opt = document.createElement('option');
+          opt.value = tag;
+          opt.textContent = tag;
+          tagFilterEl.appendChild(opt);
+        });
 
         // Populate cluster filter with labels
         const clusters = [...new Set(allPapers.map(p => p.cluster))].sort((a,b) => a-b);
@@ -467,16 +529,17 @@
       const minYear = parseInt(document.getElementById('minYear').value) || 0;
       const minVenue = parseFloat(document.getElementById('minVenue').value) || 0;
       const papersOnly = document.getElementById('papersOnly').checked;
-      const notesOnly = document.getElementById('notesOnly').checked;
-      const tagFilter = document.getElementById('tagFilter').value.toLowerCase().trim();
+      const tagFilter = document.getElementById('tagFilter').value;
       const searchFilter = document.getElementById('searchFilter').value.toLowerCase().trim();
 
       return allPapers.filter(p => {
         if (p.year && p.year < minYear) return false;
         if (p.venue_quality < minVenue) return false;
         if (papersOnly && !p.is_paper) return false;
-        if (notesOnly && !p.has_notes) return false;
-        if (tagFilter && (!p.tags || !p.tags.toLowerCase().includes(tagFilter))) return false;
+        if (tagFilter) {
+          const paperTags = (p.tags || '').split(/[;,]/).map(t => t.trim().toLowerCase());
+          if (!paperTags.includes(tagFilter.toLowerCase())) return false;
+        }
         if (searchFilter) {
           const searchText = `${p.title} ${p.abstract} ${p.notes || ''}`.toLowerCase();
           if (!searchText.includes(searchFilter)) return false;
@@ -492,10 +555,27 @@
         `${papers.length} items (${paperCount} papers, ${appCount} apps/services)`;
     }
 
-    function render(papers) {
+    function render(filteredPapers) {
+      // highlight 모드면 전체 논문 표시, filter 모드면 필터된 것만
+      const papers = filterMode === 'highlight' ? allPapers : filteredPapers;
+      const filteredIds = new Set(filteredPapers.map(p => p.id));
+
       // Separate papers and apps
       const paperItems = papers.filter(p => p.is_paper);
       const appItems = papers.filter(p => !p.is_paper);
+
+      // opacity 계산 함수
+      function getOpacity(p, baseOpacity) {
+        // 클러스터 하이라이트가 있으면 그것 우선
+        if (highlightCluster !== null) {
+          return p.cluster === highlightCluster ? 1 : 0.15;
+        }
+        // highlight 모드에서 필터 매칭 여부
+        if (filterMode === 'highlight') {
+          return filteredIds.has(p.id) ? baseOpacity : 0.15;
+        }
+        return baseOpacity;
+      }
 
       // Papers trace (circles)
       const paperTrace = {
@@ -517,9 +597,7 @@
             return baseSize + citationBonus;
           }),
           color: paperItems.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
-          opacity: paperItems.map(p =>
-            highlightCluster === null ? 0.8 : (p.cluster === highlightCluster ? 1 : 0.15)
-          ),
+          opacity: paperItems.map(p => getOpacity(p, 0.8)),
           line: { width: 1, color: '#0d1117' }
         },
         hovertemplate: '%{text}<extra></extra>'
@@ -542,9 +620,7 @@
           size: 14,
           symbol: 'diamond',
           color: appItems.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
-          opacity: appItems.map(p =>
-            highlightCluster === null ? 0.9 : (p.cluster === highlightCluster ? 1 : 0.15)
-          ),
+          opacity: appItems.map(p => getOpacity(p, 0.9)),
           line: { width: 2, color: '#bc8cff' }
         },
         hovertemplate: '%{text}<extra></extra>'
@@ -740,18 +816,54 @@
         .sort((a, b) => a.intersectionScore - b.intersectionScore);
     }
 
-    // Event handlers
-    document.getElementById('applyFilter').addEventListener('click', () => {
+    // 필터 상태 표시
+    const filterStatus = document.getElementById('filterStatus');
+    let statusTimer = null;
+
+    function showFilterStatus(status) {
+      filterStatus.className = 'filter-status ' + status;
+      filterStatus.textContent = status === 'updating' ? '⏳' : '✓';
+
+      if (status === 'done') {
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => {
+          filterStatus.className = 'filter-status';
+          filterStatus.textContent = '';
+        }, 800);
+      }
+    }
+
+    // 필터 즉시 적용 함수
+    function applyFilters() {
       currentFiltered = filterPapers();
       render(currentFiltered);
       updateStats(currentFiltered);
-    });
+      showFilterStatus('done');
+    }
+
+    // Debounce 함수
+    function debounce(fn, delay) {
+      let timer = null;
+      return function(...args) {
+        showFilterStatus('updating');
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+
+    const debouncedApplyFilters = debounce(applyFilters, 200);
+
+    // Event handlers - 필터 변경 시 즉시 적용
+    document.getElementById('minYear').addEventListener('change', applyFilters);
+    document.getElementById('minVenue').addEventListener('change', applyFilters);
+    document.getElementById('papersOnly').addEventListener('change', applyFilters);
+    document.getElementById('tagFilter').addEventListener('change', applyFilters);
+    document.getElementById('searchFilter').addEventListener('input', debouncedApplyFilters);
 
     document.getElementById('resetFilter').addEventListener('click', () => {
       document.getElementById('minYear').value = '1990';
       document.getElementById('minVenue').value = '0';
       document.getElementById('papersOnly').checked = false;
-      document.getElementById('notesOnly').checked = false;
       document.getElementById('tagFilter').value = '';
       document.getElementById('searchFilter').value = '';
       document.getElementById('intersectCluster1').value = '';
@@ -759,6 +871,9 @@
       document.getElementById('showCitations').checked = true;
       showCitations = true;
       highlightCluster = null;
+      filterMode = 'highlight';
+      document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
+      document.querySelector('.mode-option[data-mode="highlight"]').classList.add('active');
       document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
       currentFiltered = [...allPapers];
       render(currentFiltered);
@@ -769,6 +884,18 @@
       showCitations = e.target.checked;
       render(currentFiltered);
     });
+
+    // Mode toggle
+    document.querySelectorAll('.mode-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        filterMode = opt.dataset.mode;
+        document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        render(currentFiltered);
+      });
+    });
+    // 초기 상태 설정
+    document.querySelector(`.mode-option[data-mode="${filterMode}"]`).classList.add('active');
 
     document.getElementById('findIntersection').addEventListener('click', () => {
       const c1 = document.getElementById('intersectCluster1').value;
