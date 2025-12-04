@@ -15,6 +15,7 @@ import re
 import math
 import argparse
 import os
+import glob
 from datetime import datetime
 from pathlib import Path
 from bs4 import BeautifulSoup
@@ -185,7 +186,6 @@ def embed_with_openai(texts: list, model: str = "text-embedding-3-small") -> np.
 
 def main():
     parser = argparse.ArgumentParser(description="Build paper map from Zotero CSV")
-    parser.add_argument("--input", default="semantel.csv", help="Input CSV file")
     parser.add_argument("--output", default="papers.json", help="Output JSON file")
     parser.add_argument("--embedding", choices=["local", "openai"], default="local",
                         help="Embedding method: local (sentence-transformers) or openai")
@@ -196,10 +196,29 @@ def main():
                         help="Only include items with notes")
     args = parser.parse_args()
 
-    # 1. CSV 로드
-    print(f"\n[1/5] Loading {args.input}...")
-    df = pd.read_csv(args.input)
-    print(f"  Loaded {len(df)} items")
+    # 1. CSV 로드 (현재 디렉토리의 모든 CSV 합치기)
+    csv_files = glob.glob("*.csv")
+    if not csv_files:
+        print("❌ No CSV files found in current directory")
+        return
+
+    print(f"\n[1/5] Loading {len(csv_files)} CSV file(s)...")
+    dfs = []
+    for csv_file in csv_files:
+        try:
+            csv_df = pd.read_csv(csv_file)
+            print(f"  - {csv_file}: {len(csv_df)} items")
+            dfs.append(csv_df)
+        except Exception as e:
+            print(f"  - {csv_file}: Error - {e}")
+
+    df = pd.concat(dfs, ignore_index=True)
+    # 중복 제거 (Title + DOI 기준)
+    before_dedup = len(df)
+    df = df.drop_duplicates(subset=["Title", "DOI"], keep="first")
+    if len(df) < before_dedup:
+        print(f"  Removed {before_dedup - len(df)} duplicates")
+    print(f"  Total: {len(df)} items")
 
     # 노트 있는 것만 필터링
     if args.notes_only:
@@ -371,8 +390,8 @@ def main():
 
         records.append(rec)
 
-    # CSV 파일 수정 시간
-    csv_mtime = os.path.getmtime(args.input)
+    # CSV 파일 수정 시간 (가장 최근 파일 기준)
+    csv_mtime = max(os.path.getmtime(f) for f in csv_files)
     csv_updated = datetime.fromtimestamp(csv_mtime).strftime("%Y-%m-%d %H:%M")
 
     # 출력 데이터에 클러스터 중심점 포함
