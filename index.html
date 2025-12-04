@@ -437,6 +437,121 @@
       background: var(--accent);
       color: white;
     }
+
+    /* Missing button */
+    .missing-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .missing-btn:hover {
+      background: var(--border-color);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      width: 500px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 16px;
+      color: var(--text-primary);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .modal-close:hover {
+      background: var(--bg-tertiary);
+    }
+    .modal-desc {
+      padding: 12px 20px;
+      margin: 0;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .modal-content {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .missing-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--bg-tertiary);
+    }
+    .missing-item:last-child {
+      border-bottom: none;
+    }
+    .missing-rank {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 24px;
+    }
+    .missing-info {
+      flex: 1;
+    }
+    .missing-count {
+      font-size: 11px;
+      background: #f59e0b33;
+      color: #f59e0b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      display: inline-block;
+    }
+    .missing-link {
+      font-size: 13px;
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .missing-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -445,6 +560,7 @@
     <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
     <div class="stats" id="stats">Loading...</div>
     <span class="filter-status" id="filterStatus"></span>
+    <button class="missing-btn" id="showMissing" title="Papers frequently cited but not in library">📚 Missing</button>
     <div class="legend">
       <div class="legend-item">
         <div class="legend-dot" style="background: #58a6ff;"></div>
@@ -524,6 +640,18 @@
       <div class="abstract" id="detailAbstract"></div>
       <div id="detailNotes"></div>
       <div class="similar-papers" id="similarPapers"></div>
+    </div>
+  </div>
+
+  <!-- Missing Papers Modal -->
+  <div class="modal-overlay" id="missingModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📚 Missing Papers</h3>
+        <button class="modal-close" id="closeMissing">✕</button>
+      </div>
+      <p class="modal-desc">내 라이브러리에서 자주 인용하지만 아직 없는 논문들</p>
+      <div class="modal-content" id="missingList"></div>
     </div>
   </div>
 
@@ -1190,6 +1318,54 @@
         document.body.style.userSelect = '';
         // 너비 저장
         localStorage.setItem('detailPanelWidth', detailPanel.style.width);
+      }
+    });
+
+    // Missing papers modal
+    const missingModal = document.getElementById('missingModal');
+    const missingList = document.getElementById('missingList');
+
+    document.getElementById('showMissing').addEventListener('click', () => {
+      // Calculate missing papers
+      const myS2Ids = new Set(allPapers.map(p => p.s2_id).filter(Boolean));
+      const refCounts = {};
+
+      allPapers.forEach(p => {
+        (p.references || []).forEach(refId => {
+          if (!myS2Ids.has(refId)) {
+            refCounts[refId] = (refCounts[refId] || 0) + 1;
+          }
+        });
+      });
+
+      // Sort by count
+      const sorted = Object.entries(refCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20);
+
+      // Render list
+      missingList.innerHTML = sorted.map(([s2Id, count], i) => `
+        <div class="missing-item">
+          <div class="missing-rank">${i + 1}</div>
+          <div class="missing-info">
+            <span class="missing-count">${count}회 인용</span><br>
+            <a class="missing-link" href="https://www.semanticscholar.org/paper/${s2Id}" target="_blank">
+              Semantic Scholar에서 보기 →
+            </a>
+          </div>
+        </div>
+      `).join('');
+
+      missingModal.classList.add('active');
+    });
+
+    document.getElementById('closeMissing').addEventListener('click', () => {
+      missingModal.classList.remove('active');
+    });
+
+    missingModal.addEventListener('click', (e) => {
+      if (e.target === missingModal) {
+        missingModal.classList.remove('active');
       }
     });
 
