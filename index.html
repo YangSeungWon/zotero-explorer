@@ -1639,22 +1639,50 @@
         ` | Intersection: C${c1} ↔ C${c2}`;
     });
 
-    // Theme toggle
-    document.getElementById('themeToggle').addEventListener('click', () => {
+    // Theme toggle (dark → light → auto)
+    const themeToggle = document.getElementById('themeToggle');
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function applyTheme(theme) {
       const html = document.documentElement;
-      const isLight = html.dataset.theme === 'light';
-      html.dataset.theme = isLight ? '' : 'light';
-      document.getElementById('themeToggle').textContent = isLight ? '🌙' : '☀️';
-      localStorage.setItem('theme', html.dataset.theme);
+      if (theme === 'auto') {
+        html.dataset.theme = systemDark.matches ? '' : 'light';
+        themeToggle.textContent = '🔄';
+        themeToggle.title = 'Theme: Auto (System)';
+      } else if (theme === 'light') {
+        html.dataset.theme = 'light';
+        themeToggle.textContent = '☀️';
+        themeToggle.title = 'Theme: Light';
+      } else {
+        html.dataset.theme = '';
+        themeToggle.textContent = '🌙';
+        themeToggle.title = 'Theme: Dark';
+      }
+    }
+
+    themeToggle.addEventListener('click', () => {
+      const savedTheme = localStorage.getItem('theme') || 'auto';
+      let nextTheme;
+      if (savedTheme === 'auto') nextTheme = 'dark';
+      else if (savedTheme === 'dark') nextTheme = 'light';
+      else nextTheme = 'auto';
+
+      localStorage.setItem('theme', nextTheme);
+      applyTheme(nextTheme);
       render(currentFiltered);
     });
 
-    // Load saved theme
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      document.documentElement.dataset.theme = 'light';
-      document.getElementById('themeToggle').textContent = '☀️';
-    }
+    // 시스템 테마 변경 감지
+    systemDark.addEventListener('change', () => {
+      if (localStorage.getItem('theme') === 'auto') {
+        applyTheme('auto');
+        render(currentFiltered);
+      }
+    });
+
+    // Load saved theme (default: auto)
+    const savedTheme = localStorage.getItem('theme') || 'auto';
+    applyTheme(savedTheme);
 
     // 사이드패널 닫기 버튼
     document.getElementById('closeDetail').addEventListener('click', clearSelection);
