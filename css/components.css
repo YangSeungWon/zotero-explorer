@@ -385,3 +385,8 @@ button:hover {
   color: var(--text-secondary);
   padding: 2px 0;
 }
+
+/* Hide Plotly tooltip when Ctrl pressed */
+body.ctrl-pressed .hoverlayer {
+  display: none !important;
+}

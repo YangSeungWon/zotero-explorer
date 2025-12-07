@@ -22,6 +22,7 @@ from bs4 import BeautifulSoup
 from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+import umap
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import silhouette_score
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -192,8 +193,10 @@ def main():
                         help="Embedding: local (MiniLM), local-large (mpnet, 더 정확), openai")
     parser.add_argument("--clusters", type=int, default=0,
                         help="Number of clusters (0 = auto-detect optimal k)")
-    parser.add_argument("--dim-reduction", choices=["tsne", "pca"], default="tsne",
-                        help="Dimensionality reduction method")
+    parser.add_argument("--dim-reduction", choices=["tsne", "pca", "umap"], default="umap",
+                        help="Dimensionality reduction method (umap recommended)")
+    parser.add_argument("--min-dist", type=float, default=0.3,
+                        help="UMAP min_dist: 0.1(tight) ~ 0.5(spread)")
     parser.add_argument("--notes-only", action="store_true",
                         help="Only include items with notes")
     args = parser.parse_args()
@@ -277,7 +280,17 @@ def main():
     combined = np.hstack([emb_scaled, meta_scaled * 0.3])
 
     # 차원 축소
-    if args.dim_reduction == "tsne":
+    if args.dim_reduction == "umap":
+        reducer = umap.UMAP(
+            n_components=2,
+            n_neighbors=15,
+            min_dist=args.min_dist,
+            metric='cosine',
+            random_state=42
+        )
+        coords = reducer.fit_transform(combined)
+        print(f"  UMAP: min_dist={args.min_dist}")
+    elif args.dim_reduction == "tsne":
         # t-SNE는 고차원에서 바로 하면 느리므로 PCA로 먼저 축소
         if combined.shape[1] > 50:
             pca = PCA(n_components=50, random_state=42)

@@ -37,25 +37,21 @@ function render(filteredPapers) {
     }
   });
 
-  // 마커 크기
+  // 마커 크기 (인용 0: 6px, 인용 1000: ~25px)
   function getSize(p) {
-    const baseSize = 12;
-    const citationBonus = p.citation_count ? Math.log10(p.citation_count + 1) * 6 : 0;
+    const baseSize = 6;
+    const citationBonus = p.citation_count ? Math.log10(p.citation_count + 1) * 6.3 : 0;
     return baseSize + citationBonus;
   }
 
-  // 내부 원 크기
-  function getInternalSize(p) {
-    const internalCount = s2IdToInternal[p.id] || 0;
-    if (internalCount === 0) return 0;
-    return 3 + Math.log10(internalCount + 1) * 5;
-  }
-
-  // 선택된 논문 테두리
+  // 선택된 논문 테두리 (내부인용 반영)
   function getLineWidth(p) {
-    if (selectedPaper !== null && p.id === selectedPaper.id) return 4;
-    if (selectedPaper !== null && connectedPapers.has(p.id)) return 3;
-    return 1;
+    const internalCount = s2IdToInternal[p.id] || 0;
+    const baseWidth = internalCount > 0 ? 0.5 + Math.min(internalCount, 5) * 0.4 : 0.5;
+
+    if (selectedPaper !== null && p.id === selectedPaper.id) return baseWidth + 1.5;
+    if (selectedPaper !== null && connectedPapers.has(p.id)) return baseWidth + 1;
+    return baseWidth;
   }
 
   function getLineColor(p) {
@@ -121,27 +117,6 @@ function render(filteredPapers) {
     hovertemplate: '%{text}<extra></extra>'
   };
 
-  // 내부 인용 표시
-  const internalItems = paperItems.filter(p => getInternalSize(p) > 0);
-  const innerPaperTrace = {
-    x: internalItems.map(p => p.x),
-    y: internalItems.map(p => p.y),
-    text: internalItems.map(p => {
-      const internalCount = s2IdToInternal[p.id] || 0;
-      return `내부 인용: ${internalCount}`;
-    }),
-    mode: 'markers',
-    type: 'scatter',
-    name: 'Internal Citations',
-    showlegend: false,
-    marker: {
-      size: internalItems.map(p => getInternalSize(p)),
-      color: '#1a1a2e',
-      opacity: internalItems.map(p => getOpacity(p, 0.95)),
-      line: { width: 0 }
-    },
-    hoverinfo: 'text'
-  };
 
   // Apps trace
   const appTrace = {
@@ -278,7 +253,7 @@ function render(filteredPapers) {
             y: [source.y, target.y],
             mode: 'lines',
             type: 'scatter',
-            line: { color: 'rgba(255, 165, 0, 0.3)', width: 1 },
+            line: { color: 'rgba(128, 128, 128, 0.25)', width: 1 },
             hoverinfo: 'none',
             showlegend: false
           });
@@ -287,9 +262,13 @@ function render(filteredPapers) {
     }
   }
 
-  traces.push(paperTrace, innerPaperTrace, appTrace);
+  traces.push(paperTrace, appTrace);
 
   const plotDiv = document.getElementById('plot');
+
+  // 호버용 위치 맵 저장
+  const idToPos = {};
+  papers.forEach(p => { idToPos[p.id] = { x: p.x, y: p.y }; });
 
   Plotly.newPlot(plotDiv, traces, layout, config).then(function() {
     plotDiv.on('plotly_click', function(data) {
@@ -300,6 +279,61 @@ function render(filteredPapers) {
 
     plotDiv.on('plotly_doubleclick', function() {
       clearSelection();
+    });
+
+    // Ctrl+호버 시 인용선 미리보기
+    let ctrlPressed = false;
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Control') {
+        ctrlPressed = true;
+        document.body.classList.add('ctrl-pressed');
+      }
+    });
+    document.addEventListener('keyup', e => {
+      if (e.key === 'Control') {
+        ctrlPressed = false;
+        document.body.classList.remove('ctrl-pressed');
+      }
+    });
+
+    // 호버용 빈 트레이스 2개 미리 추가 (refs, citedBy)
+    Plotly.addTraces(plotDiv, [
+      { x: [], y: [], mode: 'lines', type: 'scatter', line: { color: 'rgba(88, 166, 255, 0.6)', width: 2 }, hoverinfo: 'none', showlegend: false },
+      { x: [], y: [], mode: 'lines', type: 'scatter', line: { color: 'rgba(249, 115, 22, 0.6)', width: 2 }, hoverinfo: 'none', showlegend: false }
+    ]);
+    const refTraceIdx = plotDiv.data.length - 2;
+    const citedByTraceIdx = plotDiv.data.length - 1;
+
+    plotDiv.on('plotly_hover', function(data) {
+      if (!ctrlPressed) return;
+      if (selectedPaper !== null) return;
+      if (!showCitations || citationLinks.length === 0) return;
+      if (!data.points || !data.points[0] || !data.points[0].customdata) return;
+
+      const hoveredId = data.points[0].customdata.id;
+
+      // 단일 trace로 모든 선 그리기 (null로 구분)
+      const refX = [], refY = [], citedByX = [], citedByY = [];
+
+      citationLinks.forEach(link => {
+        const source = idToPos[link.source];
+        const target = idToPos[link.target];
+        if (!source || !target) return;
+
+        if (link.source === hoveredId) {
+          refX.push(source.x, target.x, null);
+          refY.push(source.y, target.y, null);
+        } else if (link.target === hoveredId) {
+          citedByX.push(source.x, target.x, null);
+          citedByY.push(source.y, target.y, null);
+        }
+      });
+
+      Plotly.restyle(plotDiv, { x: [refX, citedByX], y: [refY, citedByY] }, [refTraceIdx, citedByTraceIdx]);
+    });
+
+    plotDiv.on('plotly_unhover', function() {
+      Plotly.restyle(plotDiv, { x: [[], []], y: [[], []] }, [refTraceIdx, citedByTraceIdx]);
     });
   });
 }
