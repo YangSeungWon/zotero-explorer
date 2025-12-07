@@ -1,6 +1,10 @@
 services:
   web:
-    build: .
+    image: nginx:alpine
     ports:
       - "20680:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./papers.json:/usr/share/nginx/html/papers.json:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
