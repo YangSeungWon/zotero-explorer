@@ -67,9 +67,9 @@ async function loadData() {
       item.dataset.cluster = c;
       item.innerHTML = `
         <div class="dot" style="background: ${CLUSTER_COLORS[c % CLUSTER_COLORS.length]}"></div>
-        <div class="label" title="더블클릭으로 편집">${label || 'Cluster ' + c}</div>
+        <div class="label" title="Double-click to edit">${label || 'Cluster ' + c}</div>
         <div class="count">${count}</div>
-        <button class="stats-btn" title="클러스터 통계">📊</button>
+        <button class="stats-btn" title="Cluster stats">📊</button>
       `;
 
       // 통계 버튼 클릭
@@ -95,7 +95,7 @@ async function loadData() {
       labelEl.addEventListener('dblclick', (e) => {
         e.stopPropagation();
         const currentLabel = clusterLabels[c] || '';
-        const newLabel = prompt(`클러스터 ${c} 라벨 편집:`, currentLabel);
+        const newLabel = prompt(`Edit label for Cluster ${c}:`, currentLabel);
         if (newLabel !== null && newLabel !== currentLabel) {
           clusterLabels[c] = newLabel;
           labelEl.textContent = newLabel || 'Cluster ' + c;
@@ -141,6 +141,8 @@ function filterPapers() {
   const searchFilter = document.getElementById('searchFilter').value.toLowerCase().trim();
 
   return allPapers.filter(p => {
+    // Default: only show papers with notes
+    if (!p.has_notes) return false;
     if (p.year && p.year < minYear) return false;
     if (p.venue_quality < minVenue) return false;
     if (papersOnly && !p.is_paper) return false;

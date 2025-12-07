@@ -21,11 +21,11 @@
     <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
     <div class="stats" id="stats">Loading...</div>
     <span class="filter-status" id="filterStatus"></span>
-    <button class="missing-btn" id="showGlobalStats" title="전체 통계">📈 Stats</button>
-    <button class="missing-btn" id="copyClusters" title="클러스터별 논문 목록 복사">📋 Clusters</button>
-    <button class="missing-btn" id="copyFiltered" title="필터된 논문 정보+노트 복사">📝 Export</button>
-    <button class="missing-btn" id="showClassics" title="많이 인용된 기초 논문" style="color: #58a6ff;">📚 Classics</button>
-    <button class="missing-btn" id="showNewWork" title="내 논문을 인용하는 최신작" style="color: #f97316;">🆕 New</button>
+    <button class="missing-btn" id="showGlobalStats" title="Global statistics">📈 Stats</button>
+    <button class="missing-btn" id="copyClusters" title="Copy cluster paper list">📋 Clusters</button>
+    <button class="missing-btn" id="copyFiltered" title="Copy filtered papers with notes">📝 Export</button>
+    <button class="missing-btn" id="showClassics" title="Highly cited foundational papers" style="color: #58a6ff;">📚 Classics</button>
+    <button class="missing-btn" id="showNewWork" title="Recent papers citing your library" style="color: #f97316;">🆕 New</button>
     <div class="legend">
       <div class="legend-item">
         <div class="legend-dot" style="background: #58a6ff;"></div>
@@ -70,7 +70,7 @@
       </div>
       <div class="control-group">
         <label>Search:</label>
-        <input type="text" id="searchFilter" placeholder="제목/저자/초록/노트" style="width: 120px;">
+        <input type="text" id="searchFilter" placeholder="Title/Author/Abstract" style="width: 120px;">
       </div>
       <div class="control-group" style="border-left: 1px solid #30363d; padding-left: 16px;">
         <label>Intersection:</label>
@@ -186,7 +186,7 @@
         <h3>📚 Missing Papers</h3>
         <button class="modal-close" id="closeMissing">✕</button>
       </div>
-      <p class="modal-desc">내 라이브러리에서 자주 인용하지만 아직 없는 논문들</p>
+      <p class="modal-desc">Papers frequently cited by your library but not yet added</p>
       <div class="modal-content" id="missingList"></div>
     </div>
   </div>

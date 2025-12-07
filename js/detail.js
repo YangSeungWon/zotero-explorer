@@ -52,18 +52,18 @@ function showDefaultPanel() {
   document.getElementById('detailLinks').innerHTML = '';
   document.getElementById('detailAbstract').innerHTML = `
     <div class="help-section">
-      <h4>사용법</h4>
+      <h4>Usage</h4>
       <ul>
-        <li>노드 <strong>클릭</strong>: 상세 정보</li>
-        <li><strong>Ctrl+호버</strong>: 인용 관계 미리보기</li>
-        <li><strong>더블클릭</strong>: 줌 리셋</li>
-        <li>왼쪽 클러스터 클릭: 필터</li>
+        <li><strong>Click</strong> node: View details</li>
+        <li><strong>Hover</strong>: Citation preview</li>
+        <li><strong>Double-click</strong>: Reset zoom</li>
+        <li>Click cluster: Filter</li>
       </ul>
     </div>
   `;
   document.getElementById('detailNotes').innerHTML = `
     <div class="cluster-overview">
-      <h4>클러스터 분포</h4>
+      <h4>Cluster Distribution</h4>
       ${clusterHtml}
     </div>
   `;
@@ -82,7 +82,7 @@ function showHoverPreview(item) {
   // 닫기 버튼 숨기기 (호버 미리보기에서는)
   document.getElementById('closeDetail').style.display = 'none';
 
-  document.getElementById('detailTitle').innerHTML = `<span style="opacity: 0.6; font-size: 12px;">미리보기</span><br>${item.title || 'Untitled'}`;
+  document.getElementById('detailTitle').innerHTML = `<span style="opacity: 0.6; font-size: 12px;">Preview</span><br>${item.title || 'Untitled'}`;
 
   const typeClass = item.is_paper ? 'paper' : 'app';
   const typeLabel = item.is_paper ? 'Paper' : 'App/Service';
@@ -115,7 +115,7 @@ function showHoverPreview(item) {
   document.getElementById('detailNotes').innerHTML = '';
   document.getElementById('referencesSection').style.display = 'none';
   document.getElementById('citedBySection').style.display = 'none';
-  document.getElementById('similarPapers').innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">클릭하여 상세 정보 보기</p>';
+  document.getElementById('similarPapers').innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">Click for details</p>';
 }
 
 function showDetail(item) {

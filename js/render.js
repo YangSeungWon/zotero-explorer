@@ -335,14 +335,27 @@ function render(filteredPapers) {
   }
 
   Plotly.newPlot(plotDiv, traces, layout, config).then(function() {
+    let pointClicked = false;
+
     plotDiv.on('plotly_click', function(data) {
       if (data.points && data.points[0] && data.points[0].customdata) {
+        pointClicked = true;
         showDetail(data.points[0].customdata);
-      } else if (selectedPaper !== null) {
-        // 빈 공간 클릭 시 선택 해제
-        clearSelection();
       }
     });
+
+    // 빈 공간 클릭 시 선택 해제 (plotly_click은 빈 공간에서 발생하지 않음)
+    const plotArea = plotDiv.querySelector('.nsewdrag');
+    if (plotArea) {
+      plotArea.addEventListener('click', function(e) {
+        setTimeout(() => {
+          if (!pointClicked && selectedPaper !== null) {
+            clearSelection();
+          }
+          pointClicked = false;
+        }, 10);
+      });
+    }
 
     // 호버용 빈 트레이스 2개 미리 추가 (refs, citedBy)
     Plotly.addTraces(plotDiv, [

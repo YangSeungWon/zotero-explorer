@@ -36,15 +36,15 @@ function showClusterStats(clusterId, event) {
   statsTooltip.className = 'cluster-stats-tooltip';
   statsTooltip.innerHTML = `
     <h4>📊 Cluster ${clusterId}: ${clusterLabels[clusterId] || ''}</h4>
-    <div class="stat-row"><span class="stat-label">논문 수</span><span class="stat-value">${papers.length}</span></div>
-    <div class="stat-row"><span class="stat-label">연도 범위</span><span class="stat-value">${minYear} - ${maxYear}</span></div>
-    <div class="stat-row"><span class="stat-label">평균 연도</span><span class="stat-value">${avgYear}</span></div>
-    <div class="stat-row"><span class="stat-label">평균 인용수</span><span class="stat-value">${avgCitations}</span></div>
-    <div class="stat-row"><span class="stat-label">최대 인용수</span><span class="stat-value">${maxCitations}</span></div>
-    <div class="stat-row"><span class="stat-label">노트 있음</span><span class="stat-value">${withNotes} / ${papers.length}</span></div>
+    <div class="stat-row"><span class="stat-label">Papers</span><span class="stat-value">${papers.length}</span></div>
+    <div class="stat-row"><span class="stat-label">Year Range</span><span class="stat-value">${minYear} - ${maxYear}</span></div>
+    <div class="stat-row"><span class="stat-label">Avg Year</span><span class="stat-value">${avgYear}</span></div>
+    <div class="stat-row"><span class="stat-label">Avg Citations</span><span class="stat-value">${avgCitations}</span></div>
+    <div class="stat-row"><span class="stat-label">Max Citations</span><span class="stat-value">${maxCitations}</span></div>
+    <div class="stat-row"><span class="stat-label">With Notes</span><span class="stat-value">${withNotes} / ${papers.length}</span></div>
     ${topVenues.length > 0 ? `
       <div class="top-venues">
-        <span class="stat-label">주요 Venues:</span>
+        <span class="stat-label">Top Venues:</span>
         ${topVenues.map(([v, c]) => `<div class="venue-item">• ${v} (${c})</div>`).join('')}
       </div>
     ` : ''}
@@ -164,7 +164,7 @@ function showNoResultsMessage(show) {
       z-index: 100;
       display: none;
     `;
-    overlay.textContent = '검색 결과 없음';
+    overlay.textContent = 'No results found';
     document.getElementById('plot').appendChild(overlay);
   }
   overlay.style.display = show ? 'block' : 'none';
@@ -259,17 +259,17 @@ function initUIHandlers() {
     const c2 = document.getElementById('intersectCluster2').value;
 
     if (!c1 || !c2) {
-      alert('두 클러스터를 선택하세요');
+      alert('Please select two clusters');
       return;
     }
     if (c1 === c2) {
-      alert('서로 다른 클러스터를 선택하세요');
+      alert('Please select different clusters');
       return;
     }
 
     const intersectionPapers = findIntersectionPapers(parseInt(c1), parseInt(c2));
     if (intersectionPapers.length === 0) {
-      alert('교차점 논문이 없습니다');
+      alert('No intersection papers found');
       return;
     }
 
@@ -359,13 +359,13 @@ function initUIHandlers() {
   // Copy clusters
   document.getElementById('copyClusters').addEventListener('click', async () => {
     const clusters = [...new Set(allPapers.map(p => p.cluster))].sort((a, b) => a - b);
-    let text = `# 논문 라이브러리 클러스터 구조\n`;
-    text += `총 ${allPapers.length}개 논문, ${clusters.length}개 클러스터\n\n`;
+    let text = `# Paper Library Cluster Structure\n`;
+    text += `Total: ${allPapers.length} papers, ${clusters.length} clusters\n\n`;
 
     clusters.forEach(c => {
       const clusterPapers = allPapers.filter(p => p.cluster === c);
       const label = clusterLabels[c] || `Cluster ${c}`;
-      text += `## Cluster ${c}: ${label} (${clusterPapers.length}편)\n`;
+      text += `## Cluster ${c}: ${label} (${clusterPapers.length} papers)\n`;
       clusterPapers.forEach(p => {
         const year = p.year || 'N/A';
         const venue = p.venue ? ` - ${p.venue.substring(0, 30)}` : '';
@@ -381,14 +381,14 @@ function initUIHandlers() {
       btn.textContent = '✅ Copied!';
       setTimeout(() => btn.textContent = orig, 1500);
     } catch (e) {
-      alert('복사 실패: ' + e.message);
+      alert('Copy failed: ' + e.message);
     }
   });
 
   // Copy filtered
   document.getElementById('copyFiltered').addEventListener('click', async () => {
     const papers = currentFiltered;
-    let text = `# 논문 목록 (${papers.length}편)\n\n`;
+    let text = `# Paper List (${papers.length} papers)\n\n`;
 
     papers.forEach((p, i) => {
       text += `## ${i + 1}. ${p.title}\n`;
@@ -411,7 +411,7 @@ function initUIHandlers() {
       btn.textContent = '✅ Copied!';
       setTimeout(() => btn.textContent = orig, 1500);
     } catch (e) {
-      alert('복사 실패: ' + e.message);
+      alert('Copy failed: ' + e.message);
     }
   });
 
@@ -506,8 +506,8 @@ function initUIHandlers() {
     const sorted = Object.entries(classicCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
 
     let html = '<h4 style="color: #58a6ff; font-size: 14px; margin-bottom: 12px;">📚 Classics</h4>';
-    const scope = isFiltered ? `필터된 ${papers.length}개 논문` : '전체 논문';
-    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">${scope}이 많이 인용하는 기초 논문</p>`;
+    const scope = isFiltered ? `${papers.length} filtered papers` : 'All papers';
+    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Foundational papers frequently cited by ${scope.toLowerCase()}</p>`;
 
     if (sorted.length > 0) {
       html += sorted.map(([key, count], i) => {
@@ -515,7 +515,7 @@ function initUIHandlers() {
         const id = key.substring(key.indexOf(':') + 1);
         const url = type === 's2' ? `https://www.semanticscholar.org/paper/${id}` : `https://doi.org/${id}`;
         const label = type === 's2' ? 'Semantic Scholar →' : id.substring(0, 40) + (id.length > 40 ? '...' : '');
-        return `<div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info"><span class="missing-count">${count}개 논문이 인용</span><br><a class="missing-link" href="${url}" target="_blank">${label}</a></div></div>`;
+        return `<div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info"><span class="missing-count">Cited by ${count} papers</span><br><a class="missing-link" href="${url}" target="_blank">${label}</a></div></div>`;
       }).join('');
     } else {
       html += '<p style="color: var(--text-muted);">No classics found</p>';
@@ -546,12 +546,12 @@ function initUIHandlers() {
     const sorted = Object.entries(newWorkCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
 
     let html = '<h4 style="color: #f97316; font-size: 14px; margin-bottom: 12px;">🆕 New Work</h4>';
-    const scope = isFiltered ? `필터된 ${papers.length}개 논문` : '전체 논문';
-    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">${scope}을 많이 인용하는 최신 논문</p>`;
+    const scope2 = isFiltered ? `${papers.length} filtered papers` : 'all papers';
+    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Recent papers that cite ${scope2}</p>`;
 
     if (sorted.length > 0) {
       html += sorted.map(([s2Id, count], i) => `
-        <div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info"><span class="missing-count" style="background: #f9731633; color: #f97316;">${count}개 논문 인용</span><br><a class="missing-link" href="https://www.semanticscholar.org/paper/${s2Id}" target="_blank">Semantic Scholar →</a></div></div>
+        <div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info"><span class="missing-count" style="background: #f9731633; color: #f97316;">Cites ${count} papers</span><br><a class="missing-link" href="https://www.semanticscholar.org/paper/${s2Id}" target="_blank">Semantic Scholar →</a></div></div>
       `).join('');
     } else {
       html += '<p style="color: var(--text-muted);">No new work found (S2 citations data needed)</p>';
@@ -640,16 +640,16 @@ function initUIHandlers() {
       case '?':
         alert(`⌨️ Keyboard Shortcuts
 
-/     검색창 포커스
-Esc   선택 해제 / 모달 닫기
-J     다음 논문
-K     이전 논문
-R     필터 리셋
-C     Citation 선 토글
-?     이 도움말
+/     Focus search
+Esc   Deselect / Close modal
+J     Next paper
+K     Previous paper
+R     Reset filters
+C     Toggle citation lines
+?     This help
 
 🖱️ Mouse
-Ctrl+호버   인용 관계 미리보기`);
+Hover   Preview paper & citation lines`);
         break;
     }
   });
