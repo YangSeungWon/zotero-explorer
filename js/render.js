@@ -60,6 +60,10 @@ function render(filteredPapers) {
     return '#0d1117';
   }
 
+  // 검색 결과 glow 효과용
+  const isSearchActive = filterMode === 'highlight' && filteredIds.size < allPapers.length;
+  const glowItems = isSearchActive ? paperItems.filter(p => filteredIds.has(p.id)) : [];
+
   // 단어 단위 줄바꿈
   function wrapText(text, maxLen = 25) {
     const words = text.split(' ');
@@ -117,6 +121,20 @@ function render(filteredPapers) {
     hovertemplate: '%{text}<extra></extra>'
   };
 
+  // 검색 결과 glow 레이어 (마커 뒤에)
+  const glowTrace = {
+    x: glowItems.map(p => p.x),
+    y: glowItems.map(p => p.y),
+    mode: 'markers',
+    type: 'scatter',
+    showlegend: false,
+    marker: {
+      size: glowItems.map(p => getSize(p) + 12),
+      color: 'rgba(0, 255, 255, 0.3)',
+      line: { width: 0 }
+    },
+    hoverinfo: 'skip'
+  };
 
   // Apps trace
   const appTrace = {
@@ -262,6 +280,7 @@ function render(filteredPapers) {
     }
   }
 
+  if (glowItems.length > 0) traces.push(glowTrace);
   traces.push(paperTrace, appTrace);
 
   const plotDiv = document.getElementById('plot');

@@ -140,6 +140,34 @@ function applyFilters() {
   render(currentFiltered);
   updateStats(currentFiltered);
   showFilterStatus('done');
+
+  // 검색 결과 없음 메시지
+  showNoResultsMessage(currentFiltered.length === 0 && allPapers.length > 0);
+}
+
+function showNoResultsMessage(show) {
+  let overlay = document.getElementById('noResultsOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'noResultsOverlay';
+    overlay.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 20px 40px;
+      border-radius: 12px;
+      font-size: 16px;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+    `;
+    overlay.textContent = '검색 결과 없음';
+    document.getElementById('plot').appendChild(overlay);
+  }
+  overlay.style.display = show ? 'block' : 'none';
 }
 
 // Debounce
