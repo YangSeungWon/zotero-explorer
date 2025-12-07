@@ -453,11 +453,16 @@ function initUIHandlers() {
 
   // Classics
   document.getElementById('showClassics').addEventListener('click', () => {
+    let papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
+    if (highlightCluster !== null) {
+      papers = papers.filter(p => p.cluster === highlightCluster);
+    }
+    const isFiltered = papers.length < allPapers.length;
     const myS2Ids = new Set(allPapers.map(p => p.s2_id).filter(Boolean));
     const myDOIs = new Set(allPapers.map(p => (p.doi || '').toLowerCase()).filter(Boolean));
     const classicCounts = {};
 
-    allPapers.forEach(p => {
+    papers.forEach(p => {
       (p.references || []).forEach(refId => {
         if (!myS2Ids.has(refId)) {
           classicCounts[`s2:${refId}`] = (classicCounts[`s2:${refId}`] || 0) + 1;
@@ -473,7 +478,8 @@ function initUIHandlers() {
     const sorted = Object.entries(classicCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
 
     let html = '<h4 style="color: #58a6ff; font-size: 14px; margin-bottom: 12px;">📚 Classics</h4>';
-    html += '<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">내 논문들이 많이 인용하는 기초 논문</p>';
+    const scope = isFiltered ? `필터된 ${papers.length}개 논문` : '전체 논문';
+    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">${scope}이 많이 인용하는 기초 논문</p>`;
 
     if (sorted.length > 0) {
       html += sorted.map(([key, count], i) => {
@@ -493,10 +499,15 @@ function initUIHandlers() {
 
   // New Work
   document.getElementById('showNewWork').addEventListener('click', () => {
+    let papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
+    if (highlightCluster !== null) {
+      papers = papers.filter(p => p.cluster === highlightCluster);
+    }
+    const isFiltered = papers.length < allPapers.length;
     const myS2Ids = new Set(allPapers.map(p => p.s2_id).filter(Boolean));
     const newWorkCounts = {};
 
-    allPapers.forEach(p => {
+    papers.forEach(p => {
       (p.citations || []).forEach(citeId => {
         if (!myS2Ids.has(citeId)) {
           newWorkCounts[citeId] = (newWorkCounts[citeId] || 0) + 1;
@@ -507,7 +518,8 @@ function initUIHandlers() {
     const sorted = Object.entries(newWorkCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
 
     let html = '<h4 style="color: #f97316; font-size: 14px; margin-bottom: 12px;">🆕 New Work</h4>';
-    html += '<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">내 논문들을 많이 인용하는 최신 논문</p>';
+    const scope = isFiltered ? `필터된 ${papers.length}개 논문` : '전체 논문';
+    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">${scope}을 많이 인용하는 최신 논문</p>`;
 
     if (sorted.length > 0) {
       html += sorted.map(([s2Id, count], i) => `

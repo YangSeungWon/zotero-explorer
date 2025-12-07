@@ -274,11 +274,10 @@ function render(filteredPapers) {
     plotDiv.on('plotly_click', function(data) {
       if (data.points && data.points[0] && data.points[0].customdata) {
         showDetail(data.points[0].customdata);
+      } else if (selectedPaper !== null) {
+        // 빈 공간 클릭 시 선택 해제
+        clearSelection();
       }
-    });
-
-    plotDiv.on('plotly_doubleclick', function() {
-      clearSelection();
     });
 
     // Ctrl+호버 시 인용선 미리보기
