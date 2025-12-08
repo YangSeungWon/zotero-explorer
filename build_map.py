@@ -523,7 +523,8 @@ def main():
     review_count = 0
     for idx, row in df.iterrows():
         # 기존 태그 가져오기
-        manual_tags = str(row.get("Manual Tags", "") or "")
+        raw_tags = row.get("Manual Tags", "")
+        manual_tags = str(raw_tags) if pd.notna(raw_tags) and raw_tags else ""
 
         # method-review 자동 태깅
         title = str(row.get("Title", "") or "")
