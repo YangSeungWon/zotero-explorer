@@ -359,6 +359,27 @@ def main():
 
     corpus = [cluster_texts.get(i, "") for i in range(n_clusters)]
 
+    # 한국어 조사 제거 전처리
+    def strip_korean_particles(text):
+        import re
+        # 조사 패턴 (단어 끝에 붙는 것들)
+        particles = r'(을|를|이|가|은|는|에|의|로|으로|와|과|도|만|까지|부터|에서|으로서|이라|라|란|라는|이라는)$'
+        words = text.split()
+        cleaned = []
+        for word in words:
+            # 한글 단어에서 조사 제거
+            if re.search(r'[가-힣]', word):
+                cleaned_word = re.sub(particles, '', word)
+                if len(cleaned_word) >= 2:  # 너무 짧아지면 원본 유지
+                    cleaned.append(cleaned_word)
+                else:
+                    cleaned.append(word)
+            else:
+                cleaned.append(word)
+        return ' '.join(cleaned)
+
+    corpus = [strip_korean_particles(c) for c in corpus]
+
     # 다국어 불용어 (영어 + 한국어)
     multilingual_stop_words = [
         # English
@@ -372,6 +393,7 @@ def main():
         # Korean
         '및', '등', '를', '을', '이', '가', '은', '는', '에', '의', '로', '으로', '와', '과',
         '하는', '있는', '되는', '한', '된', '수', '것', '대한', '통해', '위해', '대해',
+        '연구', '기술', '위한', '사용', '제안', '보여', '제시', '기반', '활용', '가능',
     ]
 
     tfidf_vec = TfidfVectorizer(
@@ -383,13 +405,21 @@ def main():
     )
     tfidf_matrix = tfidf_vec.fit_transform(corpus)
     feature_names = tfidf_vec.get_feature_names_out()
+    tfidf_dense = tfidf_matrix.toarray()
+
+    # 각 단어가 몇 개의 클러스터에서 등장하는지 계산
+    term_cluster_count = (tfidf_dense > 0).sum(axis=0)
 
     cluster_labels = {}
     for i in range(n_clusters):
-        scores = tfidf_matrix[i].toarray().flatten()
-        top_idx = scores.argsort()[-3:][::-1]  # 상위 3개 키워드
-        keywords = [feature_names[j] for j in top_idx]
-        cluster_labels[i] = ", ".join(keywords)
+        scores = tfidf_dense[i].copy()
+        # 여러 클러스터에 등장하는 단어는 점수 낮춤 (distinctiveness)
+        distinctiveness = 1.0 / np.maximum(term_cluster_count, 1)
+        adjusted_scores = scores * distinctiveness
+
+        top_idx = adjusted_scores.argsort()[-3:][::-1]  # 상위 3개 키워드
+        keywords = [feature_names[j] for j in top_idx if scores[j] > 0]
+        cluster_labels[i] = ", ".join(keywords[:3]) if keywords else f"Cluster {i}"
         print(f"  Cluster {i}: {cluster_labels[i]}")
 
     # 6.5. 클러스터 중심점 계산 (2D 좌표 기준)
