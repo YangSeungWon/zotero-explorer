@@ -18,3 +18,4 @@ let allTags = new Set();
 let hoverTraceCount = 0;
 let hoveredPaper = null;
 let zoomScale = 1;
+let bookmarkedPapers = new Set();

@@ -145,6 +145,24 @@ function render(filteredPapers) {
     hoverinfo: 'skip'
   };
 
+  // 북마크 표시 (별 아이콘)
+  const bookmarkedItems = papers.filter(p => bookmarkedPapers.has(p.id));
+  const bookmarkTrace = {
+    x: bookmarkedItems.map(p => p.x),
+    y: bookmarkedItems.map(p => p.y),
+    mode: 'markers',
+    type: 'scatter',
+    name: 'Bookmarked',
+    showlegend: false,
+    marker: {
+      size: bookmarkedItems.map(p => (getSize(p) + 8) * zoomScale),
+      symbol: 'star',
+      color: 'rgba(255, 215, 0, 0.7)',
+      line: { width: 1, color: '#ffd700' }
+    },
+    hoverinfo: 'skip'
+  };
+
   // Apps trace
   const appTrace = {
     x: appItems.map(p => p.x),
@@ -299,6 +317,7 @@ function render(filteredPapers) {
 
   if (glowItems.length > 0) traces.push(glowTrace);
   traces.push(paperTrace, appTrace);
+  if (bookmarkedItems.length > 0) traces.push(bookmarkTrace);
 
   // 저장된 줌 상태 적용
   if (savedXRange) layout.xaxis.range = savedXRange;
@@ -407,6 +426,7 @@ function render(filteredPapers) {
       const paperIdx = plotDiv.data.findIndex(t => t.name === 'Papers');
       const appIdx = plotDiv.data.findIndex(t => t.name === 'Apps/Services');
       const glowIdx = plotDiv.data.findIndex(t => t.marker?.color === 'rgba(0, 255, 255, 0.3)');
+      const bookmarkIdx = plotDiv.data.findIndex(t => t.name === 'Bookmarked');
 
       if (paperIdx >= 0) {
         const newPaperSizes = paperItems.map(p => getSize(p) * zoomScale);
@@ -419,6 +439,10 @@ function render(filteredPapers) {
       if (glowIdx >= 0 && glowItems.length > 0) {
         const newGlowSizes = glowItems.map(p => (getSize(p) + 12) * zoomScale);
         Plotly.restyle(plotDiv, { 'marker.size': [newGlowSizes] }, [glowIdx]);
+      }
+      if (bookmarkIdx >= 0 && bookmarkedItems.length > 0) {
+        const newBookmarkSizes = bookmarkedItems.map(p => (getSize(p) + 8) * zoomScale);
+        Plotly.restyle(plotDiv, { 'marker.size': [newBookmarkSizes] }, [bookmarkIdx]);
       }
     }
 

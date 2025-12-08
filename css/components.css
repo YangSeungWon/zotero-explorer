@@ -437,3 +437,34 @@ button:hover {
   font-size: 12px;
   color: var(--text-secondary);
 }
+
+/* Bookmark button */
+.bookmark-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  color: var(--text-muted);
+  vertical-align: middle;
+  transition: all var(--transition-fast);
+}
+
+.bookmark-btn:hover {
+  color: #ffd700;
+  transform: scale(1.1);
+}
+
+.bookmark-btn.active {
+  color: #ffd700;
+}
+
+#detailTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#detailTitle .title-text {
+  flex: 1;
+}

@@ -23,6 +23,10 @@ async function loadData() {
     const customLabels = JSON.parse(localStorage.getItem('customClusterLabels') || '{}');
     Object.assign(clusterLabels, customLabels);
 
+    // 북마크 로드
+    const savedBookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
+    bookmarkedPapers = new Set(savedBookmarks);
+
     // Populate tag filter
     const tagFilterEl = document.getElementById('tagFilter');
     allPapers.forEach(p => {
@@ -138,6 +142,7 @@ function filterPapers() {
   const minYear = parseInt(document.getElementById('minYear').value) || 0;
   const minVenue = parseFloat(document.getElementById('minVenue').value) || 0;
   const papersOnly = document.getElementById('papersOnly').checked;
+  const bookmarkedOnly = document.getElementById('bookmarkedOnly').checked;
   const tagFilter = document.getElementById('tagFilter').value;
   const searchFilter = document.getElementById('searchFilter').value.toLowerCase().trim();
 
@@ -147,6 +152,7 @@ function filterPapers() {
     if (p.year && p.year < minYear) return false;
     if (p.venue_quality < minVenue) return false;
     if (papersOnly && !p.is_paper) return false;
+    if (bookmarkedOnly && !bookmarkedPapers.has(p.id)) return false;
     if (tagFilter) {
       const paperTags = (p.tags || '').split(/[;,]/).map(t => t.trim().toLowerCase());
       if (!paperTags.includes(tagFilter.toLowerCase())) return false;
@@ -162,6 +168,19 @@ function filterPapers() {
 function updateStats(papers) {
   const paperCount = papers.filter(p => p.is_paper).length;
   const appCount = papers.filter(p => !p.is_paper).length;
+  const bookmarkCount = bookmarkedPapers.size;
+  const bookmarkText = bookmarkCount > 0 ? `, ${bookmarkCount} bookmarked` : '';
   document.getElementById('stats').textContent =
-    `${papers.length} items (${paperCount} papers, ${appCount} apps/services)`;
+    `${papers.length} items (${paperCount} papers, ${appCount} apps/services${bookmarkText})`;
+}
+
+function toggleBookmark(paperId) {
+  if (bookmarkedPapers.has(paperId)) {
+    bookmarkedPapers.delete(paperId);
+  } else {
+    bookmarkedPapers.add(paperId);
+  }
+  localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
+  updateStats(currentFiltered);
+  return bookmarkedPapers.has(paperId);
 }

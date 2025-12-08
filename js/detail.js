@@ -179,7 +179,22 @@ function showDetail(item) {
 
   render(currentFiltered);
 
-  document.getElementById('detailTitle').textContent = item.title || 'Untitled';
+  const isBookmarked = bookmarkedPapers.has(item.id);
+  document.getElementById('detailTitle').innerHTML = `
+    <span class="title-text">${item.title || 'Untitled'}</span>
+    <button class="bookmark-btn ${isBookmarked ? 'active' : ''}" title="Toggle bookmark">
+      ${isBookmarked ? '★' : '☆'}
+    </button>
+  `;
+
+  // 북마크 버튼 핸들러
+  document.querySelector('.bookmark-btn').addEventListener('click', () => {
+    const nowBookmarked = toggleBookmark(item.id);
+    const btn = document.querySelector('.bookmark-btn');
+    btn.textContent = nowBookmarked ? '★' : '☆';
+    btn.classList.toggle('active', nowBookmarked);
+    render(currentFiltered);
+  });
 
   const typeClass = item.is_paper ? 'paper' : 'app';
   const typeLabel = item.is_paper ? 'Paper' : 'App/Service';
@@ -322,7 +337,22 @@ function showMobileDetail(item) {
 
   render(currentFiltered);
 
-  document.getElementById('mobileDetailTitle').textContent = item.title || 'Untitled';
+  const isBookmarked = bookmarkedPapers.has(item.id);
+  document.getElementById('mobileDetailTitle').innerHTML = `
+    <span class="title-text">${item.title || 'Untitled'}</span>
+    <button class="bookmark-btn ${isBookmarked ? 'active' : ''}" title="Toggle bookmark">
+      ${isBookmarked ? '★' : '☆'}
+    </button>
+  `;
+
+  // 북마크 버튼 핸들러
+  document.querySelector('#bottomSheetContent .bookmark-btn').addEventListener('click', () => {
+    const nowBookmarked = toggleBookmark(item.id);
+    const btn = document.querySelector('#bottomSheetContent .bookmark-btn');
+    btn.textContent = nowBookmarked ? '★' : '☆';
+    btn.classList.toggle('active', nowBookmarked);
+    render(currentFiltered);
+  });
 
   const typeClass = item.is_paper ? 'paper' : 'app';
   const typeLabel = item.is_paper ? 'Paper' : 'App';

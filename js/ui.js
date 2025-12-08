@@ -209,6 +209,7 @@ function initUIHandlers() {
   document.getElementById('minYear').addEventListener('change', applyFilters);
   document.getElementById('minVenue').addEventListener('change', applyFilters);
   document.getElementById('papersOnly').addEventListener('change', applyFilters);
+  document.getElementById('bookmarkedOnly').addEventListener('change', applyFilters);
   document.getElementById('tagFilter').addEventListener('change', applyFilters);
   document.getElementById('searchFilter').addEventListener('input', debouncedApplyFilters);
 
@@ -217,6 +218,7 @@ function initUIHandlers() {
     document.getElementById('minYear').value = '1990';
     document.getElementById('minVenue').value = '0';
     document.getElementById('papersOnly').checked = false;
+    document.getElementById('bookmarkedOnly').checked = false;
     document.getElementById('tagFilter').value = '';
     document.getElementById('searchFilter').value = '';
     document.getElementById('intersectCluster1').value = '';
