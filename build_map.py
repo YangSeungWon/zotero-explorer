@@ -8,13 +8,16 @@ Zotero Paper Map Builder
 - JSON 출력
 """
 
+# GPU 비활성화 (CUDA 호환성 문제 방지)
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
 import pandas as pd
 import numpy as np
 import json
 import re
 import math
 import argparse
-import os
 import glob
 from datetime import datetime
 from pathlib import Path
@@ -125,20 +128,25 @@ def build_text_for_embedding(row) -> str:
 
     # Title
     title = row.get("Title", "")
-    if pd.notna(title) and title:
+    if pd.notna(title) and title and str(title).lower() != "nan":
         parts.append(f"Title: {title}")
 
     # Abstract
     abstract = row.get("Abstract Note", "")
-    if pd.notna(abstract) and abstract:
+    if pd.notna(abstract) and abstract and str(abstract).lower() != "nan":
         parts.append(f"Abstract: {abstract}")
 
     # Notes (HTML -> text)
     notes = row.get("Notes", "")
-    if pd.notna(notes) and notes:
+    if pd.notna(notes) and notes and str(notes).lower() != "nan":
         notes_text = extract_text_from_html(notes)
         if notes_text:
             parts.append(f"Notes: {notes_text}")
+
+    # 빈 텍스트 방지
+    if not parts:
+        title = row.get("Title", "Untitled")
+        return f"Title: {title if pd.notna(title) else 'Untitled'}"
 
     return "\n\n".join(parts)
 
@@ -147,7 +155,7 @@ def build_text_for_embedding(row) -> str:
 # 임베딩 함수
 # ============================================================
 
-def embed_with_sentence_transformers(texts: list, model_name: str = "all-MiniLM-L6-v2") -> np.ndarray:
+def embed_with_sentence_transformers(texts: list, model_name: str = "paraphrase-multilingual-MiniLM-L12-v2") -> np.ndarray:
     """sentence-transformers로 임베딩"""
     from sentence_transformers import SentenceTransformer
 
@@ -190,14 +198,16 @@ def main():
     parser = argparse.ArgumentParser(description="Build paper map from Zotero CSV")
     parser.add_argument("--output", default="papers.json", help="Output JSON file")
     parser.add_argument("--embedding", choices=["local", "local-large", "openai"], default="local",
-                        help="Embedding: local (MiniLM), local-large (mpnet, 더 정확), openai")
+                        help="Embedding: local (multilingual-MiniLM), local-large (multilingual-mpnet), openai")
     parser.add_argument("--clusters", type=int, default=0,
                         help="Number of clusters (0 = auto-detect optimal k)")
     parser.add_argument("--dim-reduction", choices=["tsne", "pca", "umap"], default="umap",
                         help="Dimensionality reduction method (umap recommended)")
     parser.add_argument("--min-dist", type=float, default=0.3,
                         help="UMAP min_dist: 0.1(tight) ~ 0.5(spread)")
-    parser.add_argument("--notes-only", action="store_true",
+    parser.add_argument("--all", action="store_true",
+                        help="Include all papers (default: notes-only)")
+    parser.add_argument("--notes-only", action="store_true", default=True,
                         help="Only include items with notes")
     args = parser.parse_args()
 
@@ -225,8 +235,8 @@ def main():
         print(f"  Removed {before_dedup - len(df)} duplicates")
     print(f"  Total: {len(df)} items")
 
-    # 노트 있는 것만 필터링
-    if args.notes_only:
+    # 노트 있는 것만 필터링 (기본값)
+    if not args.all:
         df = df[df["Notes"].notna() & (df["Notes"].str.len() > 50)]
         df = df.reset_index(drop=True)
         print(f"  Filtered to {len(df)} items with notes")
@@ -251,9 +261,9 @@ def main():
     texts = [build_text_for_embedding(row) for _, row in df.iterrows()]
 
     if args.embedding == "local":
-        embeddings = embed_with_sentence_transformers(texts, "all-MiniLM-L6-v2")
+        embeddings = embed_with_sentence_transformers(texts, "paraphrase-multilingual-MiniLM-L12-v2")
     elif args.embedding == "local-large":
-        embeddings = embed_with_sentence_transformers(texts, "all-mpnet-base-v2")
+        embeddings = embed_with_sentence_transformers(texts, "paraphrase-multilingual-mpnet-base-v2")
     else:
         embeddings = embed_with_openai(texts)
 
@@ -340,15 +350,36 @@ def main():
     cluster_texts = {}
     for idx, row in df.iterrows():
         c = int(row["cluster"])
-        text = f"{row.get('Title', '')} {row.get('Abstract Note', '')}"
+        title = row.get('Title', '') if pd.notna(row.get('Title', '')) else ''
+        abstract = row.get('Abstract Note', '') if pd.notna(row.get('Abstract Note', '')) else ''
+        notes = row.get('Notes', '') if pd.notna(row.get('Notes', '')) else ''
+        notes_text = extract_text_from_html(notes) if notes else ''
+        text = f"{title} {abstract} {notes_text}"
         cluster_texts[c] = cluster_texts.get(c, "") + " " + str(text)
 
     corpus = [cluster_texts.get(i, "") for i in range(n_clusters)]
+
+    # 다국어 불용어 (영어 + 한국어)
+    multilingual_stop_words = [
+        # English
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
+        'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had',
+        'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
+        'this', 'that', 'these', 'those', 'it', 'its', 'we', 'our', 'they', 'their', 'them',
+        'can', 'also', 'more', 'how', 'what', 'which', 'who', 'when', 'where', 'why',
+        'using', 'use', 'used', 'based', 'through', 'between', 'into', 'such', 'than',
+        'study', 'research', 'paper', 'results', 'findings', 'analysis', 'data', 'method',
+        # Korean
+        '및', '등', '를', '을', '이', '가', '은', '는', '에', '의', '로', '으로', '와', '과',
+        '하는', '있는', '되는', '한', '된', '수', '것', '대한', '통해', '위해', '대해',
+    ]
+
     tfidf_vec = TfidfVectorizer(
         max_features=500,
-        stop_words='english',
+        stop_words=multilingual_stop_words,
         ngram_range=(1, 2),
-        min_df=1
+        min_df=1,
+        token_pattern=r'(?u)\b[가-힣a-zA-Z]{2,}\b'  # 한글/영어 2글자 이상
     )
     tfidf_matrix = tfidf_vec.fit_transform(corpus)
     feature_names = tfidf_vec.get_feature_names_out()
