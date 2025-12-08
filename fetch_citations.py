@@ -3,6 +3,7 @@
 Semantic Scholar API를 사용해 논문의 피인용 수와 인용 관계를 가져옴
 """
 
+import argparse
 import json
 import time
 import requests
@@ -42,13 +43,31 @@ def get_paper_by_doi(doi: str, retry=3) -> dict:
     return None
 
 
+def normalize_title(title: str) -> str:
+    """Normalize title for comparison"""
+    import re
+    # Lowercase, remove punctuation, collapse whitespace
+    t = title.lower()
+    t = re.sub(r'[^\w\s]', '', t)
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
+
+def title_similarity(t1: str, t2: str) -> float:
+    """Simple word overlap similarity"""
+    words1 = set(normalize_title(t1).split())
+    words2 = set(normalize_title(t2).split())
+    if not words1 or not words2:
+        return 0.0
+    intersection = words1 & words2
+    return len(intersection) / max(len(words1), len(words2))
+
 def get_paper_by_title(title: str, retry=3) -> dict:
-    """제목으로 논문 검색"""
+    """제목으로 논문 검색 (with title verification)"""
     url = f"{BASE_URL}/paper/search"
     params = {
         "query": title[:200],  # 제목 길이 제한
-        "fields": FIELDS,
-        "limit": 1
+        "fields": FIELDS + ",title",
+        "limit": 10  # Get more results to find best match
     }
 
     for attempt in range(retry):
@@ -57,7 +76,20 @@ def get_paper_by_title(title: str, retry=3) -> dict:
             if resp.status_code == 200:
                 data = resp.json()
                 if data.get("data") and len(data["data"]) > 0:
-                    return data["data"][0]
+                    # Find best matching title
+                    best_match = None
+                    best_score = 0.0
+                    for paper in data["data"]:
+                        paper_title = paper.get("title", "")
+                        score = title_similarity(title, paper_title)
+                        if score > best_score:
+                            best_score = score
+                            best_match = paper
+                    # Require at least 50% word overlap
+                    if best_match and best_score >= 0.5:
+                        return best_match
+                    elif best_match:
+                        print(f"    Low match ({best_score:.0%}): {best_match.get('title', '')[:50]}...")
                 return None
             elif resp.status_code == 429:
                 wait = 10 * (attempt + 1)
@@ -75,6 +107,11 @@ def get_paper_by_title(title: str, retry=3) -> dict:
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verify', action='store_true',
+                        help='Re-verify existing S2 ID matches by title comparison')
+    args = parser.parse_args()
+
     # papers.json 로드
     papers_path = Path("papers.json")
     if not papers_path.exists():
@@ -92,6 +129,8 @@ def main():
         data = {"papers": papers}
 
     print(f"Processing {len(papers)} papers...")
+    if args.verify:
+        print("(--verify mode: re-checking existing S2 IDs)")
 
     # S2 paper ID 매핑 (내 라이브러리 DOI -> S2 ID)
     doi_to_s2id = {}
@@ -106,8 +145,9 @@ def main():
         if not doi and not title:
             continue
 
-        # 이미 S2 ID가 있으면 스킵
-        if paper.get("s2_id"):
+        # 이미 S2 ID가 있으면 스킵 (--verify 모드가 아닐 때)
+        existing_s2_id = paper.get("s2_id")
+        if existing_s2_id and not args.verify:
             skipped += 1
             found += 1
             continue
@@ -124,8 +164,14 @@ def main():
             s2_data = get_paper_by_title(title)
 
         if s2_data:
+            new_s2_id = s2_data.get("paperId", "")
+
+            # In verify mode, check if S2 ID changed
+            if args.verify and existing_s2_id and existing_s2_id != new_s2_id:
+                print(f"  ⚠️  S2 ID CORRECTED: {existing_s2_id[:12]}... -> {new_s2_id[:12]}...")
+
             paper["citation_count"] = s2_data.get("citationCount", 0)
-            paper["s2_id"] = s2_data.get("paperId", "")
+            paper["s2_id"] = new_s2_id
 
             # 인용하는 논문들 (이 논문이 인용한 것)
             refs = s2_data.get("references", []) or []
@@ -136,7 +182,7 @@ def main():
             paper["citations"] = [c["paperId"] for c in cites if c and c.get("paperId")]
 
             if doi:
-                doi_to_s2id[doi] = s2_data.get("paperId", "")
+                doi_to_s2id[doi] = new_s2_id
 
             found += 1
             print(f"  -> Found! Citations: {paper['citation_count']}")

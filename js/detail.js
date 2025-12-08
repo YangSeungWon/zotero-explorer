@@ -112,10 +112,33 @@ function showHoverPreview(item) {
   document.getElementById('detailAbstract').textContent =
     abstract.length > 300 ? abstract.substring(0, 300) + '...' : abstract;
 
-  document.getElementById('detailNotes').innerHTML = '';
+  // Notes preview
+  const notesContent = item.notes_html || item.notes || '';
+  if (notesContent) {
+    // Extract multiple paragraphs from notes
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = notesContent;
+    const paragraphs = tempDiv.querySelectorAll('p');
+    let noteText = '';
+    if (paragraphs.length > 0) {
+      // Get up to 3 paragraphs
+      for (let i = 0; i < Math.min(paragraphs.length, 3); i++) {
+        noteText += paragraphs[i].textContent + '\n\n';
+      }
+      noteText = noteText.trim();
+    } else {
+      noteText = tempDiv.textContent;
+    }
+    const truncatedNote = noteText.length > 800 ? noteText.substring(0, 800) + '...' : noteText;
+    document.getElementById('detailNotes').innerHTML = `
+      <div class="notes"><h3>Notes</h3><div class="notes-content" style="max-height: 300px; white-space: pre-wrap;">${truncatedNote}</div></div>
+    `;
+  } else {
+    document.getElementById('detailNotes').innerHTML = '';
+  }
   document.getElementById('referencesSection').style.display = 'none';
   document.getElementById('citedBySection').style.display = 'none';
-  document.getElementById('similarPapers').innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">Click for details</p>';
+  document.getElementById('similarPapers').innerHTML = '';
 }
 
 function showDetail(item) {
