@@ -2,6 +2,28 @@
    UI Event Handlers & Utilities
    =========================================== */
 
+// Toast notification
+let toastTimer = null;
+function showToast(title, preview) {
+  const toast = document.getElementById('toast');
+  if (!toast) {
+    console.log('Copied:', title);
+    return;
+  }
+  const titleEl = toast.querySelector('.toast-title');
+  const previewEl = document.getElementById('toastPreview');
+
+  if (titleEl) titleEl.textContent = title;
+  if (previewEl) previewEl.textContent = preview.substring(0, 200) + (preview.length > 200 ? '...' : '');
+
+  clearTimeout(toastTimer);
+  toast.classList.add('show');
+
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
 // Cluster stats tooltip
 let statsTooltip = null;
 
@@ -391,10 +413,7 @@ function initUIHandlers() {
 
     try {
       await navigator.clipboard.writeText(text);
-      const btn = document.getElementById('copyClusters');
-      const orig = btn.textContent;
-      btn.textContent = '✅ Copied!';
-      setTimeout(() => btn.textContent = orig, 1500);
+      showToast(`Copied ${clusters.length} clusters`, text);
     } catch (e) {
       alert('Copy failed: ' + e.message);
     }
@@ -421,10 +440,7 @@ function initUIHandlers() {
 
     try {
       await navigator.clipboard.writeText(text);
-      const btn = document.getElementById('copyFiltered');
-      const orig = btn.textContent;
-      btn.textContent = '✅ Copied!';
-      setTimeout(() => btn.textContent = orig, 1500);
+      showToast(`Copied ${papers.length} papers`, text);
     } catch (e) {
       alert('Copy failed: ' + e.message);
     }
