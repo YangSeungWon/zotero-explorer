@@ -122,6 +122,39 @@ def parse_year(year_val) -> int:
     return None
 
 
+def is_review_paper(title: str, abstract: str) -> bool:
+    """리뷰/서베이 논문인지 자동 감지
+
+    제목에서 명확한 리뷰/서베이 패턴을 찾아서 판단
+    abstract만으로는 false positive가 많아서 제목 중심으로 판단
+    """
+    if not title:
+        return False
+
+    title_lower = title.lower()
+
+    # 제목에서 명확한 리뷰 패턴 (높은 신뢰도)
+    title_patterns = [
+        r'\ba\s+review\b',              # "a review"
+        r'\breview\s+of\b',             # "review of"
+        r'\bliterature\s+review\b',     # "literature review"
+        r'\bsystematic\s+review\b',     # "systematic review"
+        r'\bscoping\s+review\b',        # "scoping review"
+        r'\bmeta[\-\s]?analysis\b',     # "meta-analysis"
+        r'\bsurvey\s+of\b',             # "survey of"
+        r'\ba\s+survey\b',              # "a survey"
+        r'\bstate[\-\s]of[\-\s]the[\-\s]art\b',  # "state-of-the-art"
+        r':\s*a\s+review\b',            # ": a review" (부제)
+        r':\s*review\s+and\b',          # ": review and..." (부제)
+    ]
+
+    for pattern in title_patterns:
+        if re.search(pattern, title_lower):
+            return True
+
+    return False
+
+
 def build_text_for_embedding(row) -> str:
     """임베딩용 텍스트 생성 (Title + Abstract + Notes)"""
     parts = []
@@ -487,11 +520,26 @@ def main():
         pass
 
     records = []
+    review_count = 0
     for idx, row in df.iterrows():
+        # 기존 태그 가져오기
+        manual_tags = str(row.get("Manual Tags", "") or "")
+
+        # method-review 자동 태깅
+        title = str(row.get("Title", "") or "")
+        abstract = str(row.get("Abstract Note", "") or "")
+        if is_review_paper(title, abstract):
+            if "method-review" not in manual_tags:
+                if manual_tags:
+                    manual_tags = f"{manual_tags}; method-review"
+                else:
+                    manual_tags = "method-review"
+                review_count += 1
+
         rec = {
             "id": int(idx),
             "zotero_key": str(row.get("Key", "") or ""),  # Zotero item key for API sync
-            "title": str(row.get("Title", "") or ""),
+            "title": title,
             "year": int(row["year_clean"]) if pd.notna(row["year_clean"]) else None,
             "authors": str(row.get("Author", "") or ""),
             "venue": str(row.get("Publication Title", "") or ""),
@@ -504,8 +552,8 @@ def main():
             "cluster_label": cluster_labels.get(int(row["cluster"]), ""),
             "url": str(row.get("Url", "") or ""),
             "doi": str(row.get("DOI", "") or ""),
-            "abstract": str(row.get("Abstract Note", "") or "")[:500],  # 길이 제한
-            "tags": str(row.get("Manual Tags", "") or ""),
+            "abstract": abstract[:500],  # 길이 제한
+            "tags": manual_tags,
             "has_notes": bool(pd.notna(row.get("Notes")) and len(str(row.get("Notes", ""))) > 50),
             "notes_html": str(row.get("Notes", ""))[:5000] if pd.notna(row.get("Notes")) else "",  # HTML 보존
             "notes": extract_text_from_html(row.get("Notes", ""))[:2000] if pd.notna(row.get("Notes")) else "",
@@ -553,6 +601,7 @@ def main():
     print(f"   - Papers: {sum(1 for r in records if r['is_paper'])}")
     print(f"   - Apps/Services: {sum(1 for r in records if not r['is_paper'])}")
     print(f"   - Clusters: {n_clusters}")
+    print(f"   - Auto-tagged reviews: {review_count}")
 
 
 if __name__ == "__main__":
