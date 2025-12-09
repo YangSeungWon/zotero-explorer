@@ -8,7 +8,7 @@ Sync cluster labels as tags to Zotero
 import json
 import argparse
 from pathlib import Path
-from zotero_api import get_zotero_client, add_tags_to_item
+from zotero_api import get_zotero_client, replace_cluster_tag
 
 
 def load_papers(json_path: str = "papers.json") -> dict:
@@ -51,6 +51,8 @@ def sync_cluster_tags(
 
         # Get cluster label
         label = cluster_labels.get(str(cluster_id), cluster_labels.get(cluster_id, f"Cluster {cluster_id}"))
+        # Remove commas from label (Zotero uses commas as tag separators)
+        label = label.replace(",", " &")
         tag = f"{tag_prefix}{label}"
 
         print(f"[{i+1}/{len(papers_with_key)}] {paper['title'][:50]}...")
@@ -61,7 +63,8 @@ def sync_cluster_tags(
             continue
 
         try:
-            if add_tags_to_item(zot, zotero_key, [tag]):
+            # Replace old cluster tags with new one
+            if replace_cluster_tag(zot, zotero_key, tag):
                 results["success"] += 1
             else:
                 results["failed"] += 1

@@ -13,6 +13,9 @@
   // Initialize UI handlers
   initUIHandlers();
 
+  // Initialize sync panel
+  initSyncPanel();
+
   // Initialize mobile handlers
   initMobileHandlers();
 

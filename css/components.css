@@ -111,7 +111,7 @@ button:hover {
   color: var(--text-secondary);
 }
 
-.cluster-panel.collapsed .collapse-btn {
+.left-sidebar.collapsed .collapse-btn {
   transform: rotate(180deg);
 }
 

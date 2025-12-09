@@ -24,6 +24,230 @@ function showToast(title, preview) {
   }, 3000);
 }
 
+// Sync Panel
+let syncPollingInterval = null;
+
+function initSyncPanel() {
+  const syncPanel = document.getElementById('syncPanel');
+  const collapseBtn = document.getElementById('collapseSyncPanel');
+  const syncFullBtn = document.getElementById('syncFullBtn');
+  const syncClustersBtn = document.getElementById('syncClustersBtn');
+  const syncBatchTagsBtn = document.getElementById('syncBatchTagsBtn');
+
+  // Collapse toggle
+  collapseBtn?.addEventListener('click', () => {
+    syncPanel.classList.toggle('collapsed');
+  });
+
+  // Full Sync button
+  syncFullBtn?.addEventListener('click', () => {
+    startFullSync();
+  });
+
+  // Sync Clusters button
+  syncClustersBtn?.addEventListener('click', () => {
+    syncClusterTagsFromPanel();
+  });
+
+  // Batch Tags button
+  syncBatchTagsBtn?.addEventListener('click', () => {
+    document.getElementById('batchTagModal').classList.add('active');
+  });
+
+  // Check initial sync status
+  checkSyncStatus();
+}
+
+function addSyncLog(message, type = 'info') {
+  const syncLog = document.getElementById('syncLog');
+  if (!syncLog) return;
+
+  // Remove placeholder
+  const placeholder = syncLog.querySelector('.placeholder');
+  if (placeholder) placeholder.remove();
+
+  const time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const item = document.createElement('div');
+  item.className = `sync-log-item ${type}`;
+  item.innerHTML = `<span class="time">${time}</span>${message}`;
+
+  syncLog.insertBefore(item, syncLog.firstChild);
+
+  // Keep only last 10 items
+  while (syncLog.children.length > 10) {
+    syncLog.removeChild(syncLog.lastChild);
+  }
+}
+
+function updateSyncStatus(status, text) {
+  const indicator = document.getElementById('syncIndicator');
+  const statusText = document.getElementById('syncStatusText');
+
+  if (indicator) {
+    indicator.className = `sync-status-indicator ${status}`;
+  }
+  if (statusText) {
+    statusText.textContent = text;
+  }
+
+  // Disable/enable buttons
+  const btns = document.querySelectorAll('.sync-btn');
+  btns.forEach(btn => {
+    btn.disabled = status === 'running';
+  });
+}
+
+function updateLastRun(timestamp) {
+  const lastRunEl = document.getElementById('syncLastRun');
+  if (!lastRunEl || !timestamp) return;
+
+  const date = new Date(timestamp);
+  const timeStr = date.toLocaleString('ko-KR', {
+    month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  lastRunEl.textContent = `Last: ${timeStr}`;
+}
+
+async function checkSyncStatus() {
+  try {
+    const resp = await fetch('/api/sync-status');
+    const data = await resp.json();
+
+    if (data.running) {
+      updateSyncStatus('running', 'Syncing...');
+      startSyncPolling();
+    } else if (data.error) {
+      updateSyncStatus('error', 'Error');
+    } else if (data.last_result) {
+      updateSyncStatus('success', 'Complete');
+    }
+
+    if (data.last_run) {
+      updateLastRun(data.last_run);
+    }
+  } catch (e) {
+    console.error('Failed to check sync status:', e);
+  }
+}
+
+const STEP_NAMES = {
+  1: 'Building',
+  2: 'Loading',
+  3: 'Clusters',
+  4: 'Reviews'
+};
+
+let lastStepDetail = null;
+
+function startSyncPolling() {
+  if (syncPollingInterval) return;
+
+  syncPollingInterval = setInterval(async () => {
+    try {
+      const resp = await fetch('/api/sync-status');
+      const data = await resp.json();
+
+      if (data.running) {
+        // Show detailed progress
+        const step = data.current_step;
+        const detail = data.step_detail;
+        const progress = data.progress;
+
+        let statusText = 'Syncing...';
+        if (step && STEP_NAMES[step]) {
+          statusText = `Step ${step}/4: ${STEP_NAMES[step]}`;
+        }
+
+        // Update status text with step info
+        updateSyncStatus('running', statusText);
+
+        // Log new step details (avoid duplicates)
+        if (detail && detail !== lastStepDetail) {
+          addSyncLog(detail);
+          lastStepDetail = detail;
+        }
+      } else {
+        clearInterval(syncPollingInterval);
+        syncPollingInterval = null;
+        lastStepDetail = null;
+
+        if (data.error) {
+          updateSyncStatus('error', 'Error');
+          addSyncLog(`Error: ${data.error}`, 'error');
+        } else if (data.last_result) {
+          updateSyncStatus('success', 'Complete');
+          const r = data.last_result;
+          if (r.build) {
+            addSyncLog(`Built ${r.build.papers} papers, ${r.build.clusters} clusters`, 'success');
+          }
+          if (r.cluster_sync) {
+            addSyncLog(`Clusters: ${r.cluster_sync.success} synced`, 'success');
+          }
+          if (r.review_sync && r.review_sync.success > 0) {
+            addSyncLog(`Reviews: ${r.review_sync.success} tagged`, 'success');
+          }
+          addSyncLog('Full Sync completed', 'success');
+
+          // Reload page after sync
+          setTimeout(() => {
+            location.reload();
+          }, 2000);
+        }
+
+        if (data.last_run) {
+          updateLastRun(data.last_run);
+        }
+      }
+    } catch (e) {
+      console.error('Polling error:', e);
+    }
+  }, 1000);  // Poll every 1 second for more responsive feedback
+}
+
+async function startFullSync() {
+  updateSyncStatus('running', 'Starting...');
+  addSyncLog('Starting Full Sync...');
+
+  try {
+    const data = await apiCall('/full-sync', { method: 'POST' });
+
+    if (data.status === 'started') {
+      addSyncLog('Fetching from Zotero API...');
+      startSyncPolling();
+    } else if (data.error) {
+      updateSyncStatus('error', 'Error');
+      addSyncLog(data.error, 'error');
+    }
+  } catch (e) {
+    updateSyncStatus('error', 'Error');
+    addSyncLog(`Error: ${e.message}`, 'error');
+  }
+}
+
+async function syncClusterTagsFromPanel() {
+  updateSyncStatus('running', 'Starting...');
+  addSyncLog('Starting Cluster Sync...');
+
+  try {
+    const data = await apiCall('/cluster-sync', { method: 'POST' });
+
+    if (data.status === 'started') {
+      addSyncLog('Fetching Zotero items...');
+      startSyncPolling();
+    } else if (data.status === 'already_running') {
+      addSyncLog('Sync already in progress');
+      startSyncPolling();
+    } else if (data.error) {
+      updateSyncStatus('error', 'Error');
+      addSyncLog(data.error, 'error');
+    }
+  } catch (e) {
+    updateSyncStatus('error', 'Error');
+    addSyncLog(`Error: ${e.message}`, 'error');
+  }
+}
+
 // Cluster stats tooltip
 let statsTooltip = null;
 
@@ -305,15 +529,15 @@ function initUIHandlers() {
   // Close detail panel
   document.getElementById('closeDetail').addEventListener('click', clearSelection);
 
-  // Cluster panel collapse
-  const clusterPanel = document.getElementById('clusterPanel');
-  if (localStorage.getItem('clusterCollapsed') === 'true') {
-    clusterPanel.classList.add('collapsed');
+  // Left sidebar collapse (affects both cluster panel and sync panel)
+  const leftSidebar = document.getElementById('leftSidebar');
+  if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    leftSidebar.classList.add('collapsed');
   }
 
   document.getElementById('collapseCluster').addEventListener('click', () => {
-    clusterPanel.classList.toggle('collapsed');
-    localStorage.setItem('clusterCollapsed', clusterPanel.classList.contains('collapsed'));
+    leftSidebar.classList.toggle('collapsed');
+    localStorage.setItem('sidebarCollapsed', leftSidebar.classList.contains('collapsed'));
     setTimeout(() => Plotly.Plots.resize('plot'), 250);
   });
 
@@ -721,9 +945,9 @@ Hover   Preview paper & citation lines`);
   });
 
   // ============================================================
-  // Cluster Tag Sync
+  // Cluster Tag Sync (legacy header button, now in sync panel)
   // ============================================================
-  document.getElementById('syncClusterTags').addEventListener('click', async () => {
+  document.getElementById('syncClusterTags')?.addEventListener('click', async () => {
     const clusterCount = Object.keys(clusterLabels).length;
     const paperCount = allPapers.length;
 
@@ -780,7 +1004,7 @@ Hover   Preview paper & citation lines`);
     else if (state === 'error') icon.textContent = '✗';
   }
 
-  document.getElementById('fullSync').addEventListener('click', async () => {
+  document.getElementById('fullSync')?.addEventListener('click', async () => {
     resetSyncModal();
     syncModal.classList.add('active');
     updateSyncStep(0, 'active');
@@ -860,8 +1084,8 @@ Hover   Preview paper & citation lines`);
   const batchProgressFill = document.getElementById('batchProgressFill');
   const batchProgressStatus = document.getElementById('batchProgressStatus');
 
-  // Open batch tag modal
-  document.getElementById('batchTagManager').addEventListener('click', () => {
+  // Open batch tag modal (legacy header button, now in sync panel)
+  document.getElementById('batchTagManager')?.addEventListener('click', () => {
     batchCount.textContent = currentFiltered.length;
     batchTagInput.value = '';
     batchProgress.style.display = 'none';

@@ -312,7 +312,9 @@
     height: calc(100vh - 56px - env(safe-area-inset-top, 0px));
   }
 
-  .cluster-panel {
+  .cluster-panel,
+  .sync-panel,
+  .left-sidebar {
     display: none;
   }
 

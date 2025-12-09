@@ -58,23 +58,55 @@ def get_zotero_client(
     return zotero.Zotero(library_id, library_type, api_key)
 
 
-def fetch_all_items(zot: zotero.Zotero, include_notes: bool = True) -> list[dict]:
-    """Fetch all items from library"""
+def fetch_all_items(zot: zotero.Zotero, include_notes: bool = True, on_progress=None) -> list[dict]:
+    """Fetch all items from library with optional progress callback
+
+    Args:
+        zot: Zotero client
+        include_notes: Whether to fetch notes for each item
+        on_progress: Callback function(current, total, message) for progress updates
+    """
     print("Fetching items from Zotero API...")
 
-    # Fetch all top-level items (not child items like attachments)
-    items = zot.everything(zot.top())
+    # Get total count first
+    total = zot.num_items()
+    print(f"Total items to fetch: {total}")
+
+    if on_progress:
+        on_progress(0, total, f"Fetching items (0/{total})...")
+
+    # Fetch in batches for progress tracking
+    batch_size = 100
+    items = []
+    start = 0
+
+    while start < total:
+        batch = zot.top(limit=batch_size, start=start)
+        if not batch:
+            break
+        items.extend(batch)
+        start += len(batch)
+
+        if on_progress:
+            on_progress(len(items), total, f"Fetching items ({len(items)}/{total})...")
+        print(f"  Fetched {len(items)}/{total} items...")
 
     print(f"Fetched {len(items)} items")
 
     if include_notes:
         # Fetch notes for each item
         print("Fetching notes...")
-        for item in items:
+        if on_progress:
+            on_progress(0, len(items), "Fetching notes (0/{})...".format(len(items)))
+
+        for i, item in enumerate(items):
             item_key = item['key']
             children = zot.children(item_key)
             notes = [c for c in children if c['data'].get('itemType') == 'note']
             item['_notes'] = notes
+
+            if on_progress and (i + 1) % 20 == 0:
+                on_progress(i + 1, len(items), f"Fetching notes ({i + 1}/{len(items)})...")
 
     return items
 
@@ -164,6 +196,104 @@ def set_tags_on_item(zot: zotero.Zotero, item_key: str, tags: list[str]) -> bool
         return False
 
 
+def replace_cluster_tag(zot: zotero.Zotero, item_key: str, new_tag: str) -> bool:
+    """Remove all cluster: tags and add the new one"""
+    try:
+        item = zot.item(item_key)
+        existing_tags = item['data'].get('tags', [])
+
+        # Remove all cluster: tags
+        non_cluster_tags = [t for t in existing_tags if not t.get('tag', '').startswith('cluster:')]
+
+        # Add new cluster tag
+        non_cluster_tags.append({'tag': new_tag})
+        item['data']['tags'] = non_cluster_tags
+
+        zot.update_item(item)
+        return True
+    except Exception as e:
+        print(f"Error updating item {item_key}: {e}")
+        return False
+
+
+def batch_update_items(zot: zotero.Zotero, items: list, batch_size: int = 50, on_progress=None) -> dict:
+    """Update multiple items in batches (much faster than individual updates)"""
+    results = {"success": 0, "failed": 0}
+    total = len(items)
+
+    for i in range(0, total, batch_size):
+        batch = items[i:i + batch_size]
+        try:
+            zot.update_items(batch)
+            results["success"] += len(batch)
+            print(f"  Batch {i//batch_size + 1}: {len(batch)} items updated")
+        except Exception as e:
+            print(f"  Batch {i//batch_size + 1} failed: {e}")
+            results["failed"] += len(batch)
+
+        # Report progress
+        if on_progress:
+            on_progress(min(i + batch_size, total), total)
+
+    return results
+
+
+def batch_replace_cluster_tags(
+    zot: zotero.Zotero,
+    items: list,
+    cluster_mapping: dict,  # zotero_key -> new_tag
+    batch_size: int = 50,
+    on_progress=None
+) -> dict:
+    """Replace cluster tags for multiple items in batches"""
+    results = {"success": 0, "failed": 0, "skipped": 0}
+
+    # Build item lookup by key
+    item_by_key = {item['key']: item for item in items}
+
+    # Prepare items for update
+    items_to_update = []
+    for zotero_key, new_tag in cluster_mapping.items():
+        item = item_by_key.get(zotero_key)
+        if not item:
+            results["skipped"] += 1
+            continue
+
+        existing_tags = item['data'].get('tags', [])
+
+        # Check if already has correct tag
+        current_cluster_tags = [t['tag'] for t in existing_tags if t.get('tag', '').startswith('cluster:')]
+        if len(current_cluster_tags) == 1 and current_cluster_tags[0] == new_tag:
+            results["skipped"] += 1
+            continue
+
+        # Remove all cluster: tags and add new one
+        non_cluster_tags = [t for t in existing_tags if not t.get('tag', '').startswith('cluster:')]
+        non_cluster_tags.append({'tag': new_tag})
+        item['data']['tags'] = non_cluster_tags
+        items_to_update.append(item)
+
+    print(f"  {len(items_to_update)} items need update, {results['skipped']} skipped")
+    total = len(items_to_update)
+
+    # Batch update
+    for i in range(0, total, batch_size):
+        batch = items_to_update[i:i + batch_size]
+        try:
+            zot.update_items(batch)
+            results["success"] += len(batch)
+            print(f"  Batch {i//batch_size + 1}/{(total-1)//batch_size + 1}: {len(batch)} items")
+        except Exception as e:
+            print(f"  Batch {i//batch_size + 1} failed: {e}")
+            results["failed"] += len(batch)
+
+        # Report progress
+        if on_progress:
+            on_progress(min(i + batch_size, total), total)
+
+    return results
+
+
 def sync_cluster_tags(
     zot: zotero.Zotero,
     cluster_mapping: dict[str, int],  # item_key -> cluster_id
@@ -175,9 +305,12 @@ def sync_cluster_tags(
 
     for item_key, cluster_id in cluster_mapping.items():
         label = cluster_labels.get(cluster_id, f"Cluster {cluster_id}")
+        # Remove commas from label (Zotero uses commas as tag separators)
+        label = label.replace(",", " &")
         tag = f"{tag_prefix}{label}"
 
-        if add_tags_to_item(zot, item_key, [tag]):
+        # Replace old cluster tags with new one
+        if replace_cluster_tag(zot, item_key, tag):
             results["success"] += 1
             print(f"  Tagged {item_key}: {tag}")
         else:

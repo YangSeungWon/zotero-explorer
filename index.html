@@ -35,14 +35,7 @@
         <button class="header-dropdown-item" id="copyFiltered">📝 Papers</button>
       </div>
     </div>
-    <div class="header-dropdown" id="zoteroDropdown">
-      <button class="header-dropdown-btn">🔄 Zotero</button>
-      <div class="header-dropdown-menu">
-        <button class="header-dropdown-item" id="fullSync" style="color: #f97316;">⚡ Full Sync</button>
-        <button class="header-dropdown-item" id="batchTagManager">🏷️ Batch Tags</button>
-        <button class="header-dropdown-item" id="syncClusterTags">📂 Sync Clusters</button>
-      </div>
-    </div>
+    <!-- Zotero sync moved to left sidebar panel -->
     <div class="header-dropdown" id="discoverDropdown">
       <button class="header-dropdown-btn">🔍 Discover</button>
       <div class="header-dropdown-menu">
@@ -179,12 +172,44 @@
   <div class="cluster-chips" id="mobileClusterChips"></div>
 
   <div class="main-content">
-    <div class="cluster-panel" id="clusterPanel">
-      <div class="cluster-header">
-        <h3>Clusters</h3>
-        <button class="collapse-btn" id="collapseCluster" title="Toggle panel">◀</button>
+    <div class="left-sidebar" id="leftSidebar">
+      <div class="cluster-panel" id="clusterPanel">
+        <div class="cluster-header">
+          <h3>Clusters</h3>
+          <button class="collapse-btn" id="collapseCluster" title="Toggle panel">◀</button>
+        </div>
+        <div id="clusterList"></div>
       </div>
-      <div id="clusterList"></div>
+      <div class="sync-panel" id="syncPanel">
+        <div class="sync-header">
+          <h3>Zotero Sync</h3>
+          <button class="collapse-btn" id="collapseSyncPanel" title="Toggle panel">▼</button>
+        </div>
+        <div class="sync-content" id="syncContent">
+          <div class="sync-status" id="syncStatus">
+            <div class="sync-status-indicator idle" id="syncIndicator"></div>
+            <span id="syncStatusText">Ready</span>
+          </div>
+          <div class="sync-actions">
+            <button class="sync-btn" id="syncFullBtn" title="Full Sync: Fetch + Build + Sync Tags">
+              <span class="sync-btn-icon">⚡</span>
+              <span class="sync-btn-label">Full Sync</span>
+            </button>
+            <button class="sync-btn" id="syncClustersBtn" title="Sync cluster labels to Zotero tags">
+              <span class="sync-btn-icon">📂</span>
+              <span class="sync-btn-label">Clusters</span>
+            </button>
+            <button class="sync-btn" id="syncBatchTagsBtn" title="Batch tag management">
+              <span class="sync-btn-icon">🏷️</span>
+              <span class="sync-btn-label">Tags</span>
+            </button>
+          </div>
+          <div class="sync-log" id="syncLog">
+            <div class="sync-log-item placeholder">No recent activity</div>
+          </div>
+          <div class="sync-last-run" id="syncLastRun"></div>
+        </div>
+      </div>
     </div>
     <div class="plot-container">
       <div id="plot"></div>
