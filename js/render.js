@@ -12,17 +12,34 @@ function render(filteredPapers) {
   const appItems = papers.filter(p => !p.is_paper);
 
   // opacity 계산 함수
+  const hasActiveFilter = filterMode === 'highlight' && filteredIds.size < allPapers.length;
+
   function getOpacity(p, baseOpacity) {
+    const isFiltered = filteredIds.has(p.id);
+    const isHighlightedCluster = highlightCluster !== null && p.cluster === highlightCluster;
+    const isHighlighted = isHighlightedCluster || (hasActiveFilter && isFiltered);
+
+    // 논문 선택 + 하이라이트(클러스터 또는 필터) 동시
+    if (selectedPaper !== null && (highlightCluster !== null || hasActiveFilter)) {
+      if (p.id === selectedPaper.id) return 1;
+      if (connectedPapers.has(p.id)) {
+        return isHighlighted ? 0.9 : 0.4;
+      }
+      return isHighlighted ? 0.6 : 0.1;
+    }
+    // 논문만 선택된 경우
     if (selectedPaper !== null) {
       if (p.id === selectedPaper.id) return 1;
       if (connectedPapers.has(p.id)) return 0.9;
       return 0.5;
     }
+    // 클러스터만 하이라이트된 경우
     if (highlightCluster !== null) {
       return p.cluster === highlightCluster ? 1 : 0.15;
     }
-    if (filterMode === 'highlight') {
-      return filteredIds.has(p.id) ? baseOpacity : 0.15;
+    // 필터만 활성화된 경우
+    if (hasActiveFilter) {
+      return isFiltered ? baseOpacity : 0.15;
     }
     return baseOpacity;
   }
