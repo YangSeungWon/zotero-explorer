@@ -127,6 +127,7 @@ function applyFilters() {
     renderTimeline(currentFiltered);
   }
   updateStats(currentFiltered);
+  updateFilterChips();
   showFilterStatus('done');
 
   // 검색 결과 없음 메시지
@@ -742,6 +743,110 @@ Hover   Preview paper & citation lines`);
     } catch (e) {
       alert('동기화 실패: ' + e.message);
     }
+  });
+
+  // ============================================================
+  // Full Sync (Background with Modal)
+  // ============================================================
+  const syncModal = document.getElementById('syncModal');
+  const syncSteps = [
+    document.getElementById('syncStep1'),
+    document.getElementById('syncStep2'),
+    document.getElementById('syncStep3'),
+    document.getElementById('syncStep4')
+  ];
+  const syncResult = document.getElementById('syncResult');
+  const syncStats = document.getElementById('syncStats');
+  const syncError = document.getElementById('syncError');
+  const syncErrorMsg = document.getElementById('syncErrorMsg');
+
+  function resetSyncModal() {
+    syncSteps.forEach((step, i) => {
+      step.className = 'sync-step';
+      step.querySelector('.sync-icon').textContent = '⏳';
+    });
+    syncResult.style.display = 'none';
+    syncError.style.display = 'none';
+  }
+
+  function updateSyncStep(stepIndex, state) {
+    const step = syncSteps[stepIndex];
+    if (!step) return;
+
+    step.className = 'sync-step ' + state;
+    const icon = step.querySelector('.sync-icon');
+    if (state === 'active') icon.textContent = '🔄';
+    else if (state === 'done') icon.textContent = '✓';
+    else if (state === 'error') icon.textContent = '✗';
+  }
+
+  document.getElementById('fullSync').addEventListener('click', async () => {
+    resetSyncModal();
+    syncModal.classList.add('active');
+    updateSyncStep(0, 'active');
+
+    try {
+      const result = await apiCall('/full-sync', { method: 'POST' });
+
+      if (result.status === 'already_running') {
+        updateSyncStep(0, 'active');
+      }
+
+      // Poll for completion
+      let lastBuildStatus = null;
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await apiCall('/sync-status', { method: 'GET' });
+
+          if (!status.running) {
+            clearInterval(pollInterval);
+
+            if (status.error) {
+              syncSteps.forEach((_, i) => updateSyncStep(i, 'error'));
+              syncErrorMsg.textContent = status.error;
+              syncError.style.display = 'block';
+            } else if (status.last_result) {
+              syncSteps.forEach((_, i) => updateSyncStep(i, 'done'));
+
+              const r = status.last_result;
+              const build = r.build || {};
+              const cluster = r.cluster_sync || {};
+              const review = r.review_sync || {};
+
+              syncStats.innerHTML = `
+                <strong>Build:</strong> ${build.papers || 0} papers, ${build.clusters || 0} clusters<br>
+                <strong>Cluster Tags:</strong> ${cluster.success || 0} synced<br>
+                <strong>Review Tags:</strong> ${review.success || 0} synced
+              `;
+              syncResult.style.display = 'block';
+            }
+          } else {
+            // Update step indicators based on progress
+            if (status.last_result?.build?.status === 'success' && lastBuildStatus !== 'success') {
+              updateSyncStep(0, 'done');
+              updateSyncStep(1, 'done');
+              updateSyncStep(2, 'active');
+              lastBuildStatus = 'success';
+            }
+          }
+        } catch (e) {
+          // Ignore polling errors
+        }
+      }, 3000);
+
+    } catch (e) {
+      updateSyncStep(0, 'error');
+      syncErrorMsg.textContent = e.message;
+      syncError.style.display = 'block';
+    }
+  });
+
+  document.getElementById('closeSyncModal').addEventListener('click', () => {
+    syncModal.classList.remove('active');
+  });
+
+  document.getElementById('reloadAfterSync').addEventListener('click', () => {
+    location.reload();
   });
 
   // ============================================================

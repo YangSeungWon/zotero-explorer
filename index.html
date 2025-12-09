@@ -25,15 +25,22 @@
     </button>
     <button class="theme-toggle" id="themeToggle" title="Toggle theme">◐</button>
     <div class="stats" id="stats">Loading...</div>
+    <div class="filter-chips" id="filterChips"></div>
     <span class="filter-status" id="filterStatus"></span>
-    <div class="header-dropdown" id="dataDropdown">
-      <button class="header-dropdown-btn">📊 Data</button>
+    <div class="header-dropdown" id="exportDropdown">
+      <button class="header-dropdown-btn">📤 Export</button>
       <div class="header-dropdown-menu">
         <button class="header-dropdown-item" id="showGlobalStats">📈 Stats</button>
         <button class="header-dropdown-item" id="copyClusters">📋 Clusters</button>
-        <button class="header-dropdown-item" id="copyFiltered">📝 Export</button>
-        <button class="header-dropdown-item" id="syncClusterTags">🔄 Sync Clusters</button>
+        <button class="header-dropdown-item" id="copyFiltered">📝 Papers</button>
+      </div>
+    </div>
+    <div class="header-dropdown" id="zoteroDropdown">
+      <button class="header-dropdown-btn">🔄 Zotero</button>
+      <div class="header-dropdown-menu">
+        <button class="header-dropdown-item" id="fullSync" style="color: #f97316;">⚡ Full Sync</button>
         <button class="header-dropdown-item" id="batchTagManager">🏷️ Batch Tags</button>
+        <button class="header-dropdown-item" id="syncClusterTags">📂 Sync Clusters</button>
       </div>
     </div>
     <div class="header-dropdown" id="discoverDropdown">
@@ -152,10 +159,19 @@
     </div>
 
     <div class="mobile-menu-section">
-      <h3>Actions</h3>
-      <button id="mobileResetFilter" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px;">Reset Filters</button>
-      <button id="mobileShowStats" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px;">📈 Statistics</button>
-      <button id="mobileCopyExport" style="width: 100%; background: var(--bg-tertiary);">📝 Export</button>
+      <h3>Export</h3>
+      <button id="mobileShowStats" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px;">📈 Stats</button>
+      <button id="mobileCopyExport" style="width: 100%; background: var(--bg-tertiary);">📝 Papers</button>
+    </div>
+
+    <div class="mobile-menu-section">
+      <h3>Zotero</h3>
+      <button id="mobileFullSync" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px; color: #f97316;">⚡ Full Sync</button>
+      <button id="mobileBatchTags" style="width: 100%; background: var(--bg-tertiary);">🏷️ Batch Tags</button>
+    </div>
+
+    <div class="mobile-menu-section">
+      <button id="mobileResetFilter" style="width: 100%; background: var(--bg-tertiary);">Reset Filters</button>
     </div>
   </nav>
 
@@ -237,6 +253,45 @@
         <div id="batchProgress" style="display: none; margin-top: 16px;">
           <div class="progress-bar"><div class="progress-fill" id="batchProgressFill"></div></div>
           <p class="progress-status" id="batchProgressStatus"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Sync Modal -->
+  <div class="modal-overlay" id="syncModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🔄 Full Sync</h3>
+        <button class="modal-close" id="closeSyncModal">✕</button>
+      </div>
+      <div class="modal-content">
+        <div class="sync-steps">
+          <div class="sync-step" id="syncStep1">
+            <span class="sync-icon">⏳</span>
+            <span class="sync-label">Fetching from Zotero API...</span>
+          </div>
+          <div class="sync-step" id="syncStep2">
+            <span class="sync-icon">⏳</span>
+            <span class="sync-label">Building papers.json...</span>
+          </div>
+          <div class="sync-step" id="syncStep3">
+            <span class="sync-icon">⏳</span>
+            <span class="sync-label">Syncing cluster tags...</span>
+          </div>
+          <div class="sync-step" id="syncStep4">
+            <span class="sync-icon">⏳</span>
+            <span class="sync-label">Syncing review tags...</span>
+          </div>
+        </div>
+        <div class="sync-result" id="syncResult" style="display: none;">
+          <h4>✅ Sync Complete</h4>
+          <div class="sync-stats" id="syncStats"></div>
+          <button id="reloadAfterSync" style="width: 100%; margin-top: 12px;">Reload Page</button>
+        </div>
+        <div class="sync-error" id="syncError" style="display: none;">
+          <h4>❌ Sync Failed</h4>
+          <p id="syncErrorMsg"></p>
         </div>
       </div>
     </div>

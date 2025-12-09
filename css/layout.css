@@ -33,6 +33,86 @@ header h1 {
   color: var(--text-muted);
 }
 
+/* Filter Chips */
+.filter-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-chip:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.filter-chip .chip-close {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.filter-chip:hover .chip-close {
+  opacity: 1;
+}
+
+.filter-chip.cluster {
+  background: #8b5cf61a;
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.filter-chip.cluster:hover {
+  background: #8b5cf6;
+  color: white;
+}
+
+.filter-chip.tag {
+  background: #22c55e1a;
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.filter-chip.tag:hover {
+  background: #22c55e;
+  color: white;
+}
+
+.filter-chip.search {
+  background: #f597161a;
+  border-color: #f59716;
+  color: #f59716;
+}
+
+.filter-chip.search:hover {
+  background: #f59716;
+  color: white;
+}
+
+.filter-chip.year {
+  background: #06b6d41a;
+  border-color: #06b6d4;
+  color: #06b6d4;
+}
+
+.filter-chip.year:hover {
+  background: #06b6d4;
+  color: white;
+}
+
 /* Main content */
 .main-content {
   display: flex;

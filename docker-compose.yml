@@ -18,6 +18,7 @@ services:
     volumes:
       - .:/app
     environment:
+      - PYTHONUNBUFFERED=1
       - ZOTERO_LIBRARY_ID=${ZOTERO_LIBRARY_ID}
       - ZOTERO_API_KEY=${ZOTERO_API_KEY}
       - ZOTERO_LIBRARY_TYPE=${ZOTERO_LIBRARY_TYPE}

@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(source venv/bin/activate)",
-      "Bash(python build_map.py:*)"
+      "Bash(python build_map.py:*)",
+      "Bash(source:*)",
+      "Bash(python -u:*)"
     ],
     "deny": [],
     "ask": []

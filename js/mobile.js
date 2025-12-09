@@ -53,7 +53,7 @@ function populateMobileClusterChips() {
   allChip.addEventListener('click', () => {
     highlightCluster = null;
     updateMobileClusterChips();
-    render(currentFiltered);
+    applyFilters();
   });
   container.appendChild(allChip);
 
@@ -73,7 +73,7 @@ function populateMobileClusterChips() {
         highlightCluster = c;
       }
       updateMobileClusterChips();
-      render(currentFiltered);
+      applyFilters();
     });
     container.appendChild(chip);
   });
@@ -213,6 +213,14 @@ function initMobileHandlers() {
   });
   document.getElementById('mobileCopyExport').addEventListener('click', () => {
     document.getElementById('copyFiltered').click();
+    closeMobileMenu();
+  });
+  document.getElementById('mobileFullSync').addEventListener('click', () => {
+    document.getElementById('fullSync').click();
+    closeMobileMenu();
+  });
+  document.getElementById('mobileBatchTags').addEventListener('click', () => {
+    document.getElementById('batchTagManager').click();
     closeMobileMenu();
   });
   document.getElementById('mobileThemeToggle').addEventListener('click', () => {

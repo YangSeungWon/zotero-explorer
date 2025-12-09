@@ -6,9 +6,30 @@ Zotero API wrapper using pyzotero
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Optional
 from pyzotero import zotero
+
+
+def extract_year(date_str: str) -> str:
+    """다양한 날짜 형식에서 연도 추출
+
+    Examples:
+        "2024" → "2024"
+        "2024-01-15" → "2024"
+        "12월 1, 2006" → "2006"
+        "January 2020" → "2020"
+    """
+    if not date_str:
+        return ""
+
+    # 4자리 연도 찾기 (1900-2099)
+    match = re.search(r'\b(19|20)\d{2}\b', date_str)
+    if match:
+        return match.group(0)
+
+    return ""
 
 # Load .env
 env_path = Path(__file__).parent / ".env"
@@ -70,8 +91,8 @@ def item_to_row(item: dict) -> dict:
         for c in creators
     ])
 
-    # Extract tags
-    tags = ", ".join([t['tag'] for t in data.get('tags', [])])
+    # Extract tags (세미콜론 구분 - CSV 형식과 동일)
+    tags = "; ".join([t['tag'] for t in data.get('tags', [])])
 
     # Extract notes
     notes_content = ""
@@ -91,7 +112,7 @@ def item_to_row(item: dict) -> dict:
         'Conference Name': data.get('conferenceName', ''),
         'Proceedings Title': data.get('proceedingsTitle', ''),
         'Series': data.get('series', ''),
-        'Publication Year': data.get('date', '')[:4] if data.get('date') else '',
+        'Publication Year': extract_year(data.get('date', '')),
         'Date': data.get('date', ''),
         'DOI': data.get('DOI', ''),
         'Url': data.get('url', ''),

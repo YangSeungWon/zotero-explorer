@@ -543,7 +543,7 @@ def main():
             "title": title,
             "year": int(row["year_clean"]) if pd.notna(row["year_clean"]) else None,
             "authors": str(row.get("Author", "") or ""),
-            "venue": str(row.get("Publication Title", "") or ""),
+            "venue": str(row.get("Publication Title", "") or row.get("Proceedings Title", "") or row.get("Conference Name", "") or ""),
             "item_type": str(row.get("Item Type", "") or ""),
             "is_paper": bool(row["is_paper"]),
             "venue_quality": float(row["venue_quality"]),
@@ -579,12 +579,23 @@ def main():
         csv_mtime = max(os.path.getmtime(f) for f in csv_files) if csv_files else 0
         data_updated = datetime.fromtimestamp(csv_mtime).strftime("%Y-%m-%d %H:%M")
 
+    # S2 ID → paper ID 매핑 생성 후 citation_links 재생성
+    s2_to_id = {r["s2_id"]: r["id"] for r in records if r.get("s2_id")}
+    citation_links = []
+    for rec in records:
+        source_id = rec["id"]
+        for ref_s2_id in rec.get("references", []):
+            if ref_s2_id in s2_to_id:
+                target_id = s2_to_id[ref_s2_id]
+                citation_links.append({"source": source_id, "target": target_id})
+    print(f"   - Internal citation links: {len(citation_links)}")
+
     # 출력 데이터에 클러스터 중심점 포함
     output_data = {
         "papers": records,
         "cluster_centroids": cluster_centroids,
         "cluster_labels": cluster_labels,
-        "citation_links": existing_citation_links,  # 기존 citation links 보존
+        "citation_links": citation_links,  # S2 ID 기반 재생성
         "meta": {
             "source": args.source,
             "data_updated": data_updated,

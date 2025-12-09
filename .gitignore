@@ -5,3 +5,4 @@ __pycache__/
 *.csv
 papers.json
 .env
+papers_filtered.json

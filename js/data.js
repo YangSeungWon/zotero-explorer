@@ -79,7 +79,7 @@ async function loadData() {
           highlightCluster = c;
           item.classList.add('active');
         }
-        render(currentFiltered);
+        applyFilters();
       });
 
       // 더블클릭으로 라벨 편집
@@ -150,8 +150,86 @@ function filterPapers() {
     if (yearRange) {
       if (p.year && (p.year < yearRange.min || p.year > yearRange.max)) return false;
     }
+    // Cluster filter (when in filter mode)
+    if (filterMode === 'filter' && highlightCluster !== null) {
+      if (p.cluster !== highlightCluster) return false;
+    }
     return true;
   });
+}
+
+function updateFilterChips() {
+  const container = document.getElementById('filterChips');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  // Cluster chip
+  if (highlightCluster !== null) {
+    const label = clusterLabels[highlightCluster] || `Cluster ${highlightCluster}`;
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip cluster';
+    chip.innerHTML = `📌 ${label} <span class="chip-close">✕</span>`;
+    chip.onclick = () => {
+      highlightCluster = null;
+      document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
+      applyFilters();
+    };
+    container.appendChild(chip);
+  }
+
+  // Tag chip
+  const tagFilter = document.getElementById('tagFilter').value;
+  if (tagFilter) {
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip tag';
+    chip.innerHTML = `🏷️ ${tagFilter} <span class="chip-close">✕</span>`;
+    chip.onclick = () => {
+      document.getElementById('tagFilter').value = '';
+      applyFilters();
+    };
+    container.appendChild(chip);
+  }
+
+  // Search chip
+  const searchFilter = document.getElementById('searchFilter').value.trim();
+  if (searchFilter) {
+    const displayText = searchFilter.length > 15 ? searchFilter.substring(0, 15) + '...' : searchFilter;
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip search';
+    chip.innerHTML = `🔍 "${displayText}" <span class="chip-close">✕</span>`;
+    chip.onclick = () => {
+      document.getElementById('searchFilter').value = '';
+      applyFilters();
+    };
+    container.appendChild(chip);
+  }
+
+  // Year range chip
+  if (yearRange) {
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip year';
+    chip.innerHTML = `📅 ${yearRange.min}-${yearRange.max} <span class="chip-close">✕</span>`;
+    chip.onclick = () => {
+      yearRange = null;
+      document.getElementById('brushSelection').classList.remove('active');
+      applyFilters();
+      if (typeof renderMiniTimeline === 'function') renderMiniTimeline(allPapers);
+    };
+    container.appendChild(chip);
+  }
+
+  // Bookmarked chip
+  if (document.getElementById('bookmarkedOnly').checked) {
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip';
+    chip.innerHTML = `★ Bookmarked <span class="chip-close">✕</span>`;
+    chip.onclick = () => {
+      document.getElementById('bookmarkedOnly').checked = false;
+      applyFilters();
+    };
+    container.appendChild(chip);
+  }
 }
 
 function updateStats(papers) {

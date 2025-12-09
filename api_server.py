@@ -7,9 +7,21 @@ Flask API Server for Zotero Tag Management
 
 import os
 import json
+import subprocess
+import re
+import threading
 from pathlib import Path
+from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+# Background sync state
+sync_status = {
+    "running": False,
+    "last_run": None,
+    "last_result": None,
+    "error": None
+}
 
 from zotero_api import (
     get_zotero_client,
@@ -211,6 +223,148 @@ def reload_papers():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def run_full_sync_background():
+    """Background task for full sync"""
+    global sync_status
+
+    try:
+        results = {
+            "build": {"status": "pending"},
+            "cluster_sync": {"status": "pending"},
+            "review_sync": {"status": "pending"}
+        }
+
+        # Step 1: Run build_map.py --source api
+        print("Starting full sync: building papers.json from Zotero API...")
+        build_result = subprocess.run(
+            ["python", "build_map.py", "--source", "api"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent,
+            timeout=600  # 10 minute timeout
+        )
+
+        if build_result.returncode != 0:
+            sync_status["error"] = build_result.stderr[-500:] if build_result.stderr else "Build failed"
+            sync_status["running"] = False
+            return
+
+        # Parse build output for stats
+        output = build_result.stdout
+        papers_match = re.search(r'Papers: (\d+)', output)
+        clusters_match = re.search(r'Clusters: (\d+)', output)
+        reviews_match = re.search(r'Auto-tagged reviews: (\d+)', output)
+
+        results["build"] = {
+            "status": "success",
+            "papers": int(papers_match.group(1)) if papers_match else 0,
+            "clusters": int(clusters_match.group(1)) if clusters_match else 0,
+            "auto_reviews": int(reviews_match.group(1)) if reviews_match else 0
+        }
+
+        # Step 2: Load papers.json for cluster and tag sync
+        papers_path = Path(__file__).parent / "papers.json"
+        with open(papers_path, 'r', encoding='utf-8') as f:
+            papers_data = json.load(f)
+
+        papers = papers_data.get('papers', [])
+        cluster_labels = papers_data.get('cluster_labels', {})
+
+        zot = get_zotero_client()
+
+        # Step 3: Sync cluster tags
+        print("Syncing cluster tags to Zotero...")
+        cluster_results = {"success": 0, "failed": 0, "skipped": 0}
+
+        for paper in papers:
+            zotero_key = paper.get('zotero_key')
+            cluster_id = paper.get('cluster')
+
+            if not zotero_key:
+                cluster_results["skipped"] += 1
+                continue
+
+            label = cluster_labels.get(str(cluster_id), f"Cluster {cluster_id}")
+            tag = f"cluster: {label}"
+
+            try:
+                if add_tags_to_item(zot, zotero_key, [tag]):
+                    cluster_results["success"] += 1
+                else:
+                    cluster_results["failed"] += 1
+            except Exception as e:
+                cluster_results["failed"] += 1
+
+        results["cluster_sync"] = {"status": "success", **cluster_results}
+
+        # Step 4: Sync method-review tags
+        print("Syncing method-review tags to Zotero...")
+        review_results = {"success": 0, "failed": 0, "skipped": 0}
+
+        for paper in papers:
+            zotero_key = paper.get('zotero_key')
+            tags = paper.get('tags', '')
+
+            if not zotero_key:
+                review_results["skipped"] += 1
+                continue
+
+            if 'method-review' in tags:
+                try:
+                    if add_tags_to_item(zot, zotero_key, ['method-review']):
+                        review_results["success"] += 1
+                    else:
+                        review_results["failed"] += 1
+                except Exception as e:
+                    review_results["failed"] += 1
+            else:
+                review_results["skipped"] += 1
+
+        results["review_sync"] = {"status": "success", **review_results}
+
+        print("Full sync completed!")
+        sync_status["last_result"] = results
+        sync_status["error"] = None
+
+    except Exception as e:
+        print(f"Full sync error: {e}")
+        sync_status["error"] = str(e)
+
+    finally:
+        sync_status["running"] = False
+        sync_status["last_run"] = datetime.now().isoformat()
+
+
+@app.route('/api/full-sync', methods=['POST'])
+def full_sync():
+    """Start full sync in background"""
+    global sync_status
+
+    if sync_status["running"]:
+        return jsonify({
+            "status": "already_running",
+            "message": "Sync is already in progress"
+        })
+
+    sync_status["running"] = True
+    sync_status["error"] = None
+
+    thread = threading.Thread(target=run_full_sync_background)
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({
+        "status": "started",
+        "message": "Full sync started in background. Check /api/sync-status for progress."
+    })
+
+
+@app.route('/api/sync-status', methods=['GET'])
+def get_sync_status():
+    """Get current sync status"""
+    return jsonify(sync_status)
 
 
 # ============================================================
