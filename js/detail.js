@@ -336,8 +336,8 @@ function showDetail(item) {
   `;
 
   // 북마크 버튼 핸들러
-  document.querySelector('.bookmark-btn').addEventListener('click', () => {
-    const nowBookmarked = toggleBookmark(item.id);
+  document.querySelector('.bookmark-btn').addEventListener('click', async () => {
+    const nowBookmarked = await toggleBookmark(item);
     const btn = document.querySelector('.bookmark-btn');
     btn.textContent = nowBookmarked ? '★' : '☆';
     btn.classList.toggle('active', nowBookmarked);
@@ -498,8 +498,8 @@ function showMobileDetail(item) {
   `;
 
   // 북마크 버튼 핸들러
-  document.querySelector('#bottomSheetContent .bookmark-btn').addEventListener('click', () => {
-    const nowBookmarked = toggleBookmark(item.id);
+  document.querySelector('#bottomSheetContent .bookmark-btn').addEventListener('click', async () => {
+    const nowBookmarked = await toggleBookmark(item);
     const btn = document.querySelector('#bottomSheetContent .bookmark-btn');
     btn.textContent = nowBookmarked ? '★' : '☆';
     btn.classList.toggle('active', nowBookmarked);

@@ -23,9 +23,10 @@ async function loadData() {
     const customLabels = JSON.parse(localStorage.getItem('customClusterLabels') || '{}');
     Object.assign(clusterLabels, customLabels);
 
-    // 북마크 로드
-    const savedBookmarks = JSON.parse(localStorage.getItem('bookmarkedPapers') || '[]');
-    bookmarkedPapers = new Set(savedBookmarks);
+    // 북마크 로드 (starred 태그에서)
+    bookmarkedPapers = new Set(
+      allPapers.filter(p => (p.tags || '').toLowerCase().includes('starred')).map(p => p.id)
+    );
 
     // Populate tag filter
     const tagFilterEl = document.getElementById('tagFilter');
@@ -236,13 +237,52 @@ function updateStats(papers) {
   document.getElementById('stats').textContent = `${papers.length} items`;
 }
 
-function toggleBookmark(paperId) {
-  if (bookmarkedPapers.has(paperId)) {
+async function toggleBookmark(paper) {
+  const paperId = paper.id;
+  const zoteroKey = paper.zotero_key;
+  const wasBookmarked = bookmarkedPapers.has(paperId);
+
+  // 로컬 상태 즉시 업데이트 (낙관적 업데이트)
+  if (wasBookmarked) {
     bookmarkedPapers.delete(paperId);
   } else {
     bookmarkedPapers.add(paperId);
   }
-  localStorage.setItem('bookmarkedPapers', JSON.stringify([...bookmarkedPapers]));
   updateStats(currentFiltered);
+
+  // API로 Zotero 태그 업데이트
+  if (zoteroKey) {
+    try {
+      await apiCall('/tags/batch', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: wasBookmarked ? 'remove' : 'add',
+          tag: 'starred',
+          zotero_keys: [zoteroKey]
+        })
+      });
+
+      // 로컬 paper.tags도 업데이트
+      const tags = (paper.tags || '').split(/[;,]/).map(t => t.trim()).filter(t => t);
+      if (wasBookmarked) {
+        paper.tags = tags.filter(t => t.toLowerCase() !== 'starred').join('; ');
+      } else {
+        if (!tags.some(t => t.toLowerCase() === 'starred')) {
+          tags.push('starred');
+        }
+        paper.tags = tags.join('; ');
+      }
+    } catch (e) {
+      console.error('Failed to update starred tag:', e);
+      // 실패 시 로컬 상태 롤백
+      if (wasBookmarked) {
+        bookmarkedPapers.add(paperId);
+      } else {
+        bookmarkedPapers.delete(paperId);
+      }
+      updateStats(currentFiltered);
+    }
+  }
+
   return bookmarkedPapers.has(paperId);
 }

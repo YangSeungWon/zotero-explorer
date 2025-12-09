@@ -217,14 +217,27 @@ def replace_cluster_tag(zot: zotero.Zotero, item_key: str, new_tag: str) -> bool
 
 
 def batch_update_items(zot: zotero.Zotero, items: list, batch_size: int = 50, on_progress=None) -> dict:
-    """Update multiple items in batches (much faster than individual updates)"""
+    """Update multiple items in batches (much faster than individual updates)
+
+    Items should be full Zotero item objects with 'data' containing updated tags.
+    This function extracts key, version, and tags for PATCH-style updates.
+    """
     results = {"success": 0, "failed": 0}
     total = len(items)
 
     for i in range(0, total, batch_size):
         batch = items[i:i + batch_size]
+        # Convert to PATCH format (only key, version, and tags)
+        payloads = []
+        for item in batch:
+            payload = {
+                'key': item['key'],
+                'version': item['version'],
+                'tags': item['data']['tags']
+            }
+            payloads.append(payload)
         try:
-            zot.update_items(batch)
+            zot.update_items(payloads)
             results["success"] += len(batch)
             print(f"  Batch {i//batch_size + 1}: {len(batch)} items updated")
         except Exception as e:
@@ -270,8 +283,15 @@ def batch_replace_cluster_tags(
         # Remove all cluster: tags and add new one
         non_cluster_tags = [t for t in existing_tags if not t.get('tag', '').startswith('cluster:')]
         non_cluster_tags.append({'tag': new_tag})
-        item['data']['tags'] = non_cluster_tags
-        items_to_update.append(item)
+
+        # For batch update, we only need to send changed fields (PATCH semantics)
+        # pyzotero's update_items expects data dicts with key and version
+        update_payload = {
+            'key': item['key'],
+            'version': item['version'],
+            'tags': non_cluster_tags
+        }
+        items_to_update.append(update_payload)
 
     print(f"  {len(items_to_update)} items need update, {results['skipped']} skipped")
     total = len(items_to_update)
