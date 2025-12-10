@@ -16,6 +16,7 @@
     <h1>Paper Map</h1>
     <div class="view-toggle" id="viewToggle">
       <button class="view-btn active" data-view="map">Map</button>
+      <button class="view-btn" data-view="list">List</button>
       <button class="view-btn" data-view="timeline">Timeline</button>
       <button class="view-btn" data-view="ideas">Ideas</button>
     </div>
@@ -216,6 +217,24 @@
     <div class="plot-container">
       <div id="plot"></div>
       <div id="timelinePlot" style="display: none;"></div>
+      <!-- List View -->
+      <div id="listView" class="list-view" style="display: none;">
+        <div class="list-header">
+          <div class="list-sort">
+            <label>Sort:</label>
+            <select id="listSortBy">
+              <option value="similarity">Similarity</option>
+              <option value="year-desc">Year (newest)</option>
+              <option value="year-asc">Year (oldest)</option>
+              <option value="title">Title</option>
+              <option value="cluster">Cluster</option>
+              <option value="citations">Citations</option>
+            </select>
+          </div>
+          <div class="list-count" id="listCount">0 papers</div>
+        </div>
+        <div class="list-container" id="listContainer"></div>
+      </div>
       <!-- Link Mode Indicator -->
       <div class="link-mode-indicator" id="linkModeIndicator" style="display: none;">
         Click papers to link/unlink from selected idea
@@ -422,6 +441,7 @@
   <script src="js/detail.js"></script>
   <script src="js/mobile.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/list.js"></script>
   <script src="js/ideas.js"></script>
   <script src="js/app.js"></script>
 </body>

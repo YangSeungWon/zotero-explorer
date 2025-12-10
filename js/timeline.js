@@ -332,12 +332,13 @@ function initMiniTimelineBrush() {
   });
 }
 
-// Switch between map, timeline, and ideas view
+// Switch between map, timeline, list, and ideas view
 function switchView(view) {
   currentView = view;
 
   const mapPlot = document.getElementById('plot');
   const timelinePlot = document.getElementById('timelinePlot');
+  const listView = document.getElementById('listView');
   const detailPanel = document.getElementById('detailPanel');
   const ideasPanel = document.getElementById('ideasPanel');
   const leftSidebar = document.getElementById('leftSidebar');
@@ -346,6 +347,7 @@ function switchView(view) {
   // Hide all views first
   mapPlot.style.display = 'none';
   timelinePlot.style.display = 'none';
+  if (listView) listView.style.display = 'none';
   if (ideasPanel) ideasPanel.style.display = 'none';
 
   if (view === 'map') {
@@ -354,6 +356,12 @@ function switchView(view) {
     if (leftSidebar) leftSidebar.style.display = '';
     if (miniTimeline) miniTimeline.style.display = '';
     render(currentFiltered);
+  } else if (view === 'list') {
+    if (listView) listView.style.display = 'flex';
+    if (detailPanel) detailPanel.style.display = '';
+    if (leftSidebar) leftSidebar.style.display = '';
+    if (miniTimeline) miniTimeline.style.display = '';
+    renderListView(currentFiltered);
   } else if (view === 'timeline') {
     timelinePlot.style.display = 'block';
     if (detailPanel) detailPanel.style.display = '';
