@@ -31,6 +31,44 @@ function getZoteroPdfUrl(pdfKey) {
 }
 
 // ============================================================
+// URL / Permalink Helper (uses zotero_key for stable URLs)
+// ============================================================
+
+function getPaperUrl(zoteroKey) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('paper', zoteroKey);
+  return url.toString();
+}
+
+function updateUrlWithPaper(zoteroKey) {
+  const url = new URL(window.location.href);
+  if (zoteroKey !== null) {
+    url.searchParams.set('paper', zoteroKey);
+  } else {
+    url.searchParams.delete('paper');
+  }
+  window.history.replaceState({}, '', url.toString());
+}
+
+function getPaperKeyFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('paper');  // returns zotero_key string or null
+}
+
+function copyPaperLink(zoteroKey) {
+  const url = getPaperUrl(zoteroKey);
+  navigator.clipboard.writeText(url).then(() => {
+    // Show brief feedback
+    const btn = document.querySelector('.copy-link-btn');
+    if (btn) {
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = originalText; }, 1500);
+    }
+  });
+}
+
+// ============================================================
 // Tag Editor
 // ============================================================
 
@@ -181,6 +219,7 @@ async function saveTagsToZotero(zoteroKey, tags, paperId) {
 function clearSelection() {
   selectedPaper = null;
   connectedPapers = new Set();
+  updateUrlWithPaper(null);  // Clear paper from URL
   render(currentFiltered);
   showDefaultPanel();
 }
@@ -407,6 +446,8 @@ function showDetail(item) {
   initTagEditor(item);
 
   let linksHtml = '';
+  // Copy Link button first
+  linksHtml += `<button class="copy-link-btn" onclick="copyPaperLink('${item.zotero_key}')">Copy Link</button>`;
   if (item.zotero_key) {
     linksHtml += `<a href="${getZoteroUrl(item.zotero_key)}" class="zotero-link">Zotero</a>`;
   }
@@ -420,6 +461,9 @@ function showDetail(item) {
     linksHtml += `<a href="https://doi.org/${item.doi}" target="_blank">DOI</a>`;
   }
   document.getElementById('detailLinks').innerHTML = linksHtml;
+
+  // Update URL with stable zotero_key
+  updateUrlWithPaper(item.zotero_key);
 
   document.getElementById('detailAbstract').textContent =
     item.abstract || 'No abstract available.';
@@ -554,11 +598,15 @@ function showMobileDetail(item) {
   `;
 
   let linksHtml = '';
+  linksHtml += `<button class="copy-link-btn" onclick="copyPaperLink('${item.zotero_key}')">Copy Link</button>`;
   if (item.zotero_key) linksHtml += `<a href="${getZoteroUrl(item.zotero_key)}" class="zotero-link">Zotero</a>`;
   if (item.pdf_key) linksHtml += `<a href="${getZoteroPdfUrl(item.pdf_key)}" class="pdf-link">PDF</a>`;
   if (item.url) linksHtml += `<a href="${item.url}" target="_blank">URL</a>`;
   if (item.doi) linksHtml += `<a href="https://doi.org/${item.doi}" target="_blank">DOI</a>`;
   document.getElementById('mobileDetailLinks').innerHTML = linksHtml;
+
+  // Update URL with stable zotero_key
+  updateUrlWithPaper(item.zotero_key);
 
   document.getElementById('mobileDetailAbstract').textContent =
     item.abstract || 'No abstract available.';

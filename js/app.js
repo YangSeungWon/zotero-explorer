@@ -28,5 +28,16 @@
     if (typeof initMiniTimelineBrush === 'function') {
       initMiniTimelineBrush();
     }
+
+    // Check URL for paper parameter (zotero_key) and open if present
+    const paperKeyFromUrl = getPaperKeyFromUrl();
+    if (paperKeyFromUrl) {
+      const paper = allPapers.find(p => p.zotero_key === paperKeyFromUrl);
+      if (paper) {
+        selectedPaper = paper;
+        showDetail(paper);
+        render(currentFiltered);
+      }
+    }
   });
 })();

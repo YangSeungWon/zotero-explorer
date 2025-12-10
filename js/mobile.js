@@ -35,6 +35,7 @@ function closeBottomSheet() {
   if (isMobile()) {
     selectedPaper = null;
     connectedPapers = new Set();
+    updateUrlWithPaper(null);  // Clear paper from URL
     render(currentFiltered);
   }
 }
