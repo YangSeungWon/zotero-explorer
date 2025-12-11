@@ -314,7 +314,7 @@ function showHoverPreview(item) {
     <span class="badge ${typeClass}">${typeLabel}</span>
     <span class="badge cluster">Cluster ${item.cluster}</span>
     ${item.citation_count ? `<span class="badge" style="background: #ffd70033; color: #ffd700;">${item.citation_count} cited</span>` : ''}
-    ${isIsolated ? `<span class="badge" style="background: #6b728033; color: #6b7280;">🏝️ Isolated</span>` : ''}
+    ${isIsolated ? `<span class="badge" style="background: #6b728033; color: #6b7280;"><i data-lucide="unplug" style="width:12px;height:12px;vertical-align:middle;margin-right:2px;"></i>Isolated</span>` : ''}
     <br><br>
     <span><strong>Year:</strong> ${item.year || 'N/A'}</span>
     <span><strong>Venue:</strong> ${item.venue || 'N/A'}</span>

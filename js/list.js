@@ -92,7 +92,7 @@ function renderListView(papers) {
             <span class="list-item-cluster" style="background: ${clusterColor}; color: black;">${clusterLabel}</span>
           </div>
           <div class="list-item-title">${escapeHtml(paper.title)}</div>
-          <div class="list-item-authors">${escapeHtml(paper.authors || '')}</div>
+          <div class="list-item-authors" title="${escapeHtml(paper.authors || '')}">${escapeHtml(abbreviateAuthors(paper.authors))}</div>
           <div class="list-item-venue" title="${escapeHtml(paper.venue || '')}">${escapeHtml(abbreviateVenue(paper.venue))}</div>
         </div>
         <div class="list-item-meta">
@@ -367,6 +367,21 @@ function abbreviateVenue(venue) {
   }
 
   return venue;
+}
+
+// Abbreviate author list
+function abbreviateAuthors(authors, maxAuthors = 1) {
+  if (!authors) return '';
+
+  // Split by common delimiters
+  const authorList = authors.split(/[,;]/).map(a => a.trim()).filter(a => a);
+
+  if (authorList.length <= maxAuthors) {
+    return authors;
+  }
+
+  // First author + et al.
+  return `${authorList[0]} et al.`;
 }
 
 // Initialize on load

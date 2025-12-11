@@ -1867,6 +1867,60 @@ button:hover {
 }
 
 /* ===========================================
+   Author Stats Modal
+   =========================================== */
+
+.author-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.author-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.author-stat-rank {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 24px;
+}
+
+.author-stat-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.author-stat-bar {
+  width: 100px;
+  height: 6px;
+  background: var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.author-stat-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+.author-stat-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ===========================================
    Advanced Search / Filter Pipeline
    =========================================== */
 

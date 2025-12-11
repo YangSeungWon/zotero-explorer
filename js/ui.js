@@ -410,29 +410,24 @@ function applyTheme(theme) {
   const themeToggle = document.getElementById('themeToggle');
   const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
 
-  let icon, emoji;
+  let icon;
   if (theme === 'auto') {
     html.dataset.theme = systemDark.matches ? '' : 'light';
     icon = 'sun-moon';
-    emoji = '◐';
     themeToggle.title = 'Theme: Auto';
   } else if (theme === 'light') {
     html.dataset.theme = 'light';
     icon = 'sun';
-    emoji = '☀️';
     themeToggle.title = 'Theme: Light';
   } else {
     html.dataset.theme = '';
     icon = 'moon';
-    emoji = '🌙';
     themeToggle.title = 'Theme: Dark';
   }
 
+  themeToggle.innerHTML = `<i data-lucide="${icon}"></i>`;
   if (typeof lucide !== 'undefined') {
-    themeToggle.innerHTML = `<i data-lucide="${icon}"></i>`;
     lucide.createIcons();
-  } else {
-    themeToggle.textContent = emoji;
   }
 }
 
@@ -830,6 +825,21 @@ function initUIHandlers() {
     missingModal.classList.add('active');
   });
 
+  // Author Stats
+  document.getElementById('showAuthorStats')?.addEventListener('click', () => {
+    showAuthorStats();
+  });
+
+  document.getElementById('closeAuthorStats')?.addEventListener('click', () => {
+    document.getElementById('authorStatsModal').classList.remove('active');
+  });
+
+  document.getElementById('authorStatsModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'authorStatsModal') {
+      document.getElementById('authorStatsModal').classList.remove('active');
+    }
+  });
+
   // Classics
   document.getElementById('showClassics').addEventListener('click', () => {
     let papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
@@ -1004,7 +1014,7 @@ function initUIHandlers() {
         break;
 
       case '?':
-        alert(`⌨️ Keyboard Shortcuts
+        alert(`Keyboard Shortcuts
 
 /     Focus search
 Esc   Deselect / Close modal
@@ -1014,7 +1024,7 @@ R     Reset filters
 C     Toggle citation lines
 ?     This help
 
-🖱️ Mouse
+Mouse
 Hover   Preview paper & citation lines`);
         break;
     }
@@ -1277,4 +1287,52 @@ Hover   Preview paper & citation lines`);
       alert('일괄 처리 실패: ' + e.message);
     }
   });
+}
+
+// Show author statistics for filtered papers
+function showAuthorStats() {
+  const papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
+  const authorCounts = {};
+
+  // Count authors
+  papers.forEach(paper => {
+    if (!paper.authors) return;
+    const authorList = paper.authors.split(/[,;]/).map(a => a.trim()).filter(a => a);
+    authorList.forEach(author => {
+      // Normalize author name (remove extra spaces)
+      const normalized = author.replace(/\s+/g, ' ').trim();
+      if (normalized) {
+        authorCounts[normalized] = (authorCounts[normalized] || 0) + 1;
+      }
+    });
+  });
+
+  // Sort by count
+  const sorted = Object.entries(authorCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 30);
+
+  const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+
+  // Update count
+  document.getElementById('authorStatsCount').textContent = papers.length;
+
+  // Render list
+  const listEl = document.getElementById('authorStatsList');
+  if (sorted.length === 0) {
+    listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">No author data available</div>';
+  } else {
+    listEl.innerHTML = sorted.map(([author, count], index) => `
+      <div class="author-stat-item">
+        <span class="author-stat-rank">${index + 1}</span>
+        <span class="author-stat-name">${escapeHtml(author)}</span>
+        <div class="author-stat-bar">
+          <div class="author-stat-bar-fill" style="width: ${(count / maxCount) * 100}%"></div>
+        </div>
+        <span class="author-stat-count">${count}</span>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('authorStatsModal').classList.add('active');
 }

@@ -37,7 +37,7 @@
       <span></span>
       <span></span>
     </button>
-    <button class="theme-toggle" id="themeToggle" title="Toggle theme">◐</button>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i data-lucide="sun-moon"></i></button>
     <div class="stats" id="stats">Loading...</div>
     <div class="filter-chips" id="filterChips"></div>
     <span class="filter-status" id="filterStatus"></span>
@@ -45,6 +45,7 @@
       <button class="header-dropdown-btn"><i data-lucide="upload"></i> Export</button>
       <div class="header-dropdown-menu">
         <button class="header-dropdown-item" id="showGlobalStats"><i data-lucide="bar-chart-2"></i> Stats</button>
+        <button class="header-dropdown-item" id="showAuthorStats"><i data-lucide="users"></i> Authors</button>
         <button class="header-dropdown-item" id="copyClusters"><i data-lucide="clipboard-copy"></i> Clusters</button>
         <button class="header-dropdown-item" id="copyFiltered"><i data-lucide="file-text"></i> Papers</button>
       </div>
@@ -124,7 +125,7 @@
   <nav class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-header">
       <h2>Filters</h2>
-      <button class="theme-toggle" id="mobileThemeToggle" title="Toggle theme">🌙</button>
+      <button class="theme-toggle" id="mobileThemeToggle" title="Toggle theme"><i data-lucide="moon"></i></button>
     </div>
 
     <div class="mobile-menu-section">
@@ -192,14 +193,14 @@
       <div class="cluster-panel" id="clusterPanel">
         <div class="cluster-header">
           <h3>Clusters</h3>
-          <button class="collapse-btn" id="collapseCluster" title="Toggle panel">◀</button>
+          <button class="collapse-btn" id="collapseCluster" title="Toggle panel"><i data-lucide="chevron-left"></i></button>
         </div>
         <div id="clusterList"></div>
       </div>
       <div class="sync-panel" id="syncPanel">
         <div class="sync-header">
           <h3>Zotero Sync</h3>
-          <button class="collapse-btn" id="collapseSyncPanel" title="Toggle panel">▼</button>
+          <button class="collapse-btn" id="collapseSyncPanel" title="Toggle panel"><i data-lucide="chevron-down"></i></button>
         </div>
         <div class="sync-content" id="syncContent">
           <div class="sync-status" id="syncStatus">
@@ -256,7 +257,7 @@
         <div class="mini-timeline-resize" id="miniTimelineResize"></div>
         <div class="mini-timeline-header">
           <span class="mini-timeline-label">Timeline</span>
-          <button class="mini-timeline-toggle" id="toggleMiniTimeline" title="Toggle mini timeline">▼</button>
+          <button class="mini-timeline-toggle" id="toggleMiniTimeline" title="Toggle mini timeline"><i data-lucide="chevron-down"></i></button>
         </div>
         <div class="mini-timeline-content">
           <canvas id="timelineCanvas"></canvas>
@@ -273,7 +274,7 @@
           <span class="ideas-section-title">Ideas</span>
           <div class="ideas-section-actions">
             <button class="btn-new-idea-sm" id="newIdeaBtn" title="New idea">+</button>
-            <button class="ideas-collapse-btn" id="toggleIdeasSection">▼</button>
+            <button class="ideas-collapse-btn" id="toggleIdeasSection"><i data-lucide="chevron-down"></i></button>
           </div>
         </div>
         <div class="ideas-section-content" id="ideasSectionContent">
@@ -469,6 +470,20 @@
           </select>
         </div>
         <button id="submitNewIdea" style="width: 100%;">Create Idea</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Author Stats Modal -->
+  <div class="modal-overlay" id="authorStatsModal">
+    <div class="modal" style="width: 500px; max-height: 80vh;">
+      <div class="modal-header">
+        <h3><i data-lucide="users"></i> Author Statistics</h3>
+        <button class="modal-close" id="closeAuthorStats"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-content">
+        <p class="modal-desc">Based on <strong id="authorStatsCount">0</strong> filtered papers</p>
+        <div class="author-stats-list" id="authorStatsList"></div>
       </div>
     </div>
   </div>
