@@ -1543,6 +1543,135 @@ button:hover {
   font-size: 14px;
 }
 
+/* List item actions (bookmark, idea) */
+.list-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.list-bookmark-btn,
+.list-idea-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.15s;
+}
+
+.list-bookmark-btn:hover,
+.list-idea-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
+}
+
+.list-bookmark-btn.active {
+  color: #ffd700;
+  border-color: #ffd70066;
+}
+
+.list-bookmark-btn.active [data-lucide].filled {
+  fill: #ffd700;
+}
+
+.list-idea-btn.has-ideas {
+  color: #f59e0b;
+  border-color: #f59e0b66;
+}
+
+.list-bookmark-btn [data-lucide],
+.list-idea-btn [data-lucide] {
+  width: 14px;
+  height: 14px;
+}
+
+.idea-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #f59e0b;
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 8px;
+  min-width: 14px;
+  text-align: center;
+}
+
+/* Idea dropdown menu */
+.list-idea-dropdown {
+  position: relative;
+}
+
+.list-idea-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  min-width: 180px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: var(--z-dropdown);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.list-idea-menu.active {
+  display: block;
+}
+
+.idea-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: background 0.1s;
+}
+
+.idea-menu-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.idea-menu-item.connected {
+  color: #22c55e;
+}
+
+.idea-menu-item [data-lucide] {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.idea-menu-item span {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idea-menu-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
 /* =========================================
    Login Overlay
    ========================================= */

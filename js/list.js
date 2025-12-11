@@ -66,14 +66,30 @@ function renderListView(papers) {
     const intRefs = internalRefs[paper.id] || 0;
     const intCited = internalCited[paper.id] || 0;
 
+    // Check which ideas this paper is connected to
+    const connectedIdeas = (typeof allIdeas !== 'undefined' ? allIdeas : [])
+      .filter(idea => idea.connected_papers?.includes(paper.zotero_key))
+      .map(idea => idea.title);
+
     html += `
-      <div class="list-item ${isSelected ? 'selected' : ''}" data-paper-id="${paper.id}">
+      <div class="list-item ${isSelected ? 'selected' : ''}" data-paper-id="${paper.id}" data-zotero-key="${paper.zotero_key}">
+        <div class="list-item-actions">
+          <button class="list-bookmark-btn ${isBookmarked ? 'active' : ''}" title="Toggle bookmark" data-paper-id="${paper.id}">
+            <i data-lucide="star" ${isBookmarked ? 'class="filled"' : ''}></i>
+          </button>
+          <div class="list-idea-dropdown">
+            <button class="list-idea-btn ${connectedIdeas.length > 0 ? 'has-ideas' : ''}" title="${connectedIdeas.length > 0 ? 'Connected: ' + connectedIdeas.join(', ') : 'Link to idea'}">
+              <i data-lucide="lightbulb"></i>
+              ${connectedIdeas.length > 0 ? `<span class="idea-count">${connectedIdeas.length}</span>` : ''}
+            </button>
+            <div class="list-idea-menu"></div>
+          </div>
+        </div>
         <div class="list-item-main">
           <div class="list-item-header">
             ${simScore}
             <span class="list-item-year">${paper.year || '?'}</span>
             <span class="list-item-cluster" style="background: ${clusterColor}; color: black;">${clusterLabel}</span>
-            ${isBookmarked ? '<span class="list-item-bookmark"><i data-lucide="star"></i></span>' : ''}
           </div>
           <div class="list-item-title">${escapeHtml(paper.title)}</div>
           <div class="list-item-authors">${escapeHtml(paper.authors || '')}</div>
@@ -99,9 +115,12 @@ function renderListView(papers) {
     lucide.createIcons();
   }
 
-  // Add click handlers
+  // Add click handlers for list items (excluding action buttons)
   container.querySelectorAll('.list-item').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      // Don't trigger if clicking on action buttons
+      if (e.target.closest('.list-item-actions')) return;
+
       const paperId = parseInt(item.dataset.paperId);
       const paper = allPapers.find(p => p.id === paperId);
       if (paper) {
@@ -110,6 +129,89 @@ function renderListView(papers) {
         container.querySelectorAll('.list-item').forEach(i => i.classList.remove('selected'));
         item.classList.add('selected');
       }
+    });
+  });
+
+  // Bookmark button handlers
+  container.querySelectorAll('.list-bookmark-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const paperId = parseInt(btn.dataset.paperId);
+      const paper = allPapers.find(p => p.id === paperId);
+      if (paper) {
+        const nowBookmarked = await toggleBookmark(paper);
+        btn.classList.toggle('active', nowBookmarked);
+        const icon = btn.querySelector('[data-lucide]');
+        if (icon) {
+          icon.classList.toggle('filled', nowBookmarked);
+        }
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      }
+    });
+  });
+
+  // Idea dropdown handlers
+  container.querySelectorAll('.list-idea-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dropdown = btn.closest('.list-idea-dropdown');
+      const menu = dropdown.querySelector('.list-idea-menu');
+      const item = btn.closest('.list-item');
+      const zoteroKey = item.dataset.zoteroKey;
+
+      // Close other dropdowns
+      container.querySelectorAll('.list-idea-menu.active').forEach(m => {
+        if (m !== menu) m.classList.remove('active');
+      });
+
+      // Build menu
+      const ideas = typeof allIdeas !== 'undefined' ? allIdeas : [];
+      if (ideas.length === 0) {
+        menu.innerHTML = '<div class="idea-menu-empty">No ideas yet</div>';
+      } else {
+        menu.innerHTML = ideas.map(idea => {
+          const isConnected = idea.connected_papers?.includes(zoteroKey);
+          return `
+            <div class="idea-menu-item ${isConnected ? 'connected' : ''}" data-idea-key="${idea.zotero_key}">
+              <i data-lucide="${isConnected ? 'check' : 'plus'}"></i>
+              <span>${escapeHtml(idea.title)}</span>
+            </div>
+          `;
+        }).join('');
+
+        // Add click handlers for menu items
+        menu.querySelectorAll('.idea-menu-item').forEach(menuItem => {
+          menuItem.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const ideaKey = menuItem.dataset.ideaKey;
+            const isConnected = menuItem.classList.contains('connected');
+
+            if (isConnected) {
+              await removePaperFromIdea(ideaKey, zoteroKey);
+            } else {
+              await addPaperToIdea(ideaKey, zoteroKey);
+            }
+
+            // Refresh the list
+            renderListView(currentFiltered);
+          });
+        });
+      }
+
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+
+      menu.classList.toggle('active');
+    });
+  });
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', () => {
+    container.querySelectorAll('.list-idea-menu.active').forEach(m => {
+      m.classList.remove('active');
     });
   });
 }
