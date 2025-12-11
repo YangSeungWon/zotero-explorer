@@ -93,7 +93,7 @@ function renderListView(papers) {
           </div>
           <div class="list-item-title">${escapeHtml(paper.title)}</div>
           <div class="list-item-authors">${escapeHtml(paper.authors || '')}</div>
-          <div class="list-item-venue">${escapeHtml(paper.venue || '')}</div>
+          <div class="list-item-venue" title="${escapeHtml(paper.venue || '')}">${escapeHtml(abbreviateVenue(paper.venue))}</div>
         </div>
         <div class="list-item-meta">
           ${paper.citation_count ? `<span class="list-item-stat" title="Total citations (Semantic Scholar)"><i data-lucide="quote"></i> ${paper.citation_count}</span>` : ''}
@@ -278,6 +278,95 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Venue abbreviation map
+const VENUE_ABBREVIATIONS = {
+  // HCI
+  'chi': 'CHI',
+  'human factors in computing': 'CHI',
+  'uist': 'UIST',
+  'user interface software': 'UIST',
+  'ubicomp': 'UbiComp',
+  'ubiquitous computing': 'UbiComp',
+  'imwut': 'IMWUT',
+  'interactive, mobile, wearable': 'IMWUT',
+  'cscw': 'CSCW',
+  'computer-supported cooperative': 'CSCW',
+  'computer supported cooperative': 'CSCW',
+  'tochi': 'TOCHI',
+  'trans. comput.-hum. interact': 'TOCHI',
+  'dis ': 'DIS',
+  'designing interactive systems': 'DIS',
+  'iui': 'IUI',
+  'intelligent user interfaces': 'IUI',
+  'mobilehci': 'MobileHCI',
+  'mobile hci': 'MobileHCI',
+  'mobile human-computer': 'MobileHCI',
+  // VR/AR
+  'ieee vr': 'IEEE VR',
+  'virtual reality': 'VR',
+  'ismar': 'ISMAR',
+  'mixed and augmented reality': 'ISMAR',
+  'vrst': 'VRST',
+  // AI/ML
+  'neurips': 'NeurIPS',
+  'neural information processing': 'NeurIPS',
+  'icml': 'ICML',
+  'machine learning': 'ICML',
+  'iclr': 'ICLR',
+  'learning representations': 'ICLR',
+  'aaai': 'AAAI',
+  'artificial intelligence': 'AAAI',
+  'cvpr': 'CVPR',
+  'computer vision and pattern': 'CVPR',
+  'iccv': 'ICCV',
+  'eccv': 'ECCV',
+  'acl': 'ACL',
+  'computational linguistics': 'ACL',
+  'emnlp': 'EMNLP',
+  'empirical methods': 'EMNLP',
+  // Graphics
+  'siggraph': 'SIGGRAPH',
+  'tog': 'TOG',
+  'transactions on graphics': 'TOG',
+  // Systems
+  'sosp': 'SOSP',
+  'operating systems': 'SOSP',
+  'osdi': 'OSDI',
+  'systems design': 'OSDI',
+  // Web
+  'www': 'WWW',
+  'world wide web': 'WWW',
+  // Other
+  'arxiv': 'arXiv',
+  'acm computing surveys': 'CSUR',
+  'communications of the acm': 'CACM',
+};
+
+function abbreviateVenue(venue) {
+  if (!venue) return '';
+
+  const lower = venue.toLowerCase();
+
+  // Check for known abbreviations
+  for (const [pattern, abbrev] of Object.entries(VENUE_ABBREVIATIONS)) {
+    if (lower.includes(pattern)) {
+      return abbrev;
+    }
+  }
+
+  // Fallback: truncate long names
+  if (venue.length > 30) {
+    // Try to extract acronym from parentheses
+    const match = venue.match(/\(([A-Z]{2,})\)/);
+    if (match) return match[1];
+
+    // Otherwise truncate
+    return venue.substring(0, 25) + '...';
+  }
+
+  return venue;
 }
 
 // Initialize on load
