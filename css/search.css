@@ -188,6 +188,26 @@
   transition: all 0.15s;
 }
 
+/* Semantic search input - larger and prominent */
+.block-semantic-input {
+  width: 100% !important;
+  padding: 12px 14px !important;
+  font-size: 14px !important;
+  min-height: 48px;
+  border: 2px solid var(--accent) !important;
+  background: var(--bg-primary) !important;
+}
+
+.block-semantic-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.block-semantic-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.25) !important;
+}
+
 /* Semantic search loading state */
 .filter-block.loading .filter-block-content::after {
   content: '';
