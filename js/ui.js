@@ -356,6 +356,8 @@ function applyFilters() {
   currentFiltered = filterPapers();
   if (currentView === 'map') {
     render(currentFiltered);
+  } else if (currentView === 'list') {
+    renderListView(currentFiltered);
   } else {
     renderTimeline(currentFiltered);
   }
