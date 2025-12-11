@@ -33,6 +33,7 @@ function initSyncPanel() {
   const syncFullBtn = document.getElementById('syncFullBtn');
   const syncClustersBtn = document.getElementById('syncClustersBtn');
   const syncBatchTagsBtn = document.getElementById('syncBatchTagsBtn');
+  const syncCitationsBtn = document.getElementById('syncCitationsBtn');
 
   // Collapse toggle
   collapseBtn?.addEventListener('click', () => {
@@ -52,6 +53,11 @@ function initSyncPanel() {
   // Batch Tags button
   syncBatchTagsBtn?.addEventListener('click', () => {
     document.getElementById('batchTagModal').classList.add('active');
+  });
+
+  // Citations Sync button
+  syncCitationsBtn?.addEventListener('click', () => {
+    startCitationsSync();
   });
 
   // Check initial sync status
@@ -214,6 +220,29 @@ async function startFullSync() {
 
     if (data.status === 'started') {
       addSyncLog('Fetching from Zotero API...');
+      startSyncPolling();
+    } else if (data.error) {
+      updateSyncStatus('error', 'Error');
+      addSyncLog(data.error, 'error');
+    }
+  } catch (e) {
+    updateSyncStatus('error', 'Error');
+    addSyncLog(`Error: ${e.message}`, 'error');
+  }
+}
+
+async function startCitationsSync() {
+  updateSyncStatus('running', 'Starting...');
+  addSyncLog('Starting Citations Sync...');
+
+  try {
+    const data = await apiCall('/citations-sync', { method: 'POST' });
+
+    if (data.status === 'started') {
+      addSyncLog('Fetching from Semantic Scholar...');
+      startSyncPolling();
+    } else if (data.status === 'already_running') {
+      addSyncLog('Sync already in progress');
       startSyncPolling();
     } else if (data.error) {
       updateSyncStatus('error', 'Error');

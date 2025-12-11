@@ -691,6 +691,198 @@ def get_sync_status():
     return jsonify(sync_status)
 
 
+def run_citations_sync_background():
+    """Background task for citations-only sync (fetches ALL papers, ignoring existing)"""
+    global sync_status
+
+    try:
+        results = {"citation_fetch": {"status": "pending"}, "citation_links": {"status": "pending"}}
+
+        # Step 1: Load papers.json
+        update_sync_progress(1, "Loading papers data...")
+        papers_path = Path(__file__).parent / "papers.json"
+        with open(papers_path, 'r', encoding='utf-8') as f:
+            papers_data = json.load(f)
+
+        papers = papers_data.get('papers', [])
+
+        # Step 2: Fetch citation data from Semantic Scholar (ALL papers with DOI)
+        update_sync_progress(2, "Fetching citation data...")
+        print("Fetching citation data from Semantic Scholar (all papers)...")
+
+        S2_API_KEY = os.environ.get("S2_API_KEY")
+        s2_headers = {"x-api-key": S2_API_KEY} if S2_API_KEY else {}
+        S2_FIELDS = "citationCount,citations.paperId,references.paperId"
+
+        papers_with_doi = [p for p in papers if p.get("doi")]
+        citation_results = {"fetched": 0, "skipped": len(papers) - len(papers_with_doi), "failed": 0}
+
+        for i, paper in enumerate(papers_with_doi):
+            doi = paper.get("doi", "")
+            if not doi:
+                continue
+
+            update_sync_progress(2, f"Fetching citations ({i+1}/{len(papers_with_doi)})...", i+1, len(papers_with_doi))
+
+            try:
+                resp = requests.get(
+                    f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}",
+                    params={"fields": S2_FIELDS},
+                    headers=s2_headers,
+                    timeout=15
+                )
+
+                if resp.status_code == 200:
+                    s2_data = resp.json()
+                    paper["s2_id"] = s2_data.get("paperId", "")
+                    paper["citation_count"] = s2_data.get("citationCount", 0)
+                    refs = s2_data.get("references", []) or []
+                    paper["references"] = [r["paperId"] for r in refs if r and r.get("paperId")]
+                    cites = s2_data.get("citations", []) or []
+                    paper["citations"] = [c["paperId"] for c in cites if c and c.get("paperId")]
+                    citation_results["fetched"] += 1
+                elif resp.status_code == 429:
+                    print(f"  Rate limited, waiting 30s...")
+                    time.sleep(30)
+                    citation_results["failed"] += 1
+                else:
+                    citation_results["failed"] += 1
+
+                # Rate limiting
+                time.sleep(1)
+
+            except Exception as e:
+                print(f"  Error fetching {doi}: {e}")
+                citation_results["failed"] += 1
+
+        results["citation_fetch"] = citation_results
+        print(f"Citation fetch: {citation_results}")
+
+        # Step 3: Recalculate citation_links
+        update_sync_progress(3, "Recalculating citation links...")
+        print("Recalculating internal citation links...")
+
+        s2id_to_idx = {p.get("s2_id"): p["id"] for p in papers if p.get("s2_id")}
+        internal_links = []
+
+        for paper in papers:
+            paper_id = paper["id"]
+            for ref_s2id in paper.get("references", []):
+                if ref_s2id in s2id_to_idx:
+                    target_id = s2id_to_idx[ref_s2id]
+                    internal_links.append({"source": paper_id, "target": target_id})
+
+        for paper in papers:
+            paper_id = paper["id"]
+            for cite_s2id in paper.get("citations", []):
+                if cite_s2id in s2id_to_idx:
+                    source_id = s2id_to_idx[cite_s2id]
+                    link = {"source": source_id, "target": paper_id}
+                    if link not in internal_links:
+                        internal_links.append(link)
+
+        papers_data["citation_links"] = internal_links
+        results["citation_links"] = {"count": len(internal_links)}
+        print(f"Found {len(internal_links)} internal citation links")
+
+        # Step 4: Fetch reference_cache for Classics
+        update_sync_progress(4, "Fetching reference cache...")
+        print("Caching top external references for Classics...")
+
+        myS2Ids = set(p.get("s2_id") for p in papers if p.get("s2_id"))
+        ref_counts = {}
+        for paper in papers:
+            for ref_id in paper.get("references", []):
+                if ref_id and ref_id not in myS2Ids:
+                    ref_counts[ref_id] = ref_counts.get(ref_id, 0) + 1
+
+        top_refs = sorted(ref_counts.items(), key=lambda x: -x[1])[:500]
+        top_ref_ids = [r[0] for r in top_refs]
+
+        ref_cache = {}
+        if top_ref_ids:
+            headers = {"x-api-key": S2_API_KEY} if S2_API_KEY else {}
+            update_sync_progress(4, f"Fetching {len(top_ref_ids)} reference details...")
+            for attempt in range(3):
+                try:
+                    resp = requests.post(
+                        "https://api.semanticscholar.org/graph/v1/paper/batch",
+                        json={"ids": top_ref_ids},
+                        params={"fields": "title,citationCount"},
+                        headers=headers,
+                        timeout=60
+                    )
+                    if resp.status_code == 200:
+                        for p in resp.json():
+                            if p and p.get("paperId"):
+                                ref_cache[p["paperId"]] = {
+                                    "title": p.get("title", ""),
+                                    "citations": p.get("citationCount", 0)
+                                }
+                        print(f"Cached {len(ref_cache)} reference details")
+                        break
+                    elif resp.status_code == 429:
+                        wait = 30 * (attempt + 1)
+                        print(f"Rate limited, waiting {wait}s... (attempt {attempt+1}/3)")
+                        time.sleep(wait)
+                    else:
+                        print(f"Failed to fetch reference details: {resp.status_code}")
+                        break
+                except Exception as e:
+                    print(f"Error fetching reference details: {e}")
+                    if attempt < 2:
+                        time.sleep(10)
+
+        papers_data["reference_cache"] = ref_cache
+        results["reference_cache"] = {"count": len(ref_cache)}
+
+        # Save updated papers.json
+        update_sync_progress(4, "Saving papers.json...")
+        with open(papers_path, 'w', encoding='utf-8') as f:
+            json.dump(papers_data, f, ensure_ascii=False, indent=2)
+        print("Saved updated papers.json")
+
+        print("Citations sync completed!")
+        sync_status["last_result"] = results
+        sync_status["error"] = None
+        update_sync_progress(None, "Complete")
+
+    except Exception as e:
+        print(f"Citations sync error: {e}")
+        sync_status["error"] = str(e)
+
+    finally:
+        sync_status["running"] = False
+        sync_status["last_run"] = datetime.now().isoformat()
+        sync_status["current_step"] = None
+        sync_status["progress"] = None
+
+
+@app.route('/api/citations-sync', methods=['POST'])
+def citations_sync():
+    """Start citations-only sync in background (fetches ALL papers)"""
+    global sync_status
+
+    if sync_status["running"]:
+        return jsonify({
+            "status": "already_running",
+            "message": "Sync is already in progress"
+        })
+
+    sync_status["running"] = True
+    sync_status["error"] = None
+    sync_status["last_result"] = None
+
+    thread = threading.Thread(target=run_citations_sync_background)
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({
+        "status": "started",
+        "message": "Citations sync started. Check /api/sync-status for progress."
+    })
+
+
 # ============================================================
 # Semantic Search
 # ============================================================
