@@ -21,7 +21,7 @@ function showToast(title, preview) {
 
   toastTimer = setTimeout(() => {
     toast.classList.remove('show');
-  }, 3000);
+  }, TOAST_TIMEOUT);
 }
 
 // Sync Panel
@@ -347,7 +347,7 @@ function showFilterStatus(status) {
     statusTimer = setTimeout(() => {
       filterStatus.className = 'filter-status';
       filterStatus.textContent = '';
-    }, 800);
+    }, FILTER_STATUS_TIMEOUT);
   }
 }
 
@@ -458,9 +458,24 @@ async function performSemanticSearch(query) {
 
 // Initialize UI event handlers
 function initUIHandlers() {
-  const debouncedApplyFilters = debounce(applyFilters, 200);
+  initFilterHandlers();
+  initViewHandlers();
+  initThemeHandlers();
+  initPanelHandlers();
+  initExportHandlers();
+  initStatsModals();
+  initKeyboardShortcuts();
+  initDropdownHandlers();
+  initSyncModalHandlers();
+  initBatchTagHandlers();
+}
 
-  // Semantic search handler (debounced separately for API calls)
+// ============================================================
+// Filter Handlers
+// ============================================================
+function initFilterHandlers() {
+  const debouncedApplyFilters = debounce(applyFilters, DEBOUNCE_DELAY);
+
   const debouncedSemanticSearch = debounce(async () => {
     const query = document.getElementById('searchFilter').value.trim();
     if (!semanticSearchMode || !query) {
@@ -468,15 +483,13 @@ function initUIHandlers() {
       applyFilters();
       return;
     }
-
     const results = await performSemanticSearch(query);
     if (results) {
       semanticSearchResults = new Map(results.map(r => [r.id, r.similarity]));
       applyFilters();
     }
-  }, 500);
+  }, SEMANTIC_SEARCH_DEBOUNCE);
 
-  // Filter handlers
   document.getElementById('minVenue').addEventListener('change', applyFilters);
   document.getElementById('papersOnly').addEventListener('change', applyFilters);
   document.getElementById('bookmarkedOnly').addEventListener('change', applyFilters);
@@ -495,17 +508,11 @@ function initUIHandlers() {
   semanticToggle.addEventListener('click', () => {
     semanticSearchMode = !semanticSearchMode;
     semanticToggle.classList.toggle('active', semanticSearchMode);
-    semanticToggle.title = semanticSearchMode
-      ? 'Semantic search ON (AI-powered)'
-      : 'Toggle semantic search (AI-powered)';
+    semanticToggle.title = semanticSearchMode ? 'Semantic search ON (AI-powered)' : 'Toggle semantic search (AI-powered)';
 
-    // Update placeholder
     const searchInput = document.getElementById('searchFilter');
-    searchInput.placeholder = semanticSearchMode
-      ? 'Describe what you\'re looking for...'
-      : 'Title/Author/Abstract';
+    searchInput.placeholder = semanticSearchMode ? 'Describe what you\'re looking for...' : 'Title/Author/Abstract';
 
-    // Trigger search if there's existing text
     const query = searchInput.value.trim();
     if (query) {
       if (semanticSearchMode) {
@@ -517,58 +524,8 @@ function initUIHandlers() {
     }
   });
 
-  // View toggle handlers
-  document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      switchView(btn.dataset.view);
-    });
-  });
-
-  // Mini timeline toggle
-  const miniTimelineToggle = document.getElementById('toggleMiniTimeline');
-  if (miniTimelineToggle) {
-    miniTimelineToggle.addEventListener('click', () => {
-      document.getElementById('miniTimeline').classList.toggle('collapsed');
-    });
-  }
-
   // Reset
-  document.getElementById('resetFilter').addEventListener('click', () => {
-    document.getElementById('minVenue').value = '0';
-    document.getElementById('papersOnly').checked = false;
-    document.getElementById('bookmarkedOnly').checked = false;
-    document.getElementById('tagFilter').value = '';
-    document.getElementById('searchFilter').value = '';
-    document.getElementById('searchFilter').placeholder = 'Title/Author/Abstract';
-    document.getElementById('showCitations').checked = true;
-    showCitations = true;
-    highlightCluster = null;
-    filterMode = 'highlight';
-    // Reset semantic search
-    semanticSearchMode = false;
-    semanticSearchResults = null;
-    document.getElementById('semanticToggle').classList.remove('active');
-    document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
-    document.querySelector('.mode-option[data-mode="highlight"]').classList.add('active');
-    document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
-    selectedPaper = null;
-    connectedPapers = new Set();
-    yearRange = null;
-    const brushSelection = document.getElementById('brushSelection');
-    if (brushSelection) brushSelection.classList.remove('active');
-    document.getElementById('detailPanel').classList.remove('active');
-    currentFiltered = [...allPapers];
-    if (currentView === 'map') {
-      render(currentFiltered);
-    } else {
-      renderTimeline(currentFiltered);
-    }
-    if (typeof renderMiniTimeline === 'function') {
-      renderMiniTimeline(allPapers);
-    }
-    updateStats(currentFiltered);
-    updateFilterChips();
-  });
+  document.getElementById('resetFilter').addEventListener('click', resetAllFilters);
 
   // Citations toggle
   document.getElementById('showCitations').addEventListener('change', (e) => {
@@ -586,8 +543,64 @@ function initUIHandlers() {
     });
   });
   document.querySelector(`.mode-option[data-mode="${filterMode}"]`).classList.add('active');
+}
 
-  // Theme toggle
+function resetAllFilters() {
+  document.getElementById('minVenue').value = '0';
+  document.getElementById('papersOnly').checked = false;
+  document.getElementById('bookmarkedOnly').checked = false;
+  document.getElementById('tagFilter').value = '';
+  document.getElementById('searchFilter').value = '';
+  document.getElementById('searchFilter').placeholder = 'Title/Author/Abstract';
+  document.getElementById('showCitations').checked = true;
+  showCitations = true;
+  highlightCluster = null;
+  filterMode = 'highlight';
+  semanticSearchMode = false;
+  semanticSearchResults = null;
+  document.getElementById('semanticToggle').classList.remove('active');
+  document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
+  document.querySelector('.mode-option[data-mode="highlight"]').classList.add('active');
+  document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
+  selectedPaper = null;
+  connectedPapers = new Set();
+  yearRange = null;
+  const brushSelection = document.getElementById('brushSelection');
+  if (brushSelection) brushSelection.classList.remove('active');
+  document.getElementById('detailPanel').classList.remove('active');
+  currentFiltered = [...allPapers];
+  if (currentView === 'map') {
+    render(currentFiltered);
+  } else {
+    renderTimeline(currentFiltered);
+  }
+  if (typeof renderMiniTimeline === 'function') {
+    renderMiniTimeline(allPapers);
+  }
+  updateStats(currentFiltered);
+  updateFilterChips();
+}
+
+// ============================================================
+// View Handlers
+// ============================================================
+function initViewHandlers() {
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+
+  const miniTimelineToggle = document.getElementById('toggleMiniTimeline');
+  if (miniTimelineToggle) {
+    miniTimelineToggle.addEventListener('click', () => {
+      document.getElementById('miniTimeline').classList.toggle('collapsed');
+    });
+  }
+}
+
+// ============================================================
+// Theme Handlers
+// ============================================================
+function initThemeHandlers() {
   const themeToggle = document.getElementById('themeToggle');
   const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -610,13 +623,16 @@ function initUIHandlers() {
     }
   });
 
-  const savedTheme = localStorage.getItem('theme') || 'auto';
-  applyTheme(savedTheme);
+  applyTheme(localStorage.getItem('theme') || 'auto');
+}
 
-  // Close detail panel
+// ============================================================
+// Panel Handlers (sidebar, detail panel, resize)
+// ============================================================
+function initPanelHandlers() {
   document.getElementById('closeDetail').addEventListener('click', clearSelection);
 
-  // Left sidebar collapse (affects both cluster panel and sync panel)
+  // Left sidebar collapse
   const leftSidebar = document.getElementById('leftSidebar');
   if (localStorage.getItem('sidebarCollapsed') === 'true') {
     leftSidebar.classList.add('collapsed');
@@ -628,7 +644,11 @@ function initUIHandlers() {
     setTimeout(() => Plotly.Plots.resize('plot'), 250);
   });
 
-  // Detail panel resize
+  initDetailPanelResize();
+  initMiniTimelineResize();
+}
+
+function initDetailPanelResize() {
   const resizeHandle = document.getElementById('resizeHandle');
   const detailPanel = document.getElementById('detailPanel');
   let isResizing = false;
@@ -644,7 +664,7 @@ function initUIHandlers() {
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
     const newWidth = window.innerWidth - e.clientX;
-    if (newWidth >= 250 && newWidth <= 600) {
+    if (newWidth >= DETAIL_PANEL_MIN_WIDTH && newWidth <= DETAIL_PANEL_MAX_WIDTH) {
       detailPanel.style.width = newWidth + 'px';
       Plotly.Plots.resize('plot');
     }
@@ -659,301 +679,286 @@ function initUIHandlers() {
       localStorage.setItem('detailPanelWidth', detailPanel.style.width);
     }
   });
+}
 
-  // Mini timeline resize
+function initMiniTimelineResize() {
   const miniTimelineResize = document.getElementById('miniTimelineResize');
   const miniTimelineContent = document.querySelector('.mini-timeline-content');
   let isResizingTimeline = false;
 
-  if (miniTimelineResize && miniTimelineContent) {
-    // Restore saved height
-    const savedHeight = localStorage.getItem('miniTimelineHeight');
-    if (savedHeight) {
-      miniTimelineContent.style.height = savedHeight;
-    }
+  if (!miniTimelineResize || !miniTimelineContent) return;
 
-    miniTimelineResize.addEventListener('mousedown', (e) => {
-      isResizingTimeline = true;
-      miniTimelineResize.classList.add('dragging');
-      document.body.style.cursor = 'ns-resize';
-      document.body.style.userSelect = 'none';
-      e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isResizingTimeline) return;
-      const containerRect = document.querySelector('.plot-container').getBoundingClientRect();
-      const newHeight = containerRect.bottom - e.clientY - 28; // 28px for header
-      if (newHeight >= 40 && newHeight <= 200) {
-        miniTimelineContent.style.height = newHeight + 'px';
-        renderMiniTimeline(allPapers);
-      }
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (isResizingTimeline) {
-        isResizingTimeline = false;
-        miniTimelineResize.classList.remove('dragging');
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-        localStorage.setItem('miniTimelineHeight', miniTimelineContent.style.height);
-      }
-    });
+  const savedHeight = localStorage.getItem('miniTimelineHeight');
+  if (savedHeight) {
+    miniTimelineContent.style.height = savedHeight;
   }
 
-  // Missing papers modal
+  miniTimelineResize.addEventListener('mousedown', (e) => {
+    isResizingTimeline = true;
+    miniTimelineResize.classList.add('dragging');
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizingTimeline) return;
+    const containerRect = document.querySelector('.plot-container').getBoundingClientRect();
+    const newHeight = containerRect.bottom - e.clientY - 28;
+    if (newHeight >= MINI_TIMELINE_MIN_HEIGHT && newHeight <= MINI_TIMELINE_MAX_HEIGHT) {
+      miniTimelineContent.style.height = newHeight + 'px';
+      renderMiniTimeline(allPapers);
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isResizingTimeline) {
+      isResizingTimeline = false;
+      miniTimelineResize.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      localStorage.setItem('miniTimelineHeight', miniTimelineContent.style.height);
+    }
+  });
+}
+
+// ============================================================
+// Export Handlers
+// ============================================================
+function initExportHandlers() {
+  document.getElementById('copyClusters').addEventListener('click', copyClusterStructure);
+  document.getElementById('copyFiltered').addEventListener('click', copyFilteredPapers);
+}
+
+async function copyClusterStructure() {
+  const clusters = [...new Set(allPapers.map(p => p.cluster))].sort((a, b) => a - b);
+  let text = `# Paper Library Cluster Structure\n`;
+  text += `Total: ${allPapers.length} papers, ${clusters.length} clusters\n\n`;
+
+  clusters.forEach(c => {
+    const clusterPapers = allPapers.filter(p => p.cluster === c);
+    const label = clusterLabels[c] || `Cluster ${c}`;
+    text += `## Cluster ${c}: ${label} (${clusterPapers.length} papers)\n`;
+    clusterPapers.forEach(p => {
+      const year = p.year || 'N/A';
+      const venue = p.venue ? ` - ${p.venue.substring(0, 30)}` : '';
+      text += `- ${p.title} (${year})${venue}\n`;
+    });
+    text += '\n';
+  });
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(`Copied ${clusters.length} clusters`, text);
+  } catch (e) {
+    alert('Copy failed: ' + e.message);
+  }
+}
+
+async function copyFilteredPapers() {
+  const papers = currentFiltered;
+  let text = `# Paper List (${papers.length} papers)\n\n`;
+
+  papers.forEach((p, i) => {
+    text += `## ${i + 1}. ${p.title}\n`;
+    text += `- **Year**: ${p.year || 'N/A'}\n`;
+    text += `- **Authors**: ${p.authors || 'N/A'}\n`;
+    text += `- **Venue**: ${p.venue || 'N/A'}\n`;
+    text += `- **Cluster**: ${p.cluster} (${clusterLabels[p.cluster] || ''})\n`;
+    if (p.citation_count) text += `- **Citations**: ${p.citation_count}\n`;
+    if (p.doi) text += `- **DOI**: ${p.doi}\n`;
+    if (p.tags && p.tags !== 'nan') text += `- **Tags**: ${p.tags}\n`;
+    if (p.abstract) text += `\n**Abstract**:\n${p.abstract}\n`;
+    if (p.notes) text += `\n**Notes**:\n${p.notes}\n`;
+    text += '\n---\n\n';
+  });
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(`Copied ${papers.length} papers`, text);
+  } catch (e) {
+    alert('Copy failed: ' + e.message);
+  }
+}
+
+// ============================================================
+// Stats Modals
+// ============================================================
+function initStatsModals() {
   const missingModal = document.getElementById('missingModal');
   const missingList = document.getElementById('missingList');
 
-  // Copy clusters
-  document.getElementById('copyClusters').addEventListener('click', async () => {
-    const clusters = [...new Set(allPapers.map(p => p.cluster))].sort((a, b) => a - b);
-    let text = `# Paper Library Cluster Structure\n`;
-    text += `Total: ${allPapers.length} papers, ${clusters.length} clusters\n\n`;
+  document.getElementById('showGlobalStats').addEventListener('click', () => showGlobalStatsModal(missingModal, missingList));
+  document.getElementById('showClassics').addEventListener('click', () => showClassicsModal(missingModal, missingList));
+  document.getElementById('showNewWork').addEventListener('click', () => showNewWorkModal(missingModal, missingList));
 
-    clusters.forEach(c => {
-      const clusterPapers = allPapers.filter(p => p.cluster === c);
-      const label = clusterLabels[c] || `Cluster ${c}`;
-      text += `## Cluster ${c}: ${label} (${clusterPapers.length} papers)\n`;
-      clusterPapers.forEach(p => {
-        const year = p.year || 'N/A';
-        const venue = p.venue ? ` - ${p.venue.substring(0, 30)}` : '';
-        text += `- ${p.title} (${year})${venue}\n`;
-      });
-      text += '\n';
-    });
-
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast(`Copied ${clusters.length} clusters`, text);
-    } catch (e) {
-      alert('Copy failed: ' + e.message);
-    }
-  });
-
-  // Copy filtered
-  document.getElementById('copyFiltered').addEventListener('click', async () => {
-    const papers = currentFiltered;
-    let text = `# Paper List (${papers.length} papers)\n\n`;
-
-    papers.forEach((p, i) => {
-      text += `## ${i + 1}. ${p.title}\n`;
-      text += `- **Year**: ${p.year || 'N/A'}\n`;
-      text += `- **Authors**: ${p.authors || 'N/A'}\n`;
-      text += `- **Venue**: ${p.venue || 'N/A'}\n`;
-      text += `- **Cluster**: ${p.cluster} (${clusterLabels[p.cluster] || ''})\n`;
-      if (p.citation_count) text += `- **Citations**: ${p.citation_count}\n`;
-      if (p.doi) text += `- **DOI**: ${p.doi}\n`;
-      if (p.tags && p.tags !== 'nan') text += `- **Tags**: ${p.tags}\n`;
-      if (p.abstract) text += `\n**Abstract**:\n${p.abstract}\n`;
-      if (p.notes) text += `\n**Notes**:\n${p.notes}\n`;
-      text += '\n---\n\n';
-    });
-
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast(`Copied ${papers.length} papers`, text);
-    } catch (e) {
-      alert('Copy failed: ' + e.message);
-    }
-  });
-
-  // Global stats
-  document.getElementById('showGlobalStats').addEventListener('click', () => {
-    const papers = allPapers.filter(p => p.is_paper);
-    const apps = allPapers.filter(p => !p.is_paper);
-    const years = papers.map(p => p.year).filter(y => y);
-    const citations = papers.map(p => p.citation_count).filter(c => c !== null && c !== undefined);
-    const withNotes = allPapers.filter(p => p.has_notes).length;
-
-    let html = '<h4 style="font-size: 14px; margin-bottom: 12px;"><i data-lucide="trending-up"></i> Library Statistics</h4>';
-
-    if (dataMeta.csv_updated || dataMeta.map_built) {
-      html += '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px;">';
-      if (dataMeta.csv_updated) html += `<i data-lucide="file"></i> CSV: ${dataMeta.csv_updated}<br>`;
-      if (dataMeta.map_built) html += `<i data-lucide="map"></i> Map: ${dataMeta.map_built}`;
-      html += '</div>';
-    }
-
-    html += `
-      <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
-        <div style="flex: 1;">
-          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Total Items</span><strong>${allPapers.length}</strong></div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Papers</span><strong>${papers.length}</strong></div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Apps/Services</span><strong>${apps.length}</strong></div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>With Notes</span><strong>${withNotes} (${Math.round(withNotes/allPapers.length*100)}%)</strong></div>
-        </div>
-      </div>`;
-
-    if (years.length > 0) {
-      html += `
-        <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
-          <div style="flex: 1;">
-            <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="calendar"></i> Years</div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Range</span><strong>${Math.min(...years)} - ${Math.max(...years)}</strong></div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Average</span><strong>${Math.round(years.reduce((a,b)=>a+b,0)/years.length)}</strong></div>
-          </div>
-        </div>`;
-    }
-
-    if (citations.length > 0) {
-      const totalCitations = citations.reduce((a,b) => a+b, 0);
-      html += `
-        <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
-          <div style="flex: 1;">
-            <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="quote"></i> Citations</div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Total</span><strong>${totalCitations.toLocaleString()}</strong></div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Average</span><strong>${Math.round(totalCitations/citations.length)}</strong></div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Max</span><strong>${Math.max(...citations).toLocaleString()}</strong></div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Papers with data</span><strong>${citations.length} / ${papers.length}</strong></div>
-          </div>
-        </div>`;
-    }
-
-    html += `
-      <div class="missing-item">
-        <div style="flex: 1;">
-          <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="link"></i> Internal Links</div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Citation Links</span><strong>${citationLinks.length}</strong></div>
-        </div>
-      </div>`;
-
-    missingList.innerHTML = html;
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-    missingModal.classList.add('active');
-  });
-
-  // Author Stats
-  document.getElementById('showAuthorStats')?.addEventListener('click', () => {
-    showAuthorStats();
-  });
-
+  document.getElementById('showAuthorStats')?.addEventListener('click', showAuthorStats);
   document.getElementById('closeAuthorStats')?.addEventListener('click', () => {
     document.getElementById('authorStatsModal').classList.remove('active');
   });
-
   document.getElementById('authorStatsModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'authorStatsModal') {
       document.getElementById('authorStatsModal').classList.remove('active');
     }
   });
 
-  // Classics
-  document.getElementById('showClassics').addEventListener('click', () => {
-    let papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
-    if (highlightCluster !== null) {
-      papers = papers.filter(p => p.cluster === highlightCluster);
-    }
-    const isFiltered = papers.length < allPapers.length;
-    const myS2Ids = new Set(allPapers.map(p => p.s2_id).filter(Boolean));
-    const myDOIs = new Set(allPapers.map(p => (p.doi || '').toLowerCase()).filter(Boolean));
-    const classicCounts = {};
-
-    papers.forEach(p => {
-      (p.references || []).forEach(refId => {
-        if (!myS2Ids.has(refId)) {
-          classicCounts[`s2:${refId}`] = (classicCounts[`s2:${refId}`] || 0) + 1;
-        }
-      });
-      (p.cr_references || []).forEach(refDoi => {
-        if (refDoi && !myDOIs.has(refDoi.toLowerCase())) {
-          classicCounts[`doi:${refDoi}`] = (classicCounts[`doi:${refDoi}`] || 0) + 1;
-        }
-      });
-    });
-
-    const sorted = Object.entries(classicCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
-
-    let html = '<h4 style="color: #58a6ff; font-size: 14px; margin-bottom: 12px;"><i data-lucide="book-open"></i> Classics</h4>';
-    const scope = isFiltered ? `${papers.length} filtered papers` : 'All papers';
-    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Foundational papers frequently cited by ${scope.toLowerCase()}</p>`;
-
-    if (sorted.length > 0) {
-      // Use cached reference data
-      const refCache = typeof referenceCache !== 'undefined' ? referenceCache : {};
-
-      html += sorted.map(([key, count], i) => {
-        const type = key.substring(0, key.indexOf(':'));
-        const id = key.substring(key.indexOf(':') + 1);
-        const url = type === 's2' ? `https://www.semanticscholar.org/paper/${id}` : `https://doi.org/${id}`;
-        const details = refCache[id];
-        const title = details?.title || (type === 's2' ? 'Semantic Scholar →' : id.substring(0, 40) + (id.length > 40 ? '...' : ''));
-        const totalCites = details?.citations;
-        const citeInfo = totalCites !== undefined
-          ? `<span class="missing-count">Cited by ${count} papers</span> <span style="color: var(--text-muted); font-size: 10px;">(${totalCites.toLocaleString()} total)</span>`
-          : `<span class="missing-count">Cited by ${count} papers</span>`;
-        return `<div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info">${citeInfo}<br><a class="missing-link" href="${url}" target="_blank" title="${title}">${title.length > 60 ? title.substring(0, 60) + '...' : title}</a></div></div>`;
-      }).join('');
-      missingList.innerHTML = html;
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-      }
-      missingModal.classList.add('active');
-    } else {
-      html += '<p style="color: var(--text-muted);">No classics found</p>';
-      missingList.innerHTML = html;
-      missingModal.classList.add('active');
-    }
-  });
-
-  // New Work
-  document.getElementById('showNewWork').addEventListener('click', () => {
-    let papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
-    if (highlightCluster !== null) {
-      papers = papers.filter(p => p.cluster === highlightCluster);
-    }
-    const isFiltered = papers.length < allPapers.length;
-    const myS2Ids = new Set(allPapers.map(p => p.s2_id).filter(Boolean));
-    const newWorkCounts = {};
-
-    papers.forEach(p => {
-      (p.citations || []).forEach(citeId => {
-        if (!myS2Ids.has(citeId)) {
-          newWorkCounts[citeId] = (newWorkCounts[citeId] || 0) + 1;
-        }
-      });
-    });
-
-    const sorted = Object.entries(newWorkCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
-
-    let html = '<h4 style="color: #f97316; font-size: 14px; margin-bottom: 12px;"><i data-lucide="sparkles"></i> New Work</h4>';
-    const scope2 = isFiltered ? `${papers.length} filtered papers` : 'all papers';
-    html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Recent papers that cite ${scope2}</p>`;
-
-    if (sorted.length > 0) {
-      html += sorted.map(([s2Id, count], i) => `
-        <div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info"><span class="missing-count" style="background: #f9731633; color: #f97316;">Cites ${count} papers</span><br><a class="missing-link" href="https://www.semanticscholar.org/paper/${s2Id}" target="_blank">Semantic Scholar →</a></div></div>
-      `).join('');
-    } else {
-      html += '<p style="color: var(--text-muted);">No new work found (S2 citations data needed)</p>';
-    }
-
-    missingList.innerHTML = html;
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-    missingModal.classList.add('active');
-  });
-
-  // Modal close
-  document.getElementById('closeMissing').addEventListener('click', () => {
-    missingModal.classList.remove('active');
-  });
-
+  document.getElementById('closeMissing').addEventListener('click', () => missingModal.classList.remove('active'));
   missingModal.addEventListener('click', (e) => {
-    if (e.target === missingModal) {
-      missingModal.classList.remove('active');
-    }
+    if (e.target === missingModal) missingModal.classList.remove('active');
+  });
+}
+
+function showGlobalStatsModal(modal, list) {
+  const papers = allPapers.filter(p => p.is_paper);
+  const apps = allPapers.filter(p => !p.is_paper);
+  const years = papers.map(p => p.year).filter(y => y);
+  const citations = papers.map(p => p.citation_count).filter(c => c !== null && c !== undefined);
+  const withNotes = allPapers.filter(p => p.has_notes).length;
+
+  let html = '<h4 style="font-size: 14px; margin-bottom: 12px;"><i data-lucide="trending-up"></i> Library Statistics</h4>';
+
+  if (dataMeta.csv_updated || dataMeta.map_built) {
+    html += '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px;">';
+    if (dataMeta.csv_updated) html += `<i data-lucide="file"></i> CSV: ${dataMeta.csv_updated}<br>`;
+    if (dataMeta.map_built) html += `<i data-lucide="map"></i> Map: ${dataMeta.map_built}`;
+    html += '</div>';
+  }
+
+  html += `
+    <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
+      <div style="flex: 1;">
+        <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Total Items</span><strong>${allPapers.length}</strong></div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Papers</span><strong>${papers.length}</strong></div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Apps/Services</span><strong>${apps.length}</strong></div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>With Notes</span><strong>${withNotes} (${Math.round(withNotes/allPapers.length*100)}%)</strong></div>
+      </div>
+    </div>`;
+
+  if (years.length > 0) {
+    html += `
+      <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
+        <div style="flex: 1;">
+          <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="calendar"></i> Years</div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Range</span><strong>${Math.min(...years)} - ${Math.max(...years)}</strong></div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Average</span><strong>${Math.round(years.reduce((a,b)=>a+b,0)/years.length)}</strong></div>
+        </div>
+      </div>`;
+  }
+
+  if (citations.length > 0) {
+    const totalCitations = citations.reduce((a,b) => a+b, 0);
+    html += `
+      <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
+        <div style="flex: 1;">
+          <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="quote"></i> Citations</div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Total</span><strong>${totalCitations.toLocaleString()}</strong></div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Average</span><strong>${Math.round(totalCitations/citations.length)}</strong></div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Max</span><strong>${Math.max(...citations).toLocaleString()}</strong></div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Papers with data</span><strong>${citations.length} / ${papers.length}</strong></div>
+        </div>
+      </div>`;
+  }
+
+  html += `
+    <div class="missing-item">
+      <div style="flex: 1;">
+        <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="link"></i> Internal Links</div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Citation Links</span><strong>${citationLinks.length}</strong></div>
+      </div>
+    </div>`;
+
+  list.innerHTML = html;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  modal.classList.add('active');
+}
+
+function showClassicsModal(modal, list) {
+  let papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
+  if (highlightCluster !== null) papers = papers.filter(p => p.cluster === highlightCluster);
+  const isFiltered = papers.length < allPapers.length;
+  const myS2Ids = new Set(allPapers.map(p => p.s2_id).filter(Boolean));
+  const myDOIs = new Set(allPapers.map(p => (p.doi || '').toLowerCase()).filter(Boolean));
+  const classicCounts = {};
+
+  papers.forEach(p => {
+    (p.references || []).forEach(refId => {
+      if (!myS2Ids.has(refId)) classicCounts[`s2:${refId}`] = (classicCounts[`s2:${refId}`] || 0) + 1;
+    });
+    (p.cr_references || []).forEach(refDoi => {
+      if (refDoi && !myDOIs.has(refDoi.toLowerCase())) classicCounts[`doi:${refDoi}`] = (classicCounts[`doi:${refDoi}`] || 0) + 1;
+    });
   });
 
-  // Keyboard shortcuts
+  const sorted = Object.entries(classicCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
+  const scope = isFiltered ? `${papers.length} filtered papers` : 'All papers';
+
+  let html = '<h4 style="color: #58a6ff; font-size: 14px; margin-bottom: 12px;"><i data-lucide="book-open"></i> Classics</h4>';
+  html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Foundational papers frequently cited by ${scope.toLowerCase()}</p>`;
+
+  if (sorted.length > 0) {
+    const refCache = typeof referenceCache !== 'undefined' ? referenceCache : {};
+    html += sorted.map(([key, count], i) => {
+      const type = key.substring(0, key.indexOf(':'));
+      const id = key.substring(key.indexOf(':') + 1);
+      const url = type === 's2' ? `https://www.semanticscholar.org/paper/${id}` : `https://doi.org/${id}`;
+      const details = refCache[id];
+      const title = details?.title || (type === 's2' ? 'Semantic Scholar →' : id.substring(0, 40) + (id.length > 40 ? '...' : ''));
+      const totalCites = details?.citations;
+      const citeInfo = totalCites !== undefined
+        ? `<span class="missing-count">Cited by ${count} papers</span> <span style="color: var(--text-muted); font-size: 10px;">(${totalCites.toLocaleString()} total)</span>`
+        : `<span class="missing-count">Cited by ${count} papers</span>`;
+      return `<div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info">${citeInfo}<br><a class="missing-link" href="${url}" target="_blank" title="${title}">${title.length > 60 ? title.substring(0, 60) + '...' : title}</a></div></div>`;
+    }).join('');
+  } else {
+    html += '<p style="color: var(--text-muted);">No classics found</p>';
+  }
+
+  list.innerHTML = html;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  modal.classList.add('active');
+}
+
+function showNewWorkModal(modal, list) {
+  let papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
+  if (highlightCluster !== null) papers = papers.filter(p => p.cluster === highlightCluster);
+  const isFiltered = papers.length < allPapers.length;
+  const myS2Ids = new Set(allPapers.map(p => p.s2_id).filter(Boolean));
+  const newWorkCounts = {};
+
+  papers.forEach(p => {
+    (p.citations || []).forEach(citeId => {
+      if (!myS2Ids.has(citeId)) newWorkCounts[citeId] = (newWorkCounts[citeId] || 0) + 1;
+    });
+  });
+
+  const sorted = Object.entries(newWorkCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
+  const scope = isFiltered ? `${papers.length} filtered papers` : 'all papers';
+
+  let html = '<h4 style="color: #f97316; font-size: 14px; margin-bottom: 12px;"><i data-lucide="sparkles"></i> New Work</h4>';
+  html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Recent papers that cite ${scope}</p>`;
+
+  if (sorted.length > 0) {
+    html += sorted.map(([s2Id, count], i) => `
+      <div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info"><span class="missing-count" style="background: #f9731633; color: #f97316;">Cites ${count} papers</span><br><a class="missing-link" href="https://www.semanticscholar.org/paper/${s2Id}" target="_blank">Semantic Scholar →</a></div></div>
+    `).join('');
+  } else {
+    html += '<p style="color: var(--text-muted);">No new work found (S2 citations data needed)</p>';
+  }
+
+  list.innerHTML = html;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  modal.classList.add('active');
+}
+
+// ============================================================
+// Keyboard Shortcuts
+// ============================================================
+function initKeyboardShortcuts() {
+  const missingModal = document.getElementById('missingModal');
+
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
-      if (e.key === 'Escape') {
-        e.target.blur();
-      }
+      if (e.key === 'Escape') e.target.blur();
       return;
     }
 
@@ -976,31 +981,17 @@ function initUIHandlers() {
 
       case 'j':
       case 'J':
-        if (selectedPaper && currentFiltered.length > 0) {
-          const currentIdx = currentFiltered.findIndex(p => p.id === selectedPaper.id);
-          const nextIdx = (currentIdx + 1) % currentFiltered.length;
-          showDetail(currentFiltered[nextIdx]);
-        } else if (currentFiltered.length > 0) {
-          showDetail(currentFiltered[0]);
-        }
+        navigatePaper(1);
         break;
 
       case 'k':
       case 'K':
-        if (selectedPaper && currentFiltered.length > 0) {
-          const currentIdx = currentFiltered.findIndex(p => p.id === selectedPaper.id);
-          const prevIdx = (currentIdx - 1 + currentFiltered.length) % currentFiltered.length;
-          showDetail(currentFiltered[prevIdx]);
-        } else if (currentFiltered.length > 0) {
-          showDetail(currentFiltered[currentFiltered.length - 1]);
-        }
+        navigatePaper(-1);
         break;
 
       case 'r':
       case 'R':
-        if (!e.ctrlKey && !e.metaKey) {
-          document.getElementById('resetFilter').click();
-        }
+        if (!e.ctrlKey && !e.metaKey) document.getElementById('resetFilter').click();
         break;
 
       case 'c':
@@ -1029,13 +1020,27 @@ Hover   Preview paper & citation lines`);
         break;
     }
   });
+}
 
-  // Header dropdown handlers
+function navigatePaper(direction) {
+  if (currentFiltered.length === 0) return;
+  if (selectedPaper) {
+    const currentIdx = currentFiltered.findIndex(p => p.id === selectedPaper.id);
+    const nextIdx = (currentIdx + direction + currentFiltered.length) % currentFiltered.length;
+    showDetail(currentFiltered[nextIdx]);
+  } else {
+    showDetail(currentFiltered[direction > 0 ? 0 : currentFiltered.length - 1]);
+  }
+}
+
+// ============================================================
+// Dropdown Handlers
+// ============================================================
+function initDropdownHandlers() {
   document.querySelectorAll('.header-dropdown').forEach(dropdown => {
     const btn = dropdown.querySelector('.header-dropdown-btn');
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Close other dropdowns
       document.querySelectorAll('.header-dropdown').forEach(d => {
         if (d !== dropdown) d.classList.remove('open');
       });
@@ -1043,46 +1048,36 @@ Hover   Preview paper & citation lines`);
     });
   });
 
-  // Close dropdowns when clicking outside
   document.addEventListener('click', () => {
     document.querySelectorAll('.header-dropdown').forEach(d => d.classList.remove('open'));
   });
 
-  // Close dropdown after selecting item
   document.querySelectorAll('.header-dropdown-item').forEach(item => {
-    item.addEventListener('click', () => {
-      item.closest('.header-dropdown').classList.remove('open');
-    });
+    item.addEventListener('click', () => item.closest('.header-dropdown').classList.remove('open'));
   });
+}
 
-  // ============================================================
-  // Cluster Tag Sync (legacy header button, now in sync panel)
-  // ============================================================
+// ============================================================
+// Sync Modal Handlers
+// ============================================================
+function initSyncModalHandlers() {
+  // Cluster Tag Sync (legacy)
   document.getElementById('syncClusterTags')?.addEventListener('click', async () => {
     const clusterCount = Object.keys(clusterLabels).length;
     const paperCount = allPapers.length;
 
-    if (!confirm(`클러스터 라벨을 Zotero 태그로 동기화합니다.\n\n${clusterCount}개 클러스터, ${paperCount}개 논문\n태그 형식: "cluster: [라벨명]"\n\n계속하시겠습니까?`)) {
-      return;
-    }
+    if (!confirm(`클러스터 라벨을 Zotero 태그로 동기화합니다.\n\n${clusterCount}개 클러스터, ${paperCount}개 논문\n태그 형식: "cluster: [라벨명]"\n\n계속하시겠습니까?`)) return;
 
     try {
       showToast('동기화 중...', '클러스터 태그를 Zotero에 동기화하는 중입니다.');
-
       const result = await syncClusterTags('cluster:', clusterLabels);
-
-      showToast(
-        '동기화 완료',
-        `성공: ${result.success || 0}, 실패: ${result.failed || 0}, 건너뜀: ${result.skipped || 0}`
-      );
+      showToast('동기화 완료', `성공: ${result.success || 0}, 실패: ${result.failed || 0}, 건너뜀: ${result.skipped || 0}`);
     } catch (e) {
       alert('동기화 실패: ' + e.message);
     }
   });
 
-  // ============================================================
-  // Full Sync (Background with Modal)
-  // ============================================================
+  // Full Sync Modal
   const syncModal = document.getElementById('syncModal');
   const syncSteps = [
     document.getElementById('syncStep1'),
@@ -1096,13 +1091,11 @@ Hover   Preview paper & citation lines`);
   const syncErrorMsg = document.getElementById('syncErrorMsg');
 
   function resetSyncModal() {
-    syncSteps.forEach((step, i) => {
+    syncSteps.forEach(step => {
       step.className = 'sync-step';
       step.querySelector('.sync-icon').innerHTML = '<i data-lucide="loader" class="spin"></i>';
     });
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
     syncResult.style.display = 'none';
     syncError.style.display = 'none';
   }
@@ -1110,15 +1103,12 @@ Hover   Preview paper & citation lines`);
   function updateSyncStep(stepIndex, state) {
     const step = syncSteps[stepIndex];
     if (!step) return;
-
     step.className = 'sync-step ' + state;
     const icon = step.querySelector('.sync-icon');
     if (state === 'active') icon.innerHTML = '<i data-lucide="refresh-cw" class="spin"></i>';
     else if (state === 'done') icon.innerHTML = '<i data-lucide="check"></i>';
     else if (state === 'error') icon.innerHTML = '<i data-lucide="x"></i>';
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
   document.getElementById('fullSync')?.addEventListener('click', async () => {
@@ -1128,12 +1118,8 @@ Hover   Preview paper & citation lines`);
 
     try {
       const result = await apiCall('/full-sync', { method: 'POST' });
+      if (result.status === 'already_running') updateSyncStep(0, 'active');
 
-      if (result.status === 'already_running') {
-        updateSyncStep(0, 'active');
-      }
-
-      // Poll for completion
       let lastBuildStatus = null;
       const pollInterval = setInterval(async () => {
         try {
@@ -1141,40 +1127,28 @@ Hover   Preview paper & citation lines`);
 
           if (!status.running) {
             clearInterval(pollInterval);
-
             if (status.error) {
               syncSteps.forEach((_, i) => updateSyncStep(i, 'error'));
               syncErrorMsg.textContent = status.error;
               syncError.style.display = 'block';
             } else if (status.last_result) {
               syncSteps.forEach((_, i) => updateSyncStep(i, 'done'));
-
               const r = status.last_result;
-              const build = r.build || {};
-              const cluster = r.cluster_sync || {};
-              const review = r.review_sync || {};
-
               syncStats.innerHTML = `
-                <strong>Build:</strong> ${build.papers || 0} papers, ${build.clusters || 0} clusters<br>
-                <strong>Cluster Tags:</strong> ${cluster.success || 0} synced<br>
-                <strong>Review Tags:</strong> ${review.success || 0} synced
+                <strong>Build:</strong> ${r.build?.papers || 0} papers, ${r.build?.clusters || 0} clusters<br>
+                <strong>Cluster Tags:</strong> ${r.cluster_sync?.success || 0} synced<br>
+                <strong>Review Tags:</strong> ${r.review_sync?.success || 0} synced
               `;
               syncResult.style.display = 'block';
             }
-          } else {
-            // Update step indicators based on progress
-            if (status.last_result?.build?.status === 'success' && lastBuildStatus !== 'success') {
-              updateSyncStep(0, 'done');
-              updateSyncStep(1, 'done');
-              updateSyncStep(2, 'active');
-              lastBuildStatus = 'success';
-            }
+          } else if (status.last_result?.build?.status === 'success' && lastBuildStatus !== 'success') {
+            updateSyncStep(0, 'done');
+            updateSyncStep(1, 'done');
+            updateSyncStep(2, 'active');
+            lastBuildStatus = 'success';
           }
-        } catch (e) {
-          // Ignore polling errors
-        }
+        } catch (e) { /* Ignore polling errors */ }
       }, 3000);
-
     } catch (e) {
       updateSyncStep(0, 'error');
       syncErrorMsg.textContent = e.message;
@@ -1182,17 +1156,14 @@ Hover   Preview paper & citation lines`);
     }
   });
 
-  document.getElementById('closeSyncModal').addEventListener('click', () => {
-    syncModal.classList.remove('active');
-  });
+  document.getElementById('closeSyncModal').addEventListener('click', () => syncModal.classList.remove('active'));
+  document.getElementById('reloadAfterSync').addEventListener('click', () => location.reload());
+}
 
-  document.getElementById('reloadAfterSync').addEventListener('click', () => {
-    location.reload();
-  });
-
-  // ============================================================
-  // Batch Tag Management
-  // ============================================================
+// ============================================================
+// Batch Tag Handlers
+// ============================================================
+function initBatchTagHandlers() {
   const batchTagModal = document.getElementById('batchTagModal');
   const batchCount = document.getElementById('batchCount');
   const batchTagInput = document.getElementById('batchTagInput');
@@ -1201,7 +1172,6 @@ Hover   Preview paper & citation lines`);
   const batchProgressFill = document.getElementById('batchProgressFill');
   const batchProgressStatus = document.getElementById('batchProgressStatus');
 
-  // Open batch tag modal (legacy header button, now in sync panel)
   document.getElementById('batchTagManager')?.addEventListener('click', () => {
     batchCount.textContent = currentFiltered.length;
     batchTagInput.value = '';
@@ -1210,45 +1180,26 @@ Hover   Preview paper & citation lines`);
     batchTagInput.focus();
   });
 
-  // Close batch tag modal
-  document.getElementById('closeBatchTag').addEventListener('click', () => {
-    batchTagModal.classList.remove('active');
-  });
-
+  document.getElementById('closeBatchTag').addEventListener('click', () => batchTagModal.classList.remove('active'));
   batchTagModal.addEventListener('click', (e) => {
-    if (e.target === batchTagModal) {
-      batchTagModal.classList.remove('active');
-    }
+    if (e.target === batchTagModal) batchTagModal.classList.remove('active');
   });
 
-  // Execute batch tag operation
   document.getElementById('executeBatchTag').addEventListener('click', async () => {
     const tag = batchTagInput.value.trim();
     const action = batchAction.value;
 
-    if (!tag) {
-      alert('태그를 입력하세요.');
-      return;
-    }
+    if (!tag) { alert('태그를 입력하세요.'); return; }
 
     const papers = currentFiltered;
-    if (papers.length === 0) {
-      alert('필터된 논문이 없습니다.');
-      return;
-    }
+    if (papers.length === 0) { alert('필터된 논문이 없습니다.'); return; }
 
     const zoteroKeys = papers.map(p => p.id).filter(Boolean);
-    if (zoteroKeys.length === 0) {
-      alert('Zotero key가 있는 논문이 없습니다.');
-      return;
-    }
+    if (zoteroKeys.length === 0) { alert('Zotero key가 있는 논문이 없습니다.'); return; }
 
     const actionText = action === 'add' ? '추가' : '제거';
-    if (!confirm(`${zoteroKeys.length}개 논문에 태그 "${tag}"를 ${actionText}합니다.\n계속하시겠습니까?`)) {
-      return;
-    }
+    if (!confirm(`${zoteroKeys.length}개 논문에 태그 "${tag}"를 ${actionText}합니다.\n계속하시겠습니까?`)) return;
 
-    // Show progress
     batchProgress.style.display = 'block';
     batchProgressFill.style.width = '0%';
     batchProgressStatus.textContent = '처리 중...';
@@ -1262,7 +1213,6 @@ Hover   Preview paper & citation lines`);
 
       batchProgressStatus.textContent = `완료! 성공: ${result.success}, 실패: ${result.failed}`;
 
-      // Update local state if adding tag
       if (action === 'add') {
         papers.forEach(p => {
           const currentTags = p.tags ? p.tags.split(', ').filter(t => t && t !== 'nan') : [];
@@ -1276,12 +1226,7 @@ Hover   Preview paper & citation lines`);
       }
 
       showToast('일괄 처리 완료', `${result.success}개 성공, ${result.failed}개 실패`);
-
-      // Close modal after delay
-      setTimeout(() => {
-        batchTagModal.classList.remove('active');
-      }, 1500);
-
+      setTimeout(() => batchTagModal.classList.remove('active'), 1500);
     } catch (e) {
       batchProgressStatus.textContent = '오류: ' + e.message;
       alert('일괄 처리 실패: ' + e.message);

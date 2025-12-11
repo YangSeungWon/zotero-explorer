@@ -7,5 +7,3 @@ const CLUSTER_COLORS = [
   '#dfe6e9', '#a29bfe', '#fd79a8', '#00b894', '#e17055',
   '#74b9ff', '#55efc4', '#b2bec3', '#ffeaa7', '#fab1a0'
 ];
-
-const MOBILE_BREAKPOINT = 768;

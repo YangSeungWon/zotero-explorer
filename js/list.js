@@ -206,12 +206,6 @@ function renderListView(papers) {
     });
   });
 
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', () => {
-    container.querySelectorAll('.list-idea-menu.active').forEach(m => {
-      m.classList.remove('active');
-    });
-  });
 }
 
 // Sort papers
@@ -290,6 +284,16 @@ function initListView() {
       renderListView(currentFiltered);
     });
   }
+
+  // Close idea dropdowns when clicking outside (added once, not per render)
+  document.addEventListener('click', () => {
+    const container = document.getElementById('listContainer');
+    if (container) {
+      container.querySelectorAll('.list-idea-menu.active').forEach(m => {
+        m.classList.remove('active');
+      });
+    }
+  });
 }
 
 // Helper

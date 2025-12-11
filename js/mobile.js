@@ -198,7 +198,7 @@ function initMobileHandlers() {
   document.getElementById('mobileSearchFilter').addEventListener('input', debounce(() => {
     syncDesktopControls();
     applyFilters();
-  }, 200));
+  }, DEBOUNCE_DELAY));
   document.getElementById('mobileShowCitations').addEventListener('change', () => {
     syncDesktopControls();
     render(currentFiltered);

@@ -227,6 +227,103 @@ async function saveTagsToZotero(zoteroKey, tags, paperId) {
 }
 
 // ============================================================
+// Shared Detail Helpers
+// ============================================================
+
+// Build citation lists from citationLinks
+function buildCitationLists(item) {
+  const references = [];
+  const citedBy = [];
+
+  citationLinks.forEach(link => {
+    if (link.source === item.id) {
+      connectedPapers.add(link.target);
+      const refPaper = allPapers.find(p => p.id === link.target);
+      if (refPaper) references.push(refPaper);
+    }
+    if (link.target === item.id) {
+      connectedPapers.add(link.source);
+      const citingPaper = allPapers.find(p => p.id === link.source);
+      if (citingPaper) citedBy.push(citingPaper);
+    }
+  });
+
+  return { references, citedBy };
+}
+
+// Render citation section HTML
+function renderCitationSectionHtml(papers, title, color, maxItems = null, titleMaxLen = 50) {
+  const displayPapers = maxItems ? papers.slice(0, maxItems) : papers;
+  const hasMore = maxItems && papers.length > maxItems;
+
+  if (papers.length === 0) {
+    return { html: `<h3><span class="dot" style="background: ${color};"></span>${title}</h3><p class="empty">None in library</p>`, hasItems: false };
+  }
+
+  let html = `<h3><span class="dot" style="background: ${color};"></span>${title} (${papers.length})</h3><ul>`;
+  displayPapers.forEach(p => {
+    const truncTitle = p.title.length > titleMaxLen ? p.title.substring(0, titleMaxLen) + '...' : p.title;
+    html += `<li data-id="${p.id}">${truncTitle} <span class="year">(${p.year || 'N/A'})</span></li>`;
+  });
+  if (hasMore) html += `<li style="color: var(--text-muted);">+${papers.length - maxItems} more</li>`;
+  html += '</ul>';
+
+  return { html, hasItems: true };
+}
+
+// Render similar papers section
+function renderSimilarPapersHtml(item, count = 5, titleMaxLen = 50) {
+  const similar = findSimilarPapers(item, allPapers, count);
+  let html = '<h3>Similar Papers</h3><ul>';
+  similar.forEach(p => {
+    const title = p.title.length > titleMaxLen ? p.title.substring(0, titleMaxLen) + '...' : p.title;
+    html += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
+  });
+  html += '</ul>';
+  return html;
+}
+
+// Setup bookmark button with click handler (using cloneNode to remove old listeners)
+function setupBookmarkButton(btn, item, onUpdate) {
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+
+  newBtn.addEventListener('click', async () => {
+    const nowBookmarked = await toggleBookmark(item);
+    newBtn.innerHTML = `<i data-lucide="star" ${nowBookmarked ? 'class="filled"' : ''}></i>`;
+    newBtn.classList.toggle('active', nowBookmarked);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    if (onUpdate) onUpdate();
+  });
+
+  return newBtn;
+}
+
+// Attach click handlers to paper list items
+function attachPaperListClickHandlers(containerSelector, onPaperClick) {
+  document.querySelectorAll(`${containerSelector} li[data-id]`).forEach(li => {
+    li.addEventListener('click', () => {
+      const paperId = parseInt(li.dataset.id);
+      const paper = allPapers.find(p => p.id === paperId);
+      if (paper) onPaperClick(paper);
+    });
+  });
+}
+
+// Generate links HTML for a paper
+function renderLinksHtml(item, includeCopyLink = true) {
+  let html = '';
+  if (includeCopyLink) {
+    html += `<button class="copy-link-btn" onclick="copyPaperLink('${item.zotero_key}')">Copy Link</button>`;
+  }
+  if (item.zotero_key) html += `<a href="${getZoteroUrl(item.zotero_key)}" class="zotero-link">Zotero</a>`;
+  if (item.pdf_key) html += `<a href="${getZoteroPdfUrl(item.pdf_key)}" class="pdf-link">PDF</a>`;
+  if (item.url) html += `<a href="${item.url}" target="_blank">URL</a>`;
+  if (item.doi) html += `<a href="https://doi.org/${item.doi}" target="_blank">DOI</a>`;
+  return html;
+}
+
+// ============================================================
 // Panel Functions
 // ============================================================
 
@@ -383,179 +480,76 @@ function showDetail(item) {
   const panel = document.getElementById('detailPanel');
   panel.classList.add('active');
   const savedWidth = localStorage.getItem('detailPanelWidth');
-  if (savedWidth) {
-    panel.style.width = savedWidth;
-  }
+  if (savedWidth) panel.style.width = savedWidth;
 
-  // 닫기 버튼 표시 (선택된 논문이 있을 때)
   document.getElementById('closeDetail').style.display = 'block';
 
   selectedPaper = item;
   connectedPapers = new Set();
-
-  const references = [];
-  const citedBy = [];
-
-  citationLinks.forEach(link => {
-    if (link.source === item.id) {
-      connectedPapers.add(link.target);
-      const refPaper = allPapers.find(p => p.id === link.target);
-      if (refPaper) references.push(refPaper);
-    }
-    if (link.target === item.id) {
-      connectedPapers.add(link.source);
-      const citingPaper = allPapers.find(p => p.id === link.source);
-      if (citingPaper) citedBy.push(citingPaper);
-    }
-  });
-
+  const { references, citedBy } = buildCitationLists(item);
   renderCurrentView();
 
+  // Title & bookmark
   const isBookmarked = bookmarkedPapers.has(item.id);
   document.getElementById('detailTitle').textContent = item.title || 'Untitled';
 
-  // 북마크 버튼 업데이트
   const bookmarkBtn = document.getElementById('bookmarkBtn');
   bookmarkBtn.innerHTML = `<i data-lucide="star" ${isBookmarked ? 'class="filled"' : ''}></i>`;
   bookmarkBtn.classList.toggle('active', isBookmarked);
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 
-  // 북마크 버튼 핸들러 (기존 리스너 제거 후 추가)
-  const newBookmarkBtn = bookmarkBtn.cloneNode(true);
-  bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
-  newBookmarkBtn.addEventListener('click', async () => {
-    const nowBookmarked = await toggleBookmark(item);
-    newBookmarkBtn.innerHTML = `<i data-lucide="star" ${nowBookmarked ? 'class="filled"' : ''}></i>`;
-    newBookmarkBtn.classList.toggle('active', nowBookmarked);
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-    renderCurrentView();
-  });
+  setupBookmarkButton(bookmarkBtn, item, renderCurrentView);
 
+  // Meta badges
   const typeClass = item.is_paper ? 'paper' : 'app';
   const typeLabel = item.is_paper ? 'Paper' : 'App/Service';
-
-  const citationBadge = item.citation_count !== null && item.citation_count !== undefined
-    ? `<span class="badge" style="background: #ffd70033; color: #ffd700;">Global: ${item.citation_count}</span>`
-    : '';
-
-  const refsBadge = references.length > 0
-    ? `<span class="badge" style="background: #58a6ff33; color: #58a6ff;">Refs: ${references.length}</span>`
-    : '';
-
-  const citedByBadge = citedBy.length > 0
-    ? `<span class="badge" style="background: #f9731633; color: #f97316;">Cited: ${citedBy.length}</span>`
-    : '';
+  const citationBadge = item.citation_count != null ? `<span class="badge" style="background: #ffd70033; color: #ffd700;">Global: ${item.citation_count}</span>` : '';
+  const refsBadge = references.length > 0 ? `<span class="badge" style="background: #58a6ff33; color: #58a6ff;">Refs: ${references.length}</span>` : '';
+  const citedByBadge = citedBy.length > 0 ? `<span class="badge" style="background: #f9731633; color: #f97316;">Cited: ${citedBy.length}</span>` : '';
 
   document.getElementById('detailMeta').innerHTML = `
     <span class="badge ${typeClass}">${typeLabel}</span>
     <span class="badge cluster">Cluster ${item.cluster}: ${item.cluster_label || ''}</span>
-    ${citationBadge}
-    ${refsBadge}
-    ${citedByBadge}
+    ${citationBadge}${refsBadge}${citedByBadge}
     <br><br>
     <span><strong>Year:</strong> ${item.year || 'N/A'}</span>
     <span><strong>Venue:</strong> ${item.venue || 'N/A'}</span>
     <span><strong>Quality:</strong> ${item.venue_quality}/5</span>
-    ${item.citation_count !== null ? `<span><strong>Citations:</strong> ${item.citation_count}</span>` : ''}
+    ${item.citation_count != null ? `<span><strong>Citations:</strong> ${item.citation_count}</span>` : ''}
     ${item.authors ? `<br><span><strong>Authors:</strong> ${item.authors.substring(0, 100)}${item.authors.length > 100 ? '...' : ''}</span>` : ''}
   `;
 
-  // Tag editor (at bottom)
-  const tagEditorHtml = renderTagEditor(item);
-  document.getElementById('detailTags').innerHTML = tagEditorHtml;
+  // Tag editor
+  document.getElementById('detailTags').innerHTML = renderTagEditor(item);
   initTagEditor(item);
 
-  let linksHtml = '';
-  // Copy Link button first
-  linksHtml += `<button class="copy-link-btn" onclick="copyPaperLink('${item.zotero_key}')">Copy Link</button>`;
-  if (item.zotero_key) {
-    linksHtml += `<a href="${getZoteroUrl(item.zotero_key)}" class="zotero-link">Zotero</a>`;
-  }
-  if (item.pdf_key) {
-    linksHtml += `<a href="${getZoteroPdfUrl(item.pdf_key)}" class="pdf-link">PDF</a>`;
-  }
-  if (item.url) {
-    linksHtml += `<a href="${item.url}" target="_blank">URL</a>`;
-  }
-  if (item.doi) {
-    linksHtml += `<a href="https://doi.org/${item.doi}" target="_blank">DOI</a>`;
-  }
-  document.getElementById('detailLinks').innerHTML = linksHtml;
-
-  // Update URL with stable zotero_key
+  // Links
+  document.getElementById('detailLinks').innerHTML = renderLinksHtml(item);
   updateUrlWithPaper(item.zotero_key);
 
-  document.getElementById('detailAbstract').textContent =
-    item.abstract || 'No abstract available.';
-
+  // Abstract & Notes
+  document.getElementById('detailAbstract').textContent = item.abstract || 'No abstract available.';
   const notesContent = item.notes_html || item.notes || '';
-  const notesHtml = notesContent
+  document.getElementById('detailNotes').innerHTML = notesContent
     ? `<div class="notes"><h3>Notes</h3><div class="notes-content">${notesContent}</div></div>`
     : '';
-  document.getElementById('detailNotes').innerHTML = notesHtml;
 
-  // References 섹션
+  // References & Cited by sections
   const refsSection = document.getElementById('referencesSection');
-  if (references.length > 0) {
-    let refsHtml = `<h3><span class="dot" style="background: #58a6ff;"></span>References (${references.length})</h3><ul>`;
-    references.forEach(p => {
-      const title = p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title;
-      refsHtml += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
-    });
-    refsHtml += '</ul>';
-    refsSection.innerHTML = refsHtml;
-    refsSection.style.display = 'block';
-  } else {
-    refsSection.innerHTML = `<h3><span class="dot" style="background: #58a6ff;"></span>References</h3><p class="empty">No references in library</p>`;
-    refsSection.style.display = 'block';
-  }
+  const refsResult = renderCitationSectionHtml(references, 'References', '#58a6ff', null, 50);
+  refsSection.innerHTML = refsResult.html;
+  refsSection.style.display = 'block';
 
-  // Cited by 섹션
   const citedBySection = document.getElementById('citedBySection');
-  if (citedBy.length > 0) {
-    let citedHtml = `<h3><span class="dot" style="background: #f97316;"></span>Cited by (${citedBy.length})</h3><ul>`;
-    citedBy.forEach(p => {
-      const title = p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title;
-      citedHtml += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
-    });
-    citedHtml += '</ul>';
-    citedBySection.innerHTML = citedHtml;
-    citedBySection.style.display = 'block';
-  } else {
-    citedBySection.innerHTML = `<h3><span class="dot" style="background: #f97316;"></span>Cited by</h3><p class="empty">No citations in library</p>`;
-    citedBySection.style.display = 'block';
-  }
+  const citedResult = renderCitationSectionHtml(citedBy, 'Cited by', '#f97316', null, 50);
+  citedBySection.innerHTML = citedResult.html;
+  citedBySection.style.display = 'block';
 
-  // Citation 섹션 클릭 핸들러
-  document.querySelectorAll('#referencesSection li, #citedBySection li').forEach(li => {
-    li.addEventListener('click', () => {
-      const paperId = parseInt(li.dataset.id);
-      const paper = allPapers.find(p => p.id === paperId);
-      if (paper) showDetail(paper);
-    });
-  });
+  attachPaperListClickHandlers('#referencesSection, #citedBySection', showDetail);
 
   // Similar papers
-  const similar = findSimilarPapers(item, allPapers, 5);
-  let similarHtml = '<h3>Similar Papers</h3><ul>';
-  similar.forEach(p => {
-    const title = p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title;
-    similarHtml += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
-  });
-  similarHtml += '</ul>';
-  document.getElementById('similarPapers').innerHTML = similarHtml;
-
-  document.querySelectorAll('#similarPapers li').forEach(li => {
-    li.addEventListener('click', () => {
-      const paperId = parseInt(li.dataset.id);
-      const paper = allPapers.find(p => p.id === paperId);
-      if (paper) showDetail(paper);
-    });
-  });
+  document.getElementById('similarPapers').innerHTML = renderSimilarPapersHtml(item, 5, 50);
+  attachPaperListClickHandlers('#similarPapers', showDetail);
 }
 
 function findSimilarPapers(target, papers, n = 5) {
@@ -572,25 +566,10 @@ function findSimilarPapers(target, papers, n = 5) {
 function showMobileDetail(item) {
   selectedPaper = item;
   connectedPapers = new Set();
-
-  const references = [];
-  const citedBy = [];
-
-  citationLinks.forEach(link => {
-    if (link.source === item.id) {
-      connectedPapers.add(link.target);
-      const refPaper = allPapers.find(p => p.id === link.target);
-      if (refPaper) references.push(refPaper);
-    }
-    if (link.target === item.id) {
-      connectedPapers.add(link.source);
-      const citingPaper = allPapers.find(p => p.id === link.source);
-      if (citingPaper) citedBy.push(citingPaper);
-    }
-  });
-
+  const { references, citedBy } = buildCitationLists(item);
   renderCurrentView();
 
+  // Title & bookmark
   const isBookmarked = bookmarkedPapers.has(item.id);
   document.getElementById('mobileDetailTitle').innerHTML = `
     <span class="title-text">${item.title || 'Untitled'}</span>
@@ -598,22 +577,12 @@ function showMobileDetail(item) {
       <i data-lucide="star" ${isBookmarked ? 'class="filled"' : ''}></i>
     </button>
   `;
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 
-  // 북마크 버튼 핸들러
-  document.querySelector('#bottomSheetContent .bookmark-btn').addEventListener('click', async () => {
-    const nowBookmarked = await toggleBookmark(item);
-    const btn = document.querySelector('#bottomSheetContent .bookmark-btn');
-    btn.innerHTML = `<i data-lucide="star" ${nowBookmarked ? 'class="filled"' : ''}></i>`;
-    btn.classList.toggle('active', nowBookmarked);
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-    renderCurrentView();
-  });
+  const mobileBookmarkBtn = document.querySelector('#bottomSheetContent .bookmark-btn');
+  setupBookmarkButton(mobileBookmarkBtn, item, renderCurrentView);
 
+  // Meta badges
   const typeClass = item.is_paper ? 'paper' : 'app';
   const typeLabel = item.is_paper ? 'Paper' : 'App';
 
@@ -627,75 +596,34 @@ function showMobileDetail(item) {
     ${item.authors ? `<br><span style="font-size: 11px;"><strong>Authors:</strong> ${item.authors.substring(0, 60)}${item.authors.length > 60 ? '...' : ''}</span>` : ''}
   `;
 
-  let linksHtml = '';
-  linksHtml += `<button class="copy-link-btn" onclick="copyPaperLink('${item.zotero_key}')">Copy Link</button>`;
-  if (item.zotero_key) linksHtml += `<a href="${getZoteroUrl(item.zotero_key)}" class="zotero-link">Zotero</a>`;
-  if (item.pdf_key) linksHtml += `<a href="${getZoteroPdfUrl(item.pdf_key)}" class="pdf-link">PDF</a>`;
-  if (item.url) linksHtml += `<a href="${item.url}" target="_blank">URL</a>`;
-  if (item.doi) linksHtml += `<a href="https://doi.org/${item.doi}" target="_blank">DOI</a>`;
-  document.getElementById('mobileDetailLinks').innerHTML = linksHtml;
-
-  // Update URL with stable zotero_key
+  // Links
+  document.getElementById('mobileDetailLinks').innerHTML = renderLinksHtml(item);
   updateUrlWithPaper(item.zotero_key);
 
-  document.getElementById('mobileDetailAbstract').textContent =
-    item.abstract || 'No abstract available.';
-
+  // Abstract & Notes
+  document.getElementById('mobileDetailAbstract').textContent = item.abstract || 'No abstract available.';
   const notesContent = item.notes_html || item.notes || '';
   document.getElementById('mobileDetailNotes').innerHTML = notesContent
     ? `<div class="notes"><h3>Notes</h3><div class="notes-content">${notesContent}</div></div>`
     : '';
 
-  // References
+  // References (mobile: max 5, shorter titles)
   const refsSection = document.getElementById('mobileReferencesSection');
-  if (references.length > 0) {
-    let html = `<h3><span class="dot" style="background: #58a6ff;"></span>References (${references.length})</h3><ul>`;
-    references.slice(0, 5).forEach(p => {
-      const title = p.title.length > 35 ? p.title.substring(0, 35) + '...' : p.title;
-      html += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
-    });
-    if (references.length > 5) html += `<li style="color: var(--text-muted);">+${references.length - 5} more</li>`;
-    html += '</ul>';
-    refsSection.innerHTML = html;
-    refsSection.style.display = 'block';
-  } else {
-    refsSection.style.display = 'none';
-  }
+  const refsResult = renderCitationSectionHtml(references, 'References', '#58a6ff', 5, 35);
+  refsSection.innerHTML = refsResult.html;
+  refsSection.style.display = refsResult.hasItems ? 'block' : 'none';
 
   // Cited by
   const citedBySection = document.getElementById('mobileCitedBySection');
-  if (citedBy.length > 0) {
-    let html = `<h3><span class="dot" style="background: #f97316;"></span>Cited by (${citedBy.length})</h3><ul>`;
-    citedBy.slice(0, 5).forEach(p => {
-      const title = p.title.length > 35 ? p.title.substring(0, 35) + '...' : p.title;
-      html += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
-    });
-    if (citedBy.length > 5) html += `<li style="color: var(--text-muted);">+${citedBy.length - 5} more</li>`;
-    html += '</ul>';
-    citedBySection.innerHTML = html;
-    citedBySection.style.display = 'block';
-  } else {
-    citedBySection.style.display = 'none';
-  }
+  const citedResult = renderCitationSectionHtml(citedBy, 'Cited by', '#f97316', 5, 35);
+  citedBySection.innerHTML = citedResult.html;
+  citedBySection.style.display = citedResult.hasItems ? 'block' : 'none';
 
-  // Similar
-  const similar = findSimilarPapers(item, allPapers, 3);
-  let similarHtml = '<h3>Similar</h3><ul>';
-  similar.forEach(p => {
-    const title = p.title.length > 35 ? p.title.substring(0, 35) + '...' : p.title;
-    similarHtml += `<li data-id="${p.id}">${title} <span class="year">(${p.year || 'N/A'})</span></li>`;
-  });
-  similarHtml += '</ul>';
-  document.getElementById('mobileSimilarPapers').innerHTML = similarHtml;
+  // Similar (mobile: 3 items)
+  document.getElementById('mobileSimilarPapers').innerHTML = renderSimilarPapersHtml(item, 3, 35);
 
   // Click handlers
-  document.querySelectorAll('#bottomSheetContent li[data-id]').forEach(li => {
-    li.addEventListener('click', () => {
-      const paperId = parseInt(li.dataset.id);
-      const paper = allPapers.find(p => p.id === paperId);
-      if (paper) showMobileDetail(paper);
-    });
-  });
+  attachPaperListClickHandlers('#bottomSheetContent', showMobileDetail);
 
   openBottomSheet();
 }
