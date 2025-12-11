@@ -1,0 +1,263 @@
+/* ===========================================
+   Global Button System
+   =========================================== */
+
+/* Base reset for all buttons */
+button {
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+
+/* Default button style */
+.btn {
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Primary - main actions (blue) */
+.btn-primary {
+  padding: 6px 12px;
+  background: var(--accent);
+  border: none;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover, #4493f8);
+}
+
+/* Secondary - subtle actions (outline) */
+.btn-secondary {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+/* Ghost - minimal, icon buttons */
+.btn-ghost {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Danger modifier - for destructive actions */
+.btn-danger:hover {
+  color: var(--red-300);
+  border-color: var(--red-300);
+}
+
+/* Icon sizing inside buttons */
+button [data-lucide] {
+  width: 14px;
+  height: 14px;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  background: var(--border-color);
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===========================================
+   Dropdown Menu Base
+   =========================================== */
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  min-width: 140px;
+  z-index: var(--z-dropdown);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dropdown-menu.active,
+.dropdown.open .dropdown-menu {
+  display: block;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  width: 100%;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-tertiary);
+}
+
+/* ===========================================
+   Chip/Tag Base
+   =========================================== */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 11px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.chip-sm {
+  padding: 2px 6px;
+  font-size: 10px;
+  border-radius: var(--radius-sm);
+}
+
+/* ===========================================
+   Lucide Icons
+   =========================================== */
+
+/* Default icon sizing */
+[data-lucide] {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Smaller icons for compact areas */
+.filter-chip [data-lucide],
+.chip-close [data-lucide],
+.list-item-stat [data-lucide],
+.list-item-bookmark [data-lucide] {
+  width: 12px;
+  height: 12px;
+}
+
+/* Larger icons for buttons */
+.sync-btn-icon [data-lucide],
+.btn-icon [data-lucide] {
+  width: 16px;
+  height: 16px;
+}
+
+/* Modal header icons */
+.modal-header h3 [data-lucide],
+.sync-result h4 [data-lucide],
+.sync-error h4 [data-lucide] {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+}
+
+/* Bookmark star - filled state */
+.bookmark-btn.active [data-lucide],
+[data-lucide].filled {
+  fill: var(--color-bookmark);
+  color: var(--color-bookmark);
+}
+
+/* Header dropdown icons */
+.header-dropdown-btn [data-lucide],
+.header-dropdown-item [data-lucide] {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+/* Cluster stats button */
+.stats-btn [data-lucide] {
+  width: 12px;
+  height: 12px;
+}
+
+/* Semantic toggle */
+.semantic-toggle [data-lucide] {
+  width: 14px;
+  height: 14px;
+}
+
+/* Close button */
+.close-btn [data-lucide] {
+  width: 16px;
+  height: 16px;
+}
+
+/* Spin animation for loader */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Filter status icons */
+.filter-status [data-lucide] {
+  width: 12px;
+  height: 12px;
+}
+
+/* Tooltip icons */
+.cluster-stats-tooltip h4 [data-lucide] {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+/* Default stats icons */
+.default-stats [data-lucide] {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}

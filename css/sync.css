@@ -1,0 +1,163 @@
+/* ===========================================
+   Sync Panel
+   =========================================== */
+
+.sync-panel {
+  border-top: 1px solid var(--border-color);
+  padding: 12px;
+  flex-shrink: 0;
+}
+
+.sync-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sync-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sync-panel.collapsed .sync-content {
+  display: none;
+}
+
+.sync-panel.collapsed .collapse-btn {
+  transform: rotate(-90deg);
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.sync-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sync-status-indicator.idle {
+  background: var(--text-muted);
+}
+
+.sync-status-indicator.running {
+  background: var(--color-warning);
+  animation: pulse 1s infinite;
+}
+
+.sync-status-indicator.success {
+  background: var(--color-success);
+}
+
+.sync-status-indicator.error {
+  background: var(--color-error);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.sync-actions {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.sync-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sync-btn:hover {
+  background: var(--bg-primary);
+  border-color: var(--accent);
+}
+
+.sync-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sync-btn-icon {
+  font-size: 16px;
+}
+
+.sync-btn-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.sync-log {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 11px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  margin-bottom: 6px;
+}
+
+.sync-log-item {
+  padding: 3px 0;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sync-log-item:last-child {
+  border-bottom: none;
+}
+
+.sync-log-item.placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sync-log-item.success {
+  color: var(--color-success);
+}
+
+.sync-log-item.error {
+  color: var(--color-error);
+}
+
+.sync-log-item .time {
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.sync-last-run {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.left-sidebar.collapsed .sync-panel {
+  padding: 8px;
+}
+
+.left-sidebar.collapsed .sync-header h3,
+.left-sidebar.collapsed .sync-content {
+  display: none;
+}

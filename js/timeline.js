@@ -358,6 +358,13 @@ function switchView(view) {
   const detailPanel = document.getElementById('detailPanel');
   const leftSidebar = document.getElementById('leftSidebar');
   const miniTimeline = document.getElementById('miniTimeline');
+  const isMobile = window.innerWidth <= 768;
+
+  // Update mobile body classes
+  document.body.classList.remove('mobile-view-map', 'mobile-view-list');
+  if (isMobile) {
+    document.body.classList.add(view === 'list' ? 'mobile-view-list' : 'mobile-view-map');
+  }
 
   // Hide all views first
   mapPlot.style.display = 'none';

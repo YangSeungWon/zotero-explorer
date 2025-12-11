@@ -1,0 +1,361 @@
+/* ===========================================
+   Detail Panel & Related Components
+   =========================================== */
+
+/* Default panel styles */
+.default-stats .stat-row {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.help-section {
+  background: var(--bg-tertiary);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin-top: 8px;
+}
+
+.help-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.help-section ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.help-section li {
+  margin-bottom: 4px;
+}
+
+.cluster-overview {
+  margin-top: 12px;
+}
+
+.cluster-overview h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cluster-overview .stat-row {
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Detail title row */
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detail-title-row h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.detail-title-row .bookmark-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.detail-title-row .bookmark-btn:hover {
+  color: var(--color-bookmark);
+}
+
+.detail-title-row .bookmark-btn.active {
+  color: var(--color-bookmark);
+}
+
+.detail-title-row .close-btn {
+  position: static;
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.detail-title-row .close-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+  margin-left: 16px;
+}
+
+.view-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  transition: all var(--transition-fast);
+}
+
+.view-btn:hover {
+  color: var(--text-secondary);
+}
+
+.view-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* ===========================================
+   Mini Timeline
+   =========================================== */
+
+.mini-timeline {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  position: relative;
+}
+
+.mini-timeline-resize {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.mini-timeline-resize:hover,
+.mini-timeline-resize.dragging {
+  background: var(--accent);
+}
+
+.mini-timeline.collapsed .mini-timeline-content {
+  display: none;
+}
+
+.mini-timeline.collapsed .mini-timeline-toggle {
+  transform: rotate(180deg);
+}
+
+.mini-timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--bg-tertiary);
+}
+
+.mini-timeline-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.mini-timeline-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: transform var(--transition-fast);
+}
+
+.mini-timeline-toggle:hover {
+  background: var(--border-color);
+}
+
+.mini-timeline-content {
+  position: relative;
+  height: 60px;
+  padding: 8px 12px;
+}
+
+#timelineCanvas {
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.brush-selection {
+  position: absolute;
+  top: 8px;
+  height: calc(100% - 16px);
+  background: rgba(88, 166, 255, 0.2);
+  border: 1px solid rgba(88, 166, 255, 0.5);
+  border-radius: 2px;
+  pointer-events: none;
+  display: none;
+}
+
+.brush-selection.active {
+  display: block;
+}
+
+/* ===========================================
+   Tag Editor
+   =========================================== */
+
+.tag-editor {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.tag-label {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: 24px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.tag-chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.tag-remove:hover {
+  color: var(--color-error);
+}
+
+.no-tags {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tag-input-container {
+  position: relative;
+}
+
+.tag-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.tag-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.tag-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: var(--z-dropdown);
+  display: none;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tag-autocomplete.active {
+  display: block;
+}
+
+.tag-autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tag-autocomplete-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* ===========================================
+   Progress Bar
+   =========================================== */
+
+.progress-bar {
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}

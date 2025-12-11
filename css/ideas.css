@@ -1,0 +1,375 @@
+/* ===========================================
+   Ideas Section (in detail panel)
+   =========================================== */
+
+.ideas-section {
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.ideas-section.collapsed .ideas-section-content {
+  display: none;
+}
+
+.ideas-section.collapsed .ideas-collapse-btn {
+  transform: rotate(-90deg);
+}
+
+.ideas-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.ideas-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ideas-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-new-idea-sm {
+  background: var(--green-700);
+  color: white;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-new-idea-sm:hover {
+  background: var(--green-400);
+}
+
+.ideas-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: transform 0.2s;
+}
+
+.ideas-collapse-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.ideas-section-content {
+  padding-bottom: 12px;
+}
+
+.ideas-list-compact {
+  max-height: 150px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.idea-detail-compact {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Paper detail section */
+.paper-detail-section {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Ideas Groups (compact in sidebar) */
+.ideas-group {
+  margin-bottom: 8px;
+}
+
+.ideas-group-header {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-left: 2px solid;
+  margin-bottom: 4px;
+}
+
+.ideas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Idea Card (compact) */
+.idea-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.idea-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.idea-card.selected {
+  border-color: var(--accent);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.idea-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idea-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.idea-papers-count {
+  color: var(--text-secondary);
+}
+
+.idea-clusters {
+  color: var(--accent);
+}
+
+/* Idea Detail Empty State */
+.idea-detail-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.ideas-empty {
+  text-align: center;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.ideas-empty p {
+  margin: 2px 0;
+}
+
+/* Idea Detail (compact) */
+.idea-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.idea-title-input {
+  flex: 1;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.idea-title-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.idea-detail-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-icon:hover {
+  background: var(--bg-hover);
+}
+
+.btn-icon.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.btn-icon.btn-danger:hover {
+  background: var(--red-600);
+  border-color: var(--red-600);
+  color: white;
+}
+
+.idea-detail-status,
+.idea-detail-description,
+.idea-detail-clusters,
+.idea-detail-papers {
+  margin-bottom: 8px;
+}
+
+.idea-detail-status label,
+.idea-detail-description label,
+.idea-detail-clusters label,
+.idea-detail-papers label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.idea-status-select {
+  width: 100%;
+  padding: 6px 10px;
+}
+
+.idea-description-input {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  resize: vertical;
+  font-family: inherit;
+  min-height: 40px;
+}
+
+.idea-description-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Idea Clusters */
+.idea-clusters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cluster-tag {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.no-clusters {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Connected Papers (compact) */
+.connected-papers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.no-papers {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px;
+}
+
+.connected-paper-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+
+.connected-paper-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.connected-paper-title {
+  font-size: 11px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connected-paper-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.btn-remove-paper {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.btn-remove-paper:hover {
+  color: var(--red-600);
+  background: transparent;
+}
+
+/* Link Mode Indicator */
+.link-mode-indicator {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}

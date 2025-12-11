@@ -235,7 +235,18 @@ function initMobileHandlers() {
     if (!isMobile()) {
       closeMobileMenu();
       closeBottomSheet();
+      // Remove mobile view classes on desktop
+      document.body.classList.remove('mobile-view-map', 'mobile-view-list');
+    } else {
+      // Update mobile view classes based on current view
+      document.body.classList.remove('mobile-view-map', 'mobile-view-list');
+      document.body.classList.add(currentView === 'list' ? 'mobile-view-list' : 'mobile-view-map');
     }
     Plotly.Plots.resize('plot');
   }, 250));
+
+  // Initialize mobile body class on page load
+  if (isMobile()) {
+    document.body.classList.add(currentView === 'list' ? 'mobile-view-list' : 'mobile-view-map');
+  }
 }

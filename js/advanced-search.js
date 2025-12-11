@@ -328,12 +328,23 @@ async function recalculatePipeline() {
   let papers = allPapers.filter(p => p.has_notes);
 
   for (const block of filterBlocks) {
+    // Show loading state for async blocks
+    if (block.type === 'semantic') {
+      const blockEl = document.querySelector(`.filter-block[data-block-id="${block.id}"]`);
+      if (blockEl) {
+        blockEl.querySelector('.block-result-count').textContent = '...';
+      }
+    }
+
     papers = await applyBlockFilter(papers, block);
     block.resultCount = papers.length;
-  }
 
-  // Update UI
-  renderBlockCounts();
+    // Update count immediately after each block
+    const blockEl = document.querySelector(`.filter-block[data-block-id="${block.id}"]`);
+    if (blockEl) {
+      blockEl.querySelector('.block-result-count').textContent = block.resultCount;
+    }
+  }
 }
 
 async function applyBlockFilter(papers, block) {
@@ -482,7 +493,9 @@ async function applyPipelineToMainView() {
 
   for (const block of filterBlocks) {
     papers = await applyBlockFilter(papers, block);
+    block.resultCount = papers.length;  // Update count after each filter
   }
+  renderBlockCounts();  // Update UI with counts
 
   // Update main view
   currentFiltered = papers;

@@ -82,7 +82,7 @@ function renderListView(papers) {
               <i data-lucide="lightbulb"></i>
               ${connectedIdeas.length > 0 ? `<span class="idea-count">${connectedIdeas.length}</span>` : ''}
             </button>
-            <div class="list-idea-menu"></div>
+            <div class="dropdown-menu list-idea-menu"></div>
           </div>
         </div>
         <div class="list-item-main">
@@ -172,7 +172,7 @@ function renderListView(papers) {
         menu.innerHTML = ideas.map(idea => {
           const isConnected = idea.connected_papers?.includes(zoteroKey);
           return `
-            <div class="idea-menu-item ${isConnected ? 'connected' : ''}" data-idea-key="${idea.zotero_key}">
+            <div class="dropdown-item idea-menu-item ${isConnected ? 'connected' : ''}" data-idea-key="${idea.zotero_key}">
               <i data-lucide="${isConnected ? 'check' : 'plus'}"></i>
               <span>${escapeHtml(idea.title)}</span>
             </div>
