@@ -551,10 +551,13 @@ def run_full_sync_background():
                                 if s2_data:
                                     paper["s2_id"] = s2_data.get("paperId", "")
                                     paper["citation_count"] = s2_data.get("citationCount", 0)
-                                    refs = s2_data.get("references", []) or []
-                                    paper["references"] = [r["paperId"] for r in refs if r and r.get("paperId")]
-                                    cites = s2_data.get("citations", []) or []
-                                    paper["citations"] = [c["paperId"] for c in cites if c and c.get("paperId")]
+                                    # Only update refs/cites if API returns data (some publishers block)
+                                    refs = s2_data.get("references")
+                                    if refs is not None:
+                                        paper["references"] = [r["paperId"] for r in refs if r and r.get("paperId")]
+                                    cites = s2_data.get("citations")
+                                    if cites is not None:
+                                        paper["citations"] = [c["paperId"] for c in cites if c and c.get("paperId")]
                                     citation_results["fetched"] += 1
                                 else:
                                     citation_results["failed"] += 1
@@ -774,10 +777,13 @@ def run_citations_sync_background():
                             if s2_data:  # Can be null if not found
                                 paper["s2_id"] = s2_data.get("paperId", "")
                                 paper["citation_count"] = s2_data.get("citationCount", 0)
-                                refs = s2_data.get("references", []) or []
-                                paper["references"] = [r["paperId"] for r in refs if r and r.get("paperId")]
-                                cites = s2_data.get("citations", []) or []
-                                paper["citations"] = [c["paperId"] for c in cites if c and c.get("paperId")]
+                                # Only update refs/cites if API returns data (some publishers block)
+                                refs = s2_data.get("references")
+                                if refs is not None:
+                                    paper["references"] = [r["paperId"] for r in refs if r and r.get("paperId")]
+                                cites = s2_data.get("citations")
+                                if cites is not None:
+                                    paper["citations"] = [c["paperId"] for c in cites if c and c.get("paperId")]
                                 citation_results["fetched"] += 1
                             else:
                                 citation_results["failed"] += 1
