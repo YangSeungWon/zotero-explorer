@@ -504,8 +504,60 @@ def run_full_sync_background():
 
         results["review_sync"] = {"status": "success", **review_results}
 
-        # Step 5: Recalculate citation_links
-        update_sync_progress(5, "Recalculating citation links...")
+        # Step 5: Fetch citation data from Semantic Scholar (skip existing)
+        update_sync_progress(5, "Fetching citation data...")
+        print("Fetching citation data from Semantic Scholar...")
+
+        S2_API_KEY = os.environ.get("S2_API_KEY")
+        s2_headers = {"x-api-key": S2_API_KEY} if S2_API_KEY else {}
+        S2_FIELDS = "citationCount,citations.paperId,references.paperId"
+
+        papers_to_fetch = [p for p in papers if not p.get("s2_id") and p.get("doi")]
+        citation_results = {"fetched": 0, "skipped": len(papers) - len(papers_to_fetch), "failed": 0}
+
+        for i, paper in enumerate(papers_to_fetch):
+            doi = paper.get("doi", "")
+            if not doi:
+                continue
+
+            update_sync_progress(5, f"Fetching citations ({i+1}/{len(papers_to_fetch)})...", i+1, len(papers_to_fetch))
+
+            try:
+                resp = requests.get(
+                    f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}",
+                    params={"fields": S2_FIELDS},
+                    headers=s2_headers,
+                    timeout=15
+                )
+
+                if resp.status_code == 200:
+                    s2_data = resp.json()
+                    paper["s2_id"] = s2_data.get("paperId", "")
+                    paper["citation_count"] = s2_data.get("citationCount", 0)
+                    refs = s2_data.get("references", []) or []
+                    paper["references"] = [r["paperId"] for r in refs if r and r.get("paperId")]
+                    cites = s2_data.get("citations", []) or []
+                    paper["citations"] = [c["paperId"] for c in cites if c and c.get("paperId")]
+                    citation_results["fetched"] += 1
+                elif resp.status_code == 429:
+                    print(f"  Rate limited, waiting 30s...")
+                    time.sleep(30)
+                    citation_results["failed"] += 1
+                else:
+                    citation_results["failed"] += 1
+
+                # Rate limiting
+                time.sleep(1)
+
+            except Exception as e:
+                print(f"  Error fetching {doi}: {e}")
+                citation_results["failed"] += 1
+
+        results["citation_fetch"] = citation_results
+        print(f"Citation fetch: {citation_results}")
+
+        # Step 6: Recalculate citation_links
+        update_sync_progress(6, "Recalculating citation links...")
         print("Recalculating internal citation links...")
 
         s2id_to_idx = {p.get("s2_id"): p["id"] for p in papers if p.get("s2_id")}
@@ -533,8 +585,8 @@ def run_full_sync_background():
         results["citation_links"] = {"count": len(internal_links)}
         print(f"Found {len(internal_links)} internal citation links")
 
-        # Step 6: Fetch reference_cache for Classics
-        update_sync_progress(6, "Fetching reference cache for Classics...")
+        # Step 7: Fetch reference_cache for Classics
+        update_sync_progress(7, "Fetching reference cache for Classics...")
         print("Caching top external references for Classics...")
 
         myS2Ids = set(p.get("s2_id") for p in papers if p.get("s2_id"))
@@ -553,7 +605,7 @@ def run_full_sync_background():
             S2_API_KEY = os.environ.get("S2_API_KEY")
             headers = {"x-api-key": S2_API_KEY} if S2_API_KEY else {}
 
-            update_sync_progress(6, f"Fetching {len(top_ref_ids)} reference details...")
+            update_sync_progress(7, f"Fetching {len(top_ref_ids)} reference details...")
             for attempt in range(3):
                 try:
                     resp = requests.post(
@@ -588,7 +640,7 @@ def run_full_sync_background():
         results["reference_cache"] = {"count": len(ref_cache)}
 
         # Save updated papers.json
-        update_sync_progress(6, "Saving papers.json...")
+        update_sync_progress(7, "Saving papers.json...")
         with open(papers_path, 'w', encoding='utf-8') as f:
             json.dump(papers_data, f, ensure_ascii=False, indent=2)
         print("Saved updated papers.json with citation_links and reference_cache")
