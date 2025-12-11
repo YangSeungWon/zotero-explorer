@@ -258,12 +258,15 @@ function showDefaultPanel() {
   document.getElementById('detailTitle').textContent = 'Paper Map';
   document.getElementById('detailMeta').innerHTML = `
     <div class="default-stats">
-      <div class="stat-row"><strong>📄 Papers:</strong> ${totalPapers}</div>
-      <div class="stat-row"><strong>💎 Apps:</strong> ${totalApps}</div>
-      <div class="stat-row"><strong>📅 Years:</strong> ${yearRange}</div>
-      <div class="stat-row"><strong>🔗 Citations:</strong> ${citationLinks.length}</div>
+      <div class="stat-row"><strong><i data-lucide="file-text"></i> Papers:</strong> ${totalPapers}</div>
+      <div class="stat-row"><strong><i data-lucide="gem"></i> Apps:</strong> ${totalApps}</div>
+      <div class="stat-row"><strong><i data-lucide="calendar"></i> Years:</strong> ${yearRange}</div>
+      <div class="stat-row"><strong><i data-lucide="link"></i> Citations:</strong> ${citationLinks.length}</div>
     </div>
   `;
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
   document.getElementById('detailLinks').innerHTML = '';
   document.getElementById('detailAbstract').innerHTML = `
     <div class="help-section">
@@ -399,16 +402,22 @@ function showDetail(item) {
 
   // 북마크 버튼 업데이트
   const bookmarkBtn = document.getElementById('bookmarkBtn');
-  bookmarkBtn.textContent = isBookmarked ? '★' : '☆';
+  bookmarkBtn.innerHTML = `<i data-lucide="star" ${isBookmarked ? 'class="filled"' : ''}></i>`;
   bookmarkBtn.classList.toggle('active', isBookmarked);
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 
   // 북마크 버튼 핸들러 (기존 리스너 제거 후 추가)
   const newBookmarkBtn = bookmarkBtn.cloneNode(true);
   bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
   newBookmarkBtn.addEventListener('click', async () => {
     const nowBookmarked = await toggleBookmark(item);
-    newBookmarkBtn.textContent = nowBookmarked ? '★' : '☆';
+    newBookmarkBtn.innerHTML = `<i data-lucide="star" ${nowBookmarked ? 'class="filled"' : ''}></i>`;
     newBookmarkBtn.classList.toggle('active', nowBookmarked);
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
     render(currentFiltered);
   });
 
@@ -572,16 +581,22 @@ function showMobileDetail(item) {
   document.getElementById('mobileDetailTitle').innerHTML = `
     <span class="title-text">${item.title || 'Untitled'}</span>
     <button class="bookmark-btn ${isBookmarked ? 'active' : ''}" title="Toggle bookmark">
-      ${isBookmarked ? '★' : '☆'}
+      <i data-lucide="star" ${isBookmarked ? 'class="filled"' : ''}></i>
     </button>
   `;
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 
   // 북마크 버튼 핸들러
   document.querySelector('#bottomSheetContent .bookmark-btn').addEventListener('click', async () => {
     const nowBookmarked = await toggleBookmark(item);
     const btn = document.querySelector('#bottomSheetContent .bookmark-btn');
-    btn.textContent = nowBookmarked ? '★' : '☆';
+    btn.innerHTML = `<i data-lucide="star" ${nowBookmarked ? 'class="filled"' : ''}></i>`;
     btn.classList.toggle('active', nowBookmarked);
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
     render(currentFiltered);
   });
 

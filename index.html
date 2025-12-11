@@ -42,19 +42,19 @@
     <div class="filter-chips" id="filterChips"></div>
     <span class="filter-status" id="filterStatus"></span>
     <div class="header-dropdown" id="exportDropdown">
-      <button class="header-dropdown-btn">📤 Export</button>
+      <button class="header-dropdown-btn"><i data-lucide="upload"></i> Export</button>
       <div class="header-dropdown-menu">
-        <button class="header-dropdown-item" id="showGlobalStats">📈 Stats</button>
-        <button class="header-dropdown-item" id="copyClusters">📋 Clusters</button>
-        <button class="header-dropdown-item" id="copyFiltered">📝 Papers</button>
+        <button class="header-dropdown-item" id="showGlobalStats"><i data-lucide="bar-chart-2"></i> Stats</button>
+        <button class="header-dropdown-item" id="copyClusters"><i data-lucide="clipboard-copy"></i> Clusters</button>
+        <button class="header-dropdown-item" id="copyFiltered"><i data-lucide="file-text"></i> Papers</button>
       </div>
     </div>
     <!-- Zotero sync moved to left sidebar panel -->
     <div class="header-dropdown" id="discoverDropdown">
-      <button class="header-dropdown-btn">🔍 Discover</button>
+      <button class="header-dropdown-btn"><i data-lucide="search"></i> Discover</button>
       <div class="header-dropdown-menu">
-        <button class="header-dropdown-item" id="showClassics" style="color: #58a6ff;">📚 Classics</button>
-        <button class="header-dropdown-item" id="showNewWork" style="color: #f97316;">🆕 New</button>
+        <button class="header-dropdown-item" id="showClassics" style="color: #58a6ff;"><i data-lucide="book-open"></i> Classics</button>
+        <button class="header-dropdown-item" id="showNewWork" style="color: #f97316;"><i data-lucide="sparkles"></i> New</button>
       </div>
     </div>
     <div class="legend">
@@ -91,7 +91,7 @@
       </div>
       <div class="control-group">
         <input type="checkbox" id="bookmarkedOnly">
-        <label for="bookmarkedOnly">★ Bookmarked</label>
+        <label for="bookmarkedOnly"><i data-lucide="star"></i> Bookmarked</label>
       </div>
       <div class="control-group">
         <label>Tag:</label>
@@ -102,7 +102,7 @@
       <div class="control-group">
         <label>Search:</label>
         <input type="text" id="searchFilter" placeholder="Title/Author/Abstract" style="width: 120px;">
-        <button id="semanticToggle" class="semantic-toggle" title="Toggle semantic search (AI-powered)">🧠</button>
+        <button id="semanticToggle" class="semantic-toggle" title="Toggle semantic search (AI-powered)"><i data-lucide="brain"></i></button>
       </div>
       <div class="control-group">
         <input type="checkbox" id="showCitations" checked>
@@ -168,14 +168,14 @@
 
     <div class="mobile-menu-section">
       <h3>Export</h3>
-      <button id="mobileShowStats" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px;">📈 Stats</button>
-      <button id="mobileCopyExport" style="width: 100%; background: var(--bg-tertiary);">📝 Papers</button>
+      <button id="mobileShowStats" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px;"><i data-lucide="bar-chart-2"></i> Stats</button>
+      <button id="mobileCopyExport" style="width: 100%; background: var(--bg-tertiary);"><i data-lucide="file-text"></i> Papers</button>
     </div>
 
     <div class="mobile-menu-section">
       <h3>Zotero</h3>
-      <button id="mobileFullSync" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px; color: #f97316;">⚡ Full Sync</button>
-      <button id="mobileBatchTags" style="width: 100%; background: var(--bg-tertiary);">🏷️ Batch Tags</button>
+      <button id="mobileFullSync" style="width: 100%; background: var(--bg-tertiary); margin-bottom: 8px; color: #f97316;"><i data-lucide="zap"></i> Full Sync</button>
+      <button id="mobileBatchTags" style="width: 100%; background: var(--bg-tertiary);"><i data-lucide="tag"></i> Batch Tags</button>
     </div>
 
     <div class="mobile-menu-section">
@@ -207,15 +207,15 @@
           </div>
           <div class="sync-actions">
             <button class="sync-btn" id="syncFullBtn" title="Full Sync: Fetch + Build + Sync Tags">
-              <span class="sync-btn-icon">⚡</span>
+              <span class="sync-btn-icon"><i data-lucide="zap"></i></span>
               <span class="sync-btn-label">Full Sync</span>
             </button>
             <button class="sync-btn" id="syncClustersBtn" title="Sync cluster labels to Zotero tags">
-              <span class="sync-btn-icon">📂</span>
+              <span class="sync-btn-icon"><i data-lucide="folder"></i></span>
               <span class="sync-btn-label">Clusters</span>
             </button>
             <button class="sync-btn" id="syncBatchTagsBtn" title="Batch tag management">
-              <span class="sync-btn-icon">🏷️</span>
+              <span class="sync-btn-icon"><i data-lucide="tag"></i></span>
               <span class="sync-btn-label">Tags</span>
             </button>
           </div>
@@ -286,9 +286,9 @@
       <!-- Paper Detail Section (bottom) -->
       <div class="paper-detail-section" id="paperDetailSection">
         <div class="detail-title-row">
-          <button class="bookmark-btn" id="bookmarkBtn" title="Toggle bookmark">☆</button>
+          <button class="bookmark-btn" id="bookmarkBtn" title="Toggle bookmark"><i data-lucide="star"></i></button>
           <h2 id="detailTitle">-</h2>
-          <button class="close-btn" id="closeDetail" title="Close">✕</button>
+          <button class="close-btn" id="closeDetail" title="Close"><i data-lucide="x"></i></button>
         </div>
         <div class="meta" id="detailMeta"></div>
         <div class="links" id="detailLinks"></div>
@@ -306,8 +306,8 @@
   <div class="modal-overlay" id="missingModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>📚 Missing Papers</h3>
-        <button class="modal-close" id="closeMissing">✕</button>
+        <h3><i data-lucide="book-open"></i> Missing Papers</h3>
+        <button class="modal-close" id="closeMissing"><i data-lucide="x"></i></button>
       </div>
       <p class="modal-desc">Papers frequently cited by your library but not yet added</p>
       <div class="modal-content" id="missingList"></div>
@@ -318,8 +318,8 @@
   <div class="modal-overlay" id="batchTagModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>🏷️ Batch Tag Management</h3>
-        <button class="modal-close" id="closeBatchTag">✕</button>
+        <h3><i data-lucide="tag"></i> Batch Tag Management</h3>
+        <button class="modal-close" id="closeBatchTag"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-content">
         <p class="modal-desc">Apply to <strong id="batchCount">0</strong> currently filtered papers</p>
@@ -349,35 +349,35 @@
   <div class="modal-overlay" id="syncModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>🔄 Full Sync</h3>
-        <button class="modal-close" id="closeSyncModal">✕</button>
+        <h3><i data-lucide="refresh-cw"></i> Full Sync</h3>
+        <button class="modal-close" id="closeSyncModal"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-content">
         <div class="sync-steps">
           <div class="sync-step" id="syncStep1">
-            <span class="sync-icon">⏳</span>
+            <span class="sync-icon"><i data-lucide="loader" class="spin"></i></span>
             <span class="sync-label">Fetching from Zotero API...</span>
           </div>
           <div class="sync-step" id="syncStep2">
-            <span class="sync-icon">⏳</span>
+            <span class="sync-icon"><i data-lucide="loader" class="spin"></i></span>
             <span class="sync-label">Building papers.json...</span>
           </div>
           <div class="sync-step" id="syncStep3">
-            <span class="sync-icon">⏳</span>
+            <span class="sync-icon"><i data-lucide="loader" class="spin"></i></span>
             <span class="sync-label">Syncing cluster tags...</span>
           </div>
           <div class="sync-step" id="syncStep4">
-            <span class="sync-icon">⏳</span>
+            <span class="sync-icon"><i data-lucide="loader" class="spin"></i></span>
             <span class="sync-label">Syncing review tags...</span>
           </div>
         </div>
         <div class="sync-result" id="syncResult" style="display: none;">
-          <h4>✅ Sync Complete</h4>
+          <h4><i data-lucide="check-circle"></i> Sync Complete</h4>
           <div class="sync-stats" id="syncStats"></div>
           <button id="reloadAfterSync" style="width: 100%; margin-top: 12px;">Reload Page</button>
         </div>
         <div class="sync-error" id="syncError" style="display: none;">
-          <h4>❌ Sync Failed</h4>
+          <h4><i data-lucide="x-circle"></i> Sync Failed</h4>
           <p id="syncErrorMsg"></p>
         </div>
       </div>
@@ -389,7 +389,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3>New Idea</h3>
-        <button class="modal-close" id="cancelNewIdea">✕</button>
+        <button class="modal-close" id="cancelNewIdea"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-content">
         <div class="control-group" style="margin-bottom: 12px;">
@@ -416,7 +416,7 @@
   <!-- Mobile Bottom Sheet -->
   <div class="bottom-sheet" id="bottomSheet">
     <div class="bottom-sheet-handle" id="bottomSheetHandle"></div>
-    <button class="bottom-sheet-close" id="bottomSheetClose">✕</button>
+    <button class="bottom-sheet-close" id="bottomSheetClose"><i data-lucide="x"></i></button>
     <div class="bottom-sheet-content" id="bottomSheetContent">
       <h2 id="mobileDetailTitle">-</h2>
       <div class="meta" id="mobileDetailMeta"></div>
@@ -444,7 +444,7 @@
   <!-- Toast notification -->
   <div class="toast" id="toast">
     <div class="toast-header">
-      <span class="icon">✓</span>
+      <span class="icon"><i data-lucide="check"></i></span>
       <span class="toast-title">Copied!</span>
     </div>
     <div class="toast-preview" id="toastPreview"></div>

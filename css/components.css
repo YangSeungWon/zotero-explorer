@@ -1635,3 +1635,104 @@ button:hover {
   font-size: 13px;
   min-height: 20px;
 }
+
+/* ===========================================
+   Lucide Icons
+   =========================================== */
+
+/* Default icon sizing */
+[data-lucide] {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Smaller icons for compact areas */
+.filter-chip [data-lucide],
+.chip-close [data-lucide],
+.list-item-stat [data-lucide],
+.list-item-bookmark [data-lucide] {
+  width: 12px;
+  height: 12px;
+}
+
+/* Larger icons for buttons */
+.sync-btn-icon [data-lucide],
+.btn-icon [data-lucide] {
+  width: 16px;
+  height: 16px;
+}
+
+/* Modal header icons */
+.modal-header h3 [data-lucide],
+.sync-result h4 [data-lucide],
+.sync-error h4 [data-lucide] {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+}
+
+/* Bookmark star - filled state */
+.bookmark-btn.active [data-lucide],
+[data-lucide].filled {
+  fill: #ffd700;
+  color: #ffd700;
+}
+
+/* Header dropdown icons */
+.header-dropdown-btn [data-lucide],
+.header-dropdown-item [data-lucide] {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+/* Cluster stats button */
+.stats-btn [data-lucide] {
+  width: 12px;
+  height: 12px;
+}
+
+/* Semantic toggle */
+.semantic-toggle [data-lucide] {
+  width: 14px;
+  height: 14px;
+}
+
+/* Close button */
+.close-btn [data-lucide],
+.modal-close [data-lucide] {
+  width: 16px;
+  height: 16px;
+}
+
+/* Spin animation for loader */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Filter status icons */
+.filter-status [data-lucide] {
+  width: 12px;
+  height: 12px;
+}
+
+/* Tooltip icons */
+.cluster-stats-tooltip h4 [data-lucide] {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+/* Default stats icons */
+.default-stats [data-lucide] {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}

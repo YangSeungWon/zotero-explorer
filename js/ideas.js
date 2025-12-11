@@ -266,9 +266,9 @@ function renderIdeaDetail(idea) {
       <input type="text" class="idea-title-input" value="${escapeHtml(idea.title)}" data-field="title">
       <div class="idea-detail-actions">
         <button class="btn-icon" id="toggleLinkMode" title="Link papers from map">
-          <span class="link-icon">${linkPaperMode ? '🔗' : '📎'}</span>
+          <span class="link-icon"><i data-lucide="${linkPaperMode ? 'link' : 'paperclip'}"></i></span>
         </button>
-        <button class="btn-icon btn-danger" id="deleteIdeaBtn" title="Delete idea">🗑</button>
+        <button class="btn-icon btn-danger" id="deleteIdeaBtn" title="Delete idea"><i data-lucide="trash-2"></i></button>
       </div>
     </div>
 
@@ -299,7 +299,7 @@ function renderIdeaDetail(idea) {
   `;
 
   if (connectedPapers.length === 0) {
-    html += `<div class="no-papers">No papers connected. Click 📎 to link papers from the map.</div>`;
+    html += `<div class="no-papers">No papers connected. Click <i data-lucide="paperclip" style="display:inline;width:14px;height:14px;vertical-align:middle;"></i> to link papers from the map.</div>`;
   } else {
     for (const paper of connectedPapers) {
       const clusterLabel = clusterLabels[paper.cluster] || `C${paper.cluster}`;
@@ -323,6 +323,11 @@ function renderIdeaDetail(idea) {
   `;
 
   container.innerHTML = html;
+
+  // Render Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 
   // Add event handlers
   const titleInput = container.querySelector('.idea-title-input');
@@ -389,8 +394,11 @@ function toggleLinkPaperMode() {
   linkPaperMode = !linkPaperMode;
   const btn = document.getElementById('toggleLinkMode');
   if (btn) {
-    btn.querySelector('.link-icon').textContent = linkPaperMode ? '🔗' : '📎';
+    btn.querySelector('.link-icon').innerHTML = `<i data-lucide="${linkPaperMode ? 'link' : 'paperclip'}"></i>`;
     btn.classList.toggle('active', linkPaperMode);
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   }
 
   // Show indicator on map

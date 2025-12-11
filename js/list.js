@@ -73,16 +73,16 @@ function renderListView(papers) {
             ${simScore}
             <span class="list-item-year">${paper.year || '?'}</span>
             <span class="list-item-cluster" style="background: ${clusterColor}; color: black;">${clusterLabel}</span>
-            ${isBookmarked ? '<span class="list-item-bookmark">★</span>' : ''}
+            ${isBookmarked ? '<span class="list-item-bookmark"><i data-lucide="star"></i></span>' : ''}
           </div>
           <div class="list-item-title">${escapeHtml(paper.title)}</div>
           <div class="list-item-authors">${escapeHtml(paper.authors || '')}</div>
           <div class="list-item-venue">${escapeHtml(paper.venue || '')}</div>
         </div>
         <div class="list-item-meta">
-          ${paper.citation_count ? `<span class="list-item-stat" title="Total citations (Semantic Scholar)">📊 ${paper.citation_count}</span>` : ''}
-          ${intCited ? `<span class="list-item-stat internal-cited" title="Cited by ${intCited} papers in library">⬅ ${intCited}</span>` : ''}
-          ${intRefs ? `<span class="list-item-stat internal-refs" title="References ${intRefs} papers in library">➡ ${intRefs}</span>` : ''}
+          ${paper.citation_count ? `<span class="list-item-stat" title="Total citations (Semantic Scholar)"><i data-lucide="quote"></i> ${paper.citation_count}</span>` : ''}
+          ${intCited ? `<span class="list-item-stat internal-cited" title="Cited by ${intCited} papers in library"><i data-lucide="arrow-left"></i> ${intCited}</span>` : ''}
+          ${intRefs ? `<span class="list-item-stat internal-refs" title="References ${intRefs} papers in library"><i data-lucide="arrow-right"></i> ${intRefs}</span>` : ''}
         </div>
       </div>
     `;
@@ -93,6 +93,11 @@ function renderListView(papers) {
   }
 
   container.innerHTML = html;
+
+  // Render Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 
   // Add click handlers
   container.querySelectorAll('.list-item').forEach(item => {

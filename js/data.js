@@ -62,7 +62,7 @@ async function loadData() {
         <div class="dot" style="background: ${CLUSTER_COLORS[c % CLUSTER_COLORS.length]}"></div>
         <div class="label" title="Double-click to edit">${label || 'Cluster ' + c}</div>
         <div class="count">${count}</div>
-        <button class="stats-btn" title="Cluster stats">📊</button>
+        <button class="stats-btn" title="Cluster stats"><i data-lucide="bar-chart-2"></i></button>
       `;
 
       // 통계 버튼 클릭
@@ -108,6 +108,11 @@ async function loadData() {
     render(currentFiltered);
     updateStats(currentFiltered);
     showDefaultPanel();
+
+    // Render Lucide icons in cluster list
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
 
     // Initialize mobile components
     const mobileTagFilter = document.getElementById('mobileTagFilter');
@@ -205,7 +210,7 @@ function updateFilterChips() {
     const label = clusterLabels[highlightCluster] || `Cluster ${highlightCluster}`;
     const chip = document.createElement('span');
     chip.className = 'filter-chip cluster';
-    chip.innerHTML = `📌 ${label} <span class="chip-close">✕</span>`;
+    chip.innerHTML = `<i data-lucide="map-pin"></i> ${label} <span class="chip-close"><i data-lucide="x"></i></span>`;
     chip.onclick = () => {
       highlightCluster = null;
       document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
@@ -219,7 +224,7 @@ function updateFilterChips() {
   if (tagFilter) {
     const chip = document.createElement('span');
     chip.className = 'filter-chip tag';
-    chip.innerHTML = `🏷️ ${tagFilter} <span class="chip-close">✕</span>`;
+    chip.innerHTML = `<i data-lucide="tag"></i> ${tagFilter} <span class="chip-close"><i data-lucide="x"></i></span>`;
     chip.onclick = () => {
       document.getElementById('tagFilter').value = '';
       applyFilters();
@@ -233,9 +238,9 @@ function updateFilterChips() {
     const displayText = searchFilter.length > 15 ? searchFilter.substring(0, 15) + '...' : searchFilter;
     const chip = document.createElement('span');
     chip.className = 'filter-chip search';
-    const icon = semanticSearchMode ? '🧠' : '🔍';
-    const label = semanticSearchMode ? 'AI' : '';
-    chip.innerHTML = `${icon} ${label}"${displayText}" <span class="chip-close">✕</span>`;
+    const iconName = semanticSearchMode ? 'brain' : 'search';
+    const labelText = semanticSearchMode ? 'AI' : '';
+    chip.innerHTML = `<i data-lucide="${iconName}"></i> ${labelText}"${displayText}" <span class="chip-close"><i data-lucide="x"></i></span>`;
     chip.onclick = () => {
       document.getElementById('searchFilter').value = '';
       semanticSearchResults = null;
@@ -248,7 +253,7 @@ function updateFilterChips() {
   if (yearRange) {
     const chip = document.createElement('span');
     chip.className = 'filter-chip year';
-    chip.innerHTML = `📅 ${yearRange.min}-${yearRange.max} <span class="chip-close">✕</span>`;
+    chip.innerHTML = `<i data-lucide="calendar"></i> ${yearRange.min}-${yearRange.max} <span class="chip-close"><i data-lucide="x"></i></span>`;
     chip.onclick = () => {
       yearRange = null;
       document.getElementById('brushSelection').classList.remove('active');
@@ -262,12 +267,17 @@ function updateFilterChips() {
   if (document.getElementById('bookmarkedOnly').checked) {
     const chip = document.createElement('span');
     chip.className = 'filter-chip';
-    chip.innerHTML = `★ Bookmarked <span class="chip-close">✕</span>`;
+    chip.innerHTML = `<i data-lucide="star"></i> Bookmarked <span class="chip-close"><i data-lucide="x"></i></span>`;
     chip.onclick = () => {
       document.getElementById('bookmarkedOnly').checked = false;
       applyFilters();
     };
     container.appendChild(chip);
+  }
+
+  // Render Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
   }
 }
 

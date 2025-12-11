@@ -281,7 +281,7 @@ function showClusterStats(clusterId, event) {
   statsTooltip = document.createElement('div');
   statsTooltip.className = 'cluster-stats-tooltip';
   statsTooltip.innerHTML = `
-    <h4>📊 Cluster ${clusterId}: ${clusterLabels[clusterId] || ''}</h4>
+    <h4><i data-lucide="bar-chart-2"></i> Cluster ${clusterId}: ${clusterLabels[clusterId] || ''}</h4>
     <div class="stat-row"><span class="stat-label">Papers</span><span class="stat-value">${papers.length}</span></div>
     <div class="stat-row"><span class="stat-label">Year Range</span><span class="stat-value">${minYear} - ${maxYear}</span></div>
     <div class="stat-row"><span class="stat-label">Avg Year</span><span class="stat-value">${avgYear}</span></div>
@@ -297,6 +297,10 @@ function showClusterStats(clusterId, event) {
   `;
 
   document.body.appendChild(statsTooltip);
+
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 
   const rect = event.target.getBoundingClientRect();
   let left = rect.right + 10;
@@ -331,7 +335,12 @@ let statusTimer = null;
 
 function showFilterStatus(status) {
   filterStatus.className = 'filter-status ' + status;
-  filterStatus.textContent = status === 'updating' ? '⏳' : '✓';
+  filterStatus.innerHTML = status === 'updating'
+    ? '<i data-lucide="loader" class="spin"></i>'
+    : '<i data-lucide="check"></i>';
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 
   if (status === 'done') {
     clearTimeout(statusTimer);
@@ -760,12 +769,12 @@ function initUIHandlers() {
     const citations = papers.map(p => p.citation_count).filter(c => c !== null && c !== undefined);
     const withNotes = allPapers.filter(p => p.has_notes).length;
 
-    let html = '<h4 style="font-size: 14px; margin-bottom: 12px;">📈 Library Statistics</h4>';
+    let html = '<h4 style="font-size: 14px; margin-bottom: 12px;"><i data-lucide="trending-up"></i> Library Statistics</h4>';
 
     if (dataMeta.csv_updated || dataMeta.map_built) {
       html += '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px;">';
-      if (dataMeta.csv_updated) html += `📁 CSV: ${dataMeta.csv_updated}<br>`;
-      if (dataMeta.map_built) html += `🗺️ Map: ${dataMeta.map_built}`;
+      if (dataMeta.csv_updated) html += `<i data-lucide="file"></i> CSV: ${dataMeta.csv_updated}<br>`;
+      if (dataMeta.map_built) html += `<i data-lucide="map"></i> Map: ${dataMeta.map_built}`;
       html += '</div>';
     }
 
@@ -783,7 +792,7 @@ function initUIHandlers() {
       html += `
         <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
           <div style="flex: 1;">
-            <div style="font-weight: 600; margin-bottom: 6px;">📅 Years</div>
+            <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="calendar"></i> Years</div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Range</span><strong>${Math.min(...years)} - ${Math.max(...years)}</strong></div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Average</span><strong>${Math.round(years.reduce((a,b)=>a+b,0)/years.length)}</strong></div>
           </div>
@@ -795,7 +804,7 @@ function initUIHandlers() {
       html += `
         <div class="missing-item" style="border-bottom: 1px solid var(--border-color);">
           <div style="flex: 1;">
-            <div style="font-weight: 600; margin-bottom: 6px;">📊 Citations</div>
+            <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="quote"></i> Citations</div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Total</span><strong>${totalCitations.toLocaleString()}</strong></div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Average</span><strong>${Math.round(totalCitations/citations.length)}</strong></div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Max</span><strong>${Math.max(...citations).toLocaleString()}</strong></div>
@@ -807,12 +816,15 @@ function initUIHandlers() {
     html += `
       <div class="missing-item">
         <div style="flex: 1;">
-          <div style="font-weight: 600; margin-bottom: 6px;">🔗 Internal Links</div>
+          <div style="font-weight: 600; margin-bottom: 6px;"><i data-lucide="link"></i> Internal Links</div>
           <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Citation Links</span><strong>${citationLinks.length}</strong></div>
         </div>
       </div>`;
 
     missingList.innerHTML = html;
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
     missingModal.classList.add('active');
   });
 
@@ -842,7 +854,7 @@ function initUIHandlers() {
 
     const sorted = Object.entries(classicCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
 
-    let html = '<h4 style="color: #58a6ff; font-size: 14px; margin-bottom: 12px;">📚 Classics</h4>';
+    let html = '<h4 style="color: #58a6ff; font-size: 14px; margin-bottom: 12px;"><i data-lucide="book-open"></i> Classics</h4>';
     const scope = isFiltered ? `${papers.length} filtered papers` : 'All papers';
     html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Foundational papers frequently cited by ${scope.toLowerCase()}</p>`;
 
@@ -863,6 +875,9 @@ function initUIHandlers() {
         return `<div class="missing-item"><div class="missing-rank">${i + 1}</div><div class="missing-info">${citeInfo}<br><a class="missing-link" href="${url}" target="_blank" title="${title}">${title.length > 60 ? title.substring(0, 60) + '...' : title}</a></div></div>`;
       }).join('');
       missingList.innerHTML = html;
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
       missingModal.classList.add('active');
     } else {
       html += '<p style="color: var(--text-muted);">No classics found</p>';
@@ -891,7 +906,7 @@ function initUIHandlers() {
 
     const sorted = Object.entries(newWorkCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
 
-    let html = '<h4 style="color: #f97316; font-size: 14px; margin-bottom: 12px;">🆕 New Work</h4>';
+    let html = '<h4 style="color: #f97316; font-size: 14px; margin-bottom: 12px;"><i data-lucide="sparkles"></i> New Work</h4>';
     const scope2 = isFiltered ? `${papers.length} filtered papers` : 'all papers';
     html += `<p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Recent papers that cite ${scope2}</p>`;
 
@@ -904,6 +919,9 @@ function initUIHandlers() {
     }
 
     missingList.innerHTML = html;
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
     missingModal.classList.add('active');
   });
 
@@ -1068,8 +1086,11 @@ Hover   Preview paper & citation lines`);
   function resetSyncModal() {
     syncSteps.forEach((step, i) => {
       step.className = 'sync-step';
-      step.querySelector('.sync-icon').textContent = '⏳';
+      step.querySelector('.sync-icon').innerHTML = '<i data-lucide="loader" class="spin"></i>';
     });
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
     syncResult.style.display = 'none';
     syncError.style.display = 'none';
   }
@@ -1080,9 +1101,12 @@ Hover   Preview paper & citation lines`);
 
     step.className = 'sync-step ' + state;
     const icon = step.querySelector('.sync-icon');
-    if (state === 'active') icon.textContent = '🔄';
-    else if (state === 'done') icon.textContent = '✓';
-    else if (state === 'error') icon.textContent = '✗';
+    if (state === 'active') icon.innerHTML = '<i data-lucide="refresh-cw" class="spin"></i>';
+    else if (state === 'done') icon.innerHTML = '<i data-lucide="check"></i>';
+    else if (state === 'error') icon.innerHTML = '<i data-lucide="x"></i>';
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   }
 
   document.getElementById('fullSync')?.addEventListener('click', async () => {
