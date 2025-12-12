@@ -645,13 +645,13 @@ function initThemeHandlers() {
 
     localStorage.setItem('theme', nextTheme);
     applyTheme(nextTheme);
-    render(currentFiltered);
+    renderCurrentView();
   });
 
   systemDark.addEventListener('change', () => {
     if (localStorage.getItem('theme') === 'auto') {
       applyTheme('auto');
-      render(currentFiltered);
+      renderCurrentView();
     }
   });
 
