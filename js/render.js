@@ -3,8 +3,8 @@
    =========================================== */
 
 function render(filteredPapers) {
-  // highlight 모드면 전체 논문 표시, filter 모드면 필터된 것만
-  const papers = filterMode === 'highlight' ? allPapers : filteredPapers;
+  // Map/Timeline: show all papers, highlight filtered ones
+  const papers = allPapers;
   const filteredIds = new Set(filteredPapers.map(p => p.id));
 
   // Separate papers and apps
@@ -12,7 +12,7 @@ function render(filteredPapers) {
   const appItems = papers.filter(p => !p.is_paper);
 
   // opacity 계산 함수
-  const hasActiveFilter = filterMode === 'highlight' && filteredIds.size < allPapers.length;
+  const hasActiveFilter = filteredIds.size < allPapers.length;
 
   function getOpacity(p, baseOpacity) {
     const isFiltered = filteredIds.has(p.id);
@@ -89,7 +89,7 @@ function render(filteredPapers) {
   const isIsolated = (p) => !connectedIds.has(p.id);
 
   // 검색 결과 glow 효과용
-  const isSearchActive = filterMode === 'highlight' && filteredIds.size < allPapers.length;
+  const isSearchActive = filteredIds.size < allPapers.length;
   const glowItems = isSearchActive ? paperItems.filter(p => filteredIds.has(p.id)) : [];
 
   // 단어 단위 줄바꿈
@@ -253,12 +253,12 @@ function render(filteredPapers) {
   const traces = [];
 
   if (showCitations && citationLinks.length > 0) {
-    const visibleIds = new Set(papers.map(p => p.id));
     const idToPos = {};
     papers.forEach(p => { idToPos[p.id] = { x: p.x, y: p.y }; });
 
+    // Only show citation lines between highlighted/filtered papers
     const relevantLinks = citationLinks.filter(
-      link => visibleIds.has(link.source) && visibleIds.has(link.target)
+      link => filteredIds.has(link.source) && filteredIds.has(link.target)
     );
 
     if (selectedPaper !== null) {
@@ -377,8 +377,14 @@ function render(filteredPapers) {
 
     plotDiv.on('plotly_click', function(data) {
       if (data.points && data.points[0] && data.points[0].customdata) {
-        pointClicked = true;
         const paper = data.points[0].customdata;
+
+        // Only allow clicking on highlighted/filtered papers
+        if (!filteredIds.has(paper.id)) {
+          return;
+        }
+
+        pointClicked = true;
 
         // Check if in link paper mode for Ideas
         if (typeof handlePaperClickForIdea === 'function' && typeof linkPaperMode !== 'undefined' && linkPaperMode) {
@@ -414,6 +420,11 @@ function render(filteredPapers) {
       if (!data.points || !data.points[0] || !data.points[0].customdata) return;
 
       const hoveredItem = data.points[0].customdata;
+
+      // Only allow hovering on highlighted/filtered papers
+      if (!filteredIds.has(hoveredItem.id)) {
+        return;
+      }
 
       // 사이드패널에 호버 미리보기
       if (typeof showHoverPreview === 'function') {

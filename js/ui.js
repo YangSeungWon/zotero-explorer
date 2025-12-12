@@ -561,17 +561,6 @@ function initFilterHandlers() {
     showCitations = e.target.checked;
     render(currentFiltered);
   });
-
-  // Mode toggle
-  document.querySelectorAll('.mode-option').forEach(opt => {
-    opt.addEventListener('click', () => {
-      filterMode = opt.dataset.mode;
-      document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
-      opt.classList.add('active');
-      render(currentFiltered);
-    });
-  });
-  document.querySelector(`.mode-option[data-mode="${filterMode}"]`).classList.add('active');
 }
 
 function resetAllFilters() {
@@ -584,12 +573,9 @@ function resetAllFilters() {
   document.getElementById('showCitations').checked = true;
   showCitations = true;
   highlightCluster = null;
-  filterMode = 'highlight';
   semanticSearchMode = false;
   semanticSearchResults = null;
   document.getElementById('semanticToggle').classList.remove('active');
-  document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
-  document.querySelector('.mode-option[data-mode="highlight"]').classList.add('active');
   document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
   selectedPaper = null;
   connectedPapers = new Set();

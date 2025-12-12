@@ -156,9 +156,6 @@ function filterPapers() {
       if (yearRange) {
         if (p.year && (p.year < yearRange.min || p.year > yearRange.max)) return false;
       }
-      if (filterMode === 'filter' && highlightCluster !== null) {
-        if (p.cluster !== highlightCluster) return false;
-      }
       return true;
     });
 
@@ -190,10 +187,6 @@ function filterPapers() {
     // Year range filter (from mini timeline brush)
     if (yearRange) {
       if (p.year && (p.year < yearRange.min || p.year > yearRange.max)) return false;
-    }
-    // Cluster filter (when in filter mode)
-    if (filterMode === 'filter' && highlightCluster !== null) {
-      if (p.cluster !== highlightCluster) return false;
     }
     return true;
   });

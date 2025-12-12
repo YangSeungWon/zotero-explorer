@@ -4,7 +4,8 @@
 
 // Timeline view rendering (full view)
 function renderTimeline(filteredPapers) {
-  const papers = filterMode === 'highlight' ? allPapers : filteredPapers;
+  // Timeline: show all papers, highlight filtered ones
+  const papers = allPapers;
   const filteredIds = new Set(filteredPapers.map(p => p.id));
 
   // Get unique clusters and sort
@@ -22,7 +23,8 @@ function renderTimeline(filteredPapers) {
     if (highlightCluster !== null) {
       return p.cluster === highlightCluster ? 1 : 0.15;
     }
-    if (filterMode === 'highlight') {
+    // Dim non-filtered papers when filter is active
+    if (filteredIds.size < allPapers.length) {
       return filteredIds.has(p.id) ? 0.8 : 0.15;
     }
     return 0.8;
@@ -133,8 +135,13 @@ function renderTimeline(filteredPapers) {
   Plotly.newPlot(plotDiv, [paperTrace], layout, config).then(function() {
     plotDiv.on('plotly_click', function(data) {
       if (data.points && data.points[0] && data.points[0].customdata) {
+        const paper = data.points[0].customdata;
+        // Only allow clicking on highlighted/filtered papers
+        if (!filteredIds.has(paper.id)) {
+          return;
+        }
         pointClicked = true;
-        showDetail(data.points[0].customdata);
+        showDetail(paper);
       }
     });
 
@@ -153,8 +160,13 @@ function renderTimeline(filteredPapers) {
 
     plotDiv.on('plotly_hover', function(data) {
       if (!data.points || !data.points[0] || !data.points[0].customdata) return;
+      const paper = data.points[0].customdata;
+      // Only allow hovering on highlighted/filtered papers
+      if (!filteredIds.has(paper.id)) {
+        return;
+      }
       if (typeof showHoverPreview === 'function') {
-        showHoverPreview(data.points[0].customdata);
+        showHoverPreview(paper);
       }
     });
 

@@ -241,33 +241,6 @@ input[type="checkbox"] {
   color: var(--color-success);
 }
 
-/* Mode toggle */
-.mode-toggle {
-  display: flex;
-  background: var(--bg-tertiary);
-  border-radius: 6px;
-  padding: 2px;
-  gap: 2px;
-}
-
-.mode-option {
-  padding: 4px 10px;
-  font-size: 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: var(--text-muted);
-  transition: all var(--transition-fast);
-}
-
-.mode-option:hover {
-  color: var(--text-secondary);
-}
-
-.mode-option.active {
-  background: var(--accent);
-  color: white;
-}
-
 /* Cluster stats tooltip */
 .cluster-stats-tooltip {
   position: fixed;
