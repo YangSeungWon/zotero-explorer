@@ -356,9 +356,6 @@ const VENUE_ABBREVIATIONS = {
   'cscw': 'CSCW',
   'computer-supported cooperative': 'CSCW',
   'computer supported cooperative': 'CSCW',
-  'extended abstracts': 'CHI EA',
-  'chi \'': 'CHI EA',
-  'chi\'': 'CHI EA',
   'human factors in computing': 'CHI',
   'conference on human factors': 'CHI',
   'dis ': 'DIS',
@@ -403,9 +400,26 @@ const VENUE_ABBREVIATIONS = {
   'operating systems principles': 'SOSP',
   'osdi': 'OSDI',
   'systems design': 'OSDI',
-  // Web
+  // Web & IR
   'www': 'WWW',
   'world wide web': 'WWW',
+  'sigir': 'SIGIR',
+  'information retrieval': 'SIGIR',
+  'wsdm': 'WSDM',
+  'web search and data mining': 'WSDM',
+  'cikm': 'CIKM',
+  'information and knowledge management': 'CIKM',
+  // Accessibility
+  'sigaccess': 'ASSETS',
+  'computers and accessibility': 'ASSETS',
+  // Other conferences
+  'augmented humans': 'AHs',
+  'conversational user interfaces': 'CUI',
+  'lifelog search': 'LSC',
+  'british hci': 'BCS HCI',
+  'hawaii international': 'HICSS',
+  'wacv': 'WACV',
+  'winter conference on applications': 'WACV',
   // Other
   'arxiv': 'arXiv',
   'acm computing surveys': 'CSUR',
@@ -421,10 +435,24 @@ function abbreviateVenue(venue) {
 
   const lower = venue.toLowerCase();
 
+  // Check for suffix modifiers (adjunct, poster, demo, workshop, etc.)
+  let suffix = '';
+  if (lower.includes('late-breaking') || lower.includes('lbw')) suffix = ' LBW';
+  else if (lower.includes('work-in-progress') || lower.includes('wip')) suffix = ' WIP';
+  else if (lower.includes('doctoral consortium')) suffix = ' DC';
+  else if (lower.includes('extended abstract')) suffix = ' EA';
+  else if (lower.includes('adjunct')) suffix = ' Adj';
+  else if (lower.includes('poster')) suffix = ' Poster';
+  else if (lower.includes('demo')) suffix = ' Demo';
+  else if (lower.includes('workshop')) suffix = ' WS';
+  else if (lower.includes('short paper')) suffix = ' Short';
+  else if (lower.includes('companion')) suffix = ' Comp';
+  else if (lower.includes('interactivity')) suffix = ' Int';
+
   // Check for known abbreviations
   for (const [pattern, abbrev] of Object.entries(VENUE_ABBREVIATIONS)) {
     if (lower.includes(pattern)) {
-      return abbrev;
+      return abbrev + suffix;
     }
   }
 
@@ -432,7 +460,7 @@ function abbreviateVenue(venue) {
   if (venue.length > 30) {
     // Try to extract acronym from parentheses
     const match = venue.match(/\(([A-Z]{2,})\)/);
-    if (match) return match[1];
+    if (match) return match[1] + suffix;
 
     // Otherwise truncate
     return venue.substring(0, 25) + '...';
