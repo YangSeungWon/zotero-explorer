@@ -292,7 +292,13 @@
       <!-- Paper Detail Section (bottom) -->
       <div class="paper-detail-section" id="paperDetailSection">
         <div class="detail-title-row">
-          <button class="bookmark-btn" id="bookmarkBtn" title="Toggle bookmark"><i data-lucide="star"></i></button>
+          <div class="detail-actions" id="detailActions">
+            <button class="list-bookmark-btn" id="bookmarkBtn" title="Toggle bookmark"><i data-lucide="star"></i></button>
+            <div class="list-idea-dropdown" id="detailIdeaDropdown">
+              <button class="list-idea-btn" id="detailIdeaBtn" title="Link to idea"><i data-lucide="lightbulb"></i></button>
+              <div class="dropdown-menu list-idea-menu" id="detailIdeaMenu"></div>
+            </div>
+          </div>
           <h2 id="detailTitle">-</h2>
           <button class="close-btn" id="closeDetail" title="Close"><i data-lucide="x"></i></button>
         </div>

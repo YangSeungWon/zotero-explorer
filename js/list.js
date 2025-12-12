@@ -186,10 +186,11 @@ function renderListView(papers) {
             const ideaKey = menuItem.dataset.ideaKey;
             const isConnected = menuItem.classList.contains('connected');
 
-            // Show saving indicator
-            if (typeof showSavingIndicator === 'function') {
-              showSavingIndicator('saving');
-            }
+            // Show loading state in menu item
+            menuItem.classList.add('loading');
+            const icon = menuItem.querySelector('[data-lucide]');
+            if (icon) icon.setAttribute('data-lucide', 'loader');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
             let result;
             if (isConnected) {
@@ -198,22 +199,29 @@ function renderListView(papers) {
               result = await addPaperToIdea(ideaKey, zoteroKey);
             }
 
-            // Show result
-            if (typeof showSavingIndicator === 'function') {
-              showSavingIndicator(result !== null ? 'saved' : 'failed');
-            }
+            // Show result - briefly show check or x
+            if (icon) icon.setAttribute('data-lucide', result !== null ? 'check' : 'x');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            // Refresh the list and ideas panel
-            renderListView(currentFiltered);
-            if (typeof renderIdeasPanel === 'function') {
-              renderIdeasPanel();
-            }
-            // Refresh idea detail if this idea is selected
-            if (typeof selectedIdea !== 'undefined' && selectedIdea?.zotero_key === ideaKey) {
-              if (typeof renderIdeaDetail === 'function') {
-                renderIdeaDetail(selectedIdea);
+            // Close menu after brief delay
+            setTimeout(() => {
+              document.querySelectorAll('.list-idea-menu.active').forEach(m => m.classList.remove('active'));
+
+              // Refresh list view
+              renderListView(currentFiltered);
+
+              // Select and show the idea
+              if (result !== null && typeof selectIdea === 'function') {
+                const idea = allIdeas.find(i => i.zotero_key === ideaKey);
+                if (idea) {
+                  const ideasSection = document.getElementById('ideasSection');
+                  if (ideasSection?.classList.contains('collapsed')) {
+                    ideasSection.classList.remove('collapsed');
+                  }
+                  selectIdea(idea);
+                }
               }
-            }
+            }, 300);
           });
         });
       }

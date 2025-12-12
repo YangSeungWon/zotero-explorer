@@ -310,9 +310,61 @@ header h1 {
   margin-bottom: 8px;
 }
 
-.detail-panel .meta span {
-  display: inline-block;
-  margin-right: 12px;
+.detail-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.detail-year {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.detail-cluster {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: black;
+  white-space: nowrap;
+}
+
+.detail-authors {
+  color: var(--text-secondary);
+}
+
+.detail-venue {
+  color: var(--text-muted);
+}
+
+.detail-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.detail-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.detail-stat [data-lucide] {
+  width: 12px;
+  height: 12px;
+}
+
+.detail-stat.cited {
+  color: #f97316;
+}
+
+.detail-stat.refs {
+  color: #58a6ff;
 }
 
 .detail-panel .abstract {
@@ -360,6 +412,8 @@ header h1 {
   transform: translateY(1px);
   box-shadow: none;
 }
+
+/* Detail panel idea dropdown - handled by list.css and detail.css */
 
 .detail-panel .notes {
   margin-top: 16px;

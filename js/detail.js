@@ -346,6 +346,109 @@ function renderLinksHtml(item, includeCopyLink = true) {
   return html;
 }
 
+function setupDetailIdeaDropdown(item) {
+  const dropdown = document.getElementById('detailIdeaDropdown');
+  if (!dropdown || !item) return;
+
+  const btn = document.getElementById('detailIdeaBtn');
+  const menu = document.getElementById('detailIdeaMenu');
+  if (!btn || !menu) return;
+
+  const zoteroKey = item.zotero_key;
+
+  // Update button state
+  const connectedIdeas = (typeof allIdeas !== 'undefined' ? allIdeas : [])
+    .filter(idea => idea.connected_papers?.includes(zoteroKey));
+  btn.classList.toggle('has-ideas', connectedIdeas.length > 0);
+  btn.title = connectedIdeas.length > 0 ? 'Connected: ' + connectedIdeas.map(i => i.title).join(', ') : 'Link to idea';
+  btn.innerHTML = `<i data-lucide="lightbulb"></i>${connectedIdeas.length > 0 ? `<span class="idea-count">${connectedIdeas.length}</span>` : ''}`;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  // Clone button to remove old listeners
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+
+  newBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+
+    // Close other menus
+    document.querySelectorAll('.list-idea-menu.active').forEach(m => {
+      if (m !== menu) m.classList.remove('active');
+    });
+
+    // Build menu
+    const ideas = typeof allIdeas !== 'undefined' ? allIdeas : [];
+    if (ideas.length === 0) {
+      menu.innerHTML = '<div class="idea-menu-empty">No ideas yet</div>';
+    } else {
+      menu.innerHTML = ideas.map(idea => {
+        const isConnected = idea.connected_papers?.includes(zoteroKey);
+        return `
+          <div class="dropdown-item idea-menu-item ${isConnected ? 'connected' : ''}" data-idea-key="${idea.zotero_key}">
+            <i data-lucide="${isConnected ? 'check' : 'plus'}"></i>
+            <span>${idea.title}</span>
+          </div>
+        `;
+      }).join('');
+
+      menu.querySelectorAll('.idea-menu-item').forEach(menuItem => {
+        menuItem.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const ideaKey = menuItem.dataset.ideaKey;
+          const isConnected = menuItem.classList.contains('connected');
+
+          // Loading state
+          menuItem.classList.add('loading');
+          const icon = menuItem.querySelector('[data-lucide]');
+          if (icon) icon.setAttribute('data-lucide', 'loader');
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          let result;
+          if (isConnected) {
+            result = await removePaperFromIdea(ideaKey, zoteroKey);
+          } else {
+            result = await addPaperToIdea(ideaKey, zoteroKey);
+          }
+
+          // Show result
+          if (icon) icon.setAttribute('data-lucide', result !== null ? 'check' : 'x');
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          setTimeout(() => {
+            menu.classList.remove('active');
+
+            // Refresh the idea button state
+            if (selectedPaper) {
+              setupDetailIdeaDropdown(selectedPaper);
+            }
+
+            if (result !== null && typeof selectIdea === 'function') {
+              const idea = allIdeas.find(i => i.zotero_key === ideaKey);
+              if (idea) {
+                const ideasSection = document.getElementById('ideasSection');
+                if (ideasSection?.classList.contains('collapsed')) {
+                  ideasSection.classList.remove('collapsed');
+                }
+                selectIdea(idea);
+              }
+            }
+          }, 300);
+        });
+      });
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    menu.classList.toggle('active');
+  });
+
+  // Close menu on outside click
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target)) {
+      menu.classList.remove('active');
+    }
+  });
+}
+
 // ============================================================
 // Panel Functions
 // ============================================================
@@ -364,9 +467,10 @@ function showDefaultPanel() {
   const savedWidth = localStorage.getItem('detailPanelWidth');
   if (savedWidth) panel.style.width = savedWidth;
 
-  // 닫기 버튼, 북마크 버튼 숨기기
+  // 닫기 버튼, 액션 버튼들 숨기기
   document.getElementById('closeDetail').style.display = 'none';
-  document.getElementById('bookmarkBtn').style.display = 'none';
+  const detailActions = document.getElementById('detailActions');
+  if (detailActions) detailActions.style.display = 'none';
 
   // 통계 계산
   const papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
@@ -486,9 +590,10 @@ function showHoverPreview(item) {
   const panel = document.getElementById('detailPanel');
   panel.classList.add('active');
 
-  // 닫기 버튼, 북마크 버튼 숨기기 (호버 미리보기에서는)
+  // 닫기 버튼, 액션 버튼들 숨기기 (호버 미리보기에서는)
   document.getElementById('closeDetail').style.display = 'none';
-  document.getElementById('bookmarkBtn').style.display = 'none';
+  const hoverDetailActions = document.getElementById('detailActions');
+  if (hoverDetailActions) hoverDetailActions.style.display = 'none';
 
   document.getElementById('detailTitle').textContent = item.title || 'Untitled';
 
@@ -566,35 +671,41 @@ function showDetail(item) {
   const { references, citedBy } = buildCitationLists(item);
   renderCurrentView();
 
-  // Title & bookmark
+  // Title & action buttons
   const isBookmarked = bookmarkedPapers.has(item.id);
   document.getElementById('detailTitle').textContent = item.title || 'Untitled';
 
+  // Show action buttons
+  const detailActions = document.getElementById('detailActions');
+  if (detailActions) detailActions.style.display = '';
+
   const bookmarkBtn = document.getElementById('bookmarkBtn');
-  bookmarkBtn.style.display = '';  // Show bookmark button
   bookmarkBtn.innerHTML = `<i data-lucide="star" ${isBookmarked ? 'class="filled"' : ''}></i>`;
   bookmarkBtn.classList.toggle('active', isBookmarked);
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
   setupBookmarkButton(bookmarkBtn, item, renderCurrentView);
 
-  // Meta badges
-  const typeClass = item.is_paper ? 'paper' : 'app';
-  const typeLabel = item.is_paper ? 'Paper' : 'App/Service';
-  const citationBadge = item.citation_count != null ? `<span class="badge" style="background: #ffd70033; color: #ffd700;">Global: ${item.citation_count}</span>` : '';
-  const refsBadge = references.length > 0 ? `<span class="badge" style="background: #58a6ff33; color: #58a6ff;">Refs: ${references.length}</span>` : '';
-  const citedByBadge = citedBy.length > 0 ? `<span class="badge" style="background: #f9731633; color: #f97316;">Cited: ${citedBy.length}</span>` : '';
+  // Setup idea dropdown
+  setupDetailIdeaDropdown(item);
+
+  // Meta - compact list view style
+  const clusterColor = CLUSTER_COLORS[item.cluster % CLUSTER_COLORS.length];
+  const venueAbbrev = typeof abbreviateVenue === 'function' ? abbreviateVenue(item.venue) : (item.venue || '');
+  const authorsAbbrev = typeof abbreviateAuthors === 'function' ? abbreviateAuthors(item.authors) : (item.authors?.split(/[,;]/)[0] || '');
 
   document.getElementById('detailMeta').innerHTML = `
-    <span class="badge ${typeClass}">${typeLabel}</span>
-    <span class="badge cluster">Cluster ${item.cluster}: ${item.cluster_label || ''}</span>
-    ${citationBadge}${refsBadge}${citedByBadge}
-    <br><br>
-    <span><strong>Year:</strong> ${item.year || 'N/A'}</span>
-    <span><strong>Venue:</strong> ${item.venue || 'N/A'}</span>
-    <span><strong>Quality:</strong> ${item.venue_quality}/5</span>
-    ${item.citation_count != null ? `<span><strong>Citations:</strong> ${item.citation_count}</span>` : ''}
-    ${item.authors ? `<br><span><strong>Authors:</strong> ${item.authors.substring(0, 100)}${item.authors.length > 100 ? '...' : ''}</span>` : ''}
+    <div class="detail-meta-line">
+      <span class="detail-year">${item.year || '?'}</span>
+      <span class="detail-cluster" style="background: ${clusterColor};">${item.cluster_label || 'C' + item.cluster}</span>
+      <span class="detail-authors">${authorsAbbrev}</span>
+      <span class="detail-venue" title="${item.venue || ''}">${venueAbbrev}</span>
+    </div>
+    <div class="detail-stats">
+      ${item.citation_count ? `<span class="detail-stat" title="Total citations"><i data-lucide="quote"></i> ${item.citation_count}</span>` : ''}
+      ${citedBy.length > 0 ? `<span class="detail-stat cited" title="Cited by ${citedBy.length} in library"><i data-lucide="arrow-left"></i> ${citedBy.length}</span>` : ''}
+      ${references.length > 0 ? `<span class="detail-stat refs" title="References ${references.length} in library"><i data-lucide="arrow-right"></i> ${references.length}</span>` : ''}
+    </div>
   `;
 
   // Tag editor

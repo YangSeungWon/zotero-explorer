@@ -319,15 +319,14 @@ function renderIdeaDetail(idea) {
     html += `<div class="no-papers">No papers connected. Click <i data-lucide="paperclip" style="display:inline;width:14px;height:14px;vertical-align:middle;"></i> to link papers from the map.</div>`;
   } else {
     for (const paper of connectedPapers) {
-      const clusterLabel = clusterLabels[paper.cluster] || `C${paper.cluster}`;
+      // Format: year Author et al. Title
+      const year = paper.year || '';
+      const firstAuthor = paper.authors ? paper.authors.split(/[,;]/)[0].trim() : '';
       html += `
         <div class="connected-paper-item" data-paper-id="${paper.id}">
-          <div class="connected-paper-info">
-            <div class="connected-paper-title">${escapeHtml(paper.title)}</div>
-            <div class="connected-paper-meta">
-              ${paper.year || ''} · ${clusterLabel}
-            </div>
-          </div>
+          <span class="cp-year">${year}</span>
+          ${firstAuthor ? `<span class="cp-author">${escapeHtml(firstAuthor)}<span class="cp-etal">et al.</span></span>` : ''}
+          <span class="cp-title">${escapeHtml(paper.title)}</span>
           <button class="btn-remove-paper" data-paper-key="${paper.zotero_key}" title="Remove">×</button>
         </div>
       `;
