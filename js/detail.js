@@ -707,6 +707,7 @@ function showDetail(item) {
       ${references.length > 0 ? `<span class="detail-stat refs" title="References ${references.length} in library"><i data-lucide="arrow-right"></i> ${references.length}</span>` : ''}
     </div>
   `;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 
   // Tag editor
   document.getElementById('detailTags').innerHTML = renderTagEditor(item);

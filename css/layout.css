@@ -350,8 +350,12 @@ header h1 {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .detail-stat [data-lucide] {
@@ -360,11 +364,13 @@ header h1 {
 }
 
 .detail-stat.cited {
-  color: #f97316;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .detail-stat.refs {
-  color: #58a6ff;
+  background: var(--color-info-bg);
+  color: var(--blue-500);
 }
 
 .detail-panel .abstract {
