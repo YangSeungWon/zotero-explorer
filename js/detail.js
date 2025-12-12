@@ -7,12 +7,35 @@
 // ============================================================
 
 function renderCurrentView() {
+  // Include selected paper and connected papers even if they're filtered out
+  let papersToRender = currentFiltered;
+
+  if (selectedPaper !== null) {
+    const filteredIds = new Set(currentFiltered.map(p => p.id));
+
+    // Add selected paper if filtered out
+    if (!filteredIds.has(selectedPaper.id)) {
+      papersToRender = [...papersToRender, selectedPaper];
+      filteredIds.add(selectedPaper.id);
+    }
+
+    // Add connected papers if filtered out
+    if (connectedPapers.size > 0) {
+      const missingConnected = allPapers.filter(p =>
+        connectedPapers.has(p.id) && !filteredIds.has(p.id)
+      );
+      if (missingConnected.length > 0) {
+        papersToRender = [...papersToRender, ...missingConnected];
+      }
+    }
+  }
+
   if (currentView === 'timeline') {
-    renderTimeline(currentFiltered);
+    renderTimeline(papersToRender);
   } else if (currentView === 'list') {
-    renderListView(currentFiltered);
+    renderListView(currentFiltered);  // List view keeps filtered only
   } else {
-    render(currentFiltered);
+    render(papersToRender);
   }
 }
 
