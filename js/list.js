@@ -51,7 +51,7 @@ function renderListView(papers) {
     const clusterLabel = clusterLabels[paper.cluster] || `Cluster ${paper.cluster}`;
     const clusterColor = CLUSTER_COLORS[paper.cluster % CLUSTER_COLORS.length];
     const isSelected = selectedPaper?.id === paper.id;
-    const isBookmarked = bookmarkedPapers.has(paper.zotero_key);
+    const isBookmarked = bookmarkedPapers.has(paper.id);
 
     // Get similarity score if available
     let simScore = '';
