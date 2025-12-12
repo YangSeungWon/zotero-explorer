@@ -7,27 +7,39 @@ function renderTimeline(filteredPapers) {
   // Timeline: show all papers, highlight filtered ones
   const papers = allPapers;
   const filteredIds = new Set(filteredPapers.map(p => p.id));
+  const hasActiveFilter = filteredIds.size < allPapers.length;
+  const isLight = document.documentElement.dataset.theme === 'light';
+
+  // Muted color for background papers (faint cluster hint, lower brightness)
+  function muteColor(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const gray = isLight ? 225 : 35;
+    const amount = 0.88;
+    const nr = Math.round(r + (gray - r) * amount);
+    const ng = Math.round(g + (gray - g) * amount);
+    const nb = Math.round(b + (gray - b) * amount);
+    return `rgb(${nr}, ${ng}, ${nb})`;
+  }
 
   // Get unique clusters and sort
   const clusters = [...new Set(papers.map(p => p.cluster))].sort((a, b) => a - b);
   const clusterY = {};
   clusters.forEach((c, i) => { clusterY[c] = i; });
 
-  // Opacity calculation
-  function getOpacity(p) {
+  // Determine if paper is highlighted
+  function isHighlighted(p) {
     if (selectedPaper !== null) {
-      if (p.id === selectedPaper.id) return 1;
-      if (connectedPapers.has(p.id)) return 0.9;
-      return 0.3;
+      return p.id === selectedPaper.id || connectedPapers.has(p.id);
     }
     if (highlightCluster !== null) {
-      return p.cluster === highlightCluster ? 1 : 0.15;
+      return p.cluster === highlightCluster;
     }
-    // Dim non-filtered papers when filter is active
-    if (filteredIds.size < allPapers.length) {
-      return filteredIds.has(p.id) ? 0.8 : 0.15;
+    if (hasActiveFilter) {
+      return filteredIds.has(p.id);
     }
-    return 0.8;
+    return true;
   }
 
   // Size based on citations
@@ -37,7 +49,7 @@ function renderTimeline(filteredPapers) {
     return baseSize + citationBonus;
   }
 
-  // Add small jitter to y for papers in same year/cluster
+  // Compute jitter for ALL papers first (to maintain consistent positions)
   const jitterMap = {};
   papers.forEach(p => {
     const key = `${p.year}-${p.cluster}`;
@@ -46,45 +58,74 @@ function renderTimeline(filteredPapers) {
   });
 
   const jitterCount = {};
-  const paperTrace = {
-    x: papers.map(p => p.year),
-    y: papers.map(p => {
-      const key = `${p.year}-${p.cluster}`;
-      if (!jitterCount[key]) jitterCount[key] = 0;
-      const count = jitterMap[key];
-      const jitter = count > 1 ? (jitterCount[key]++ / count - 0.5) * 0.6 : 0;
-      return clusterY[p.cluster] + jitter;
-    }),
-    text: papers.map(p => `<b>${p.title}</b><br>${p.year}<br>Cluster ${p.cluster}`),
-    customdata: papers,
+  const paperPositions = papers.map(p => {
+    const key = `${p.year}-${p.cluster}`;
+    if (!jitterCount[key]) jitterCount[key] = 0;
+    const count = jitterMap[key];
+    const jitter = count > 1 ? (jitterCount[key]++ / count - 0.5) * 0.6 : 0;
+    return { paper: p, x: p.year, y: clusterY[p.cluster] + jitter };
+  });
+
+  // Split into foreground and background
+  const fgPositions = paperPositions.filter(pos => isHighlighted(pos.paper));
+  const bgPositions = paperPositions.filter(pos => !isHighlighted(pos.paper));
+
+  // Background trace (dimmed, no interaction)
+  const bgTrace = {
+    x: bgPositions.map(pos => pos.x),
+    y: bgPositions.map(pos => pos.y),
     mode: 'markers',
     type: 'scatter',
+    name: 'Papers (bg)',
+    showlegend: false,
     marker: {
-      size: papers.map(p => getSize(p)),
-      color: papers.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
-      opacity: papers.map(p => getOpacity(p)),
+      size: bgPositions.map(pos => getSize(pos.paper)),
+      color: bgPositions.map(pos => muteColor(CLUSTER_COLORS[pos.paper.cluster % CLUSTER_COLORS.length])),
+      opacity: 1,
+      line: { width: 0.5, color: isLight ? '#ddd' : '#333' }
+    },
+    hoverinfo: 'skip'
+  };
+
+  // Foreground trace (highlighted, interactive)
+  const fgTrace = {
+    x: fgPositions.map(pos => pos.x),
+    y: fgPositions.map(pos => pos.y),
+    text: fgPositions.map(pos => `<b>${pos.paper.title}</b><br>${pos.paper.year}<br>Cluster ${pos.paper.cluster}`),
+    customdata: fgPositions.map(pos => pos.paper),
+    mode: 'markers',
+    type: 'scatter',
+    name: 'Papers',
+    marker: {
+      size: fgPositions.map(pos => getSize(pos.paper)),
+      color: fgPositions.map(pos => CLUSTER_COLORS[pos.paper.cluster % CLUSTER_COLORS.length]),
+      opacity: fgPositions.map(pos => {
+        const p = pos.paper;
+        if (selectedPaper !== null) {
+          if (p.id === selectedPaper.id) return 1;
+          if (connectedPapers.has(p.id)) return 0.9;
+        }
+        return 0.8;
+      }),
       line: {
-        width: papers.map(p => {
+        width: fgPositions.map(pos => {
+          const p = pos.paper;
           if (selectedPaper && p.id === selectedPaper.id) return 3;
           if (selectedPaper && connectedPapers.has(p.id)) return 2.5;
-          if (bookmarkedPapers.has(p.id)) return 2;
           return 0.5;
         }),
-        color: papers.map(p => {
-          if (selectedPaper && p.id === selectedPaper.id) return '#00ffff';  // cyan for selection
+        color: fgPositions.map(pos => {
+          const p = pos.paper;
+          if (selectedPaper && p.id === selectedPaper.id) return '#00ffff';
           if (selectedPaper && connectedPapers.has(p.id)) {
-            // References (older) = blue, Citations (newer) = orange
             return p.year < selectedPaper.year ? '#58a6ff' : '#f97316';
           }
-          if (bookmarkedPapers.has(p.id)) return '#ffd700';  // gold for bookmark
           return '#0d1117';
         })
       }
     },
     hovertemplate: '%{text}<extra></extra>'
   };
-
-  const isLight = document.documentElement.dataset.theme === 'light';
   const colors = isLight ? {
     bg: '#ffffff', grid: '#eaeef2', zero: '#d0d7de', text: '#656d76'
   } : {
@@ -132,7 +173,12 @@ function renderTimeline(filteredPapers) {
   const plotDiv = document.getElementById('timelinePlot');
   let pointClicked = false;
 
-  Plotly.newPlot(plotDiv, [paperTrace], layout, config).then(function() {
+  // Build traces array: background first, then foreground
+  const traces = [];
+  if (bgPositions.length > 0) traces.push(bgTrace);
+  traces.push(fgTrace);
+
+  Plotly.newPlot(plotDiv, traces, layout, config).then(function() {
     plotDiv.on('plotly_click', function(data) {
       if (data.points && data.points[0] && data.points[0].customdata) {
         const paper = data.points[0].customdata;

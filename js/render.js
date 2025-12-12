@@ -11,35 +11,55 @@ function render(filteredPapers) {
   const paperItems = papers.filter(p => p.is_paper);
   const appItems = papers.filter(p => !p.is_paper);
 
-  // opacity 계산 함수
   const hasActiveFilter = filteredIds.size < allPapers.length;
+  const isLight = document.documentElement.dataset.theme === 'light';
 
-  function getOpacity(p, baseOpacity) {
-    const isFiltered = filteredIds.has(p.id);
-    const isHighlightedCluster = highlightCluster !== null && p.cluster === highlightCluster;
-    const isHighlighted = isHighlightedCluster || (hasActiveFilter && isFiltered);
+  // Muted color for background papers (faint cluster hint, lower brightness)
+  function muteColor(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
 
-    // 논문 선택 + 하이라이트(클러스터 또는 필터) 동시
-    if (selectedPaper !== null && (highlightCluster !== null || hasActiveFilter)) {
-      if (p.id === selectedPaper.id) return 1;
-      if (connectedPapers.has(p.id)) {
-        return isHighlighted ? 0.9 : 0.4;
-      }
-      return isHighlighted ? 0.6 : 0.1;
+    // Blend toward muted gray
+    const gray = isLight ? 225 : 35;
+    const amount = 0.88;  // More gray, less color
+
+    const nr = Math.round(r + (gray - r) * amount);
+    const ng = Math.round(g + (gray - g) * amount);
+    const nb = Math.round(b + (gray - b) * amount);
+
+    return `rgb(${nr}, ${ng}, ${nb})`;
+  }
+
+  // Determine if paper is highlighted (foreground) or dimmed (background)
+  function isHighlighted(p) {
+    // When paper is selected, show selected + connected as highlighted
+    if (selectedPaper !== null) {
+      return p.id === selectedPaper.id || connectedPapers.has(p.id);
     }
-    // 논문만 선택된 경우
+    // Cluster highlight
+    if (highlightCluster !== null) {
+      return p.cluster === highlightCluster;
+    }
+    // Filter active
+    if (hasActiveFilter) {
+      return filteredIds.has(p.id);
+    }
+    // No filter - all highlighted
+    return true;
+  }
+
+  // Split into foreground (highlighted) and background (dimmed)
+  const fgPapers = paperItems.filter(p => isHighlighted(p));
+  const bgPapers = paperItems.filter(p => !isHighlighted(p));
+  const fgApps = appItems.filter(p => isHighlighted(p));
+  const bgApps = appItems.filter(p => !isHighlighted(p));
+
+  // Opacity for foreground papers
+  function getFgOpacity(p, baseOpacity) {
     if (selectedPaper !== null) {
       if (p.id === selectedPaper.id) return 1;
       if (connectedPapers.has(p.id)) return 0.9;
-      return 0.5;
-    }
-    // 클러스터만 하이라이트된 경우
-    if (highlightCluster !== null) {
-      return p.cluster === highlightCluster ? 1 : 0.15;
-    }
-    // 필터만 활성화된 경우
-    if (hasActiveFilter) {
-      return isFiltered ? baseOpacity : 0.15;
     }
     return baseOpacity;
   }
@@ -68,14 +88,12 @@ function render(filteredPapers) {
 
     if (selectedPaper !== null && p.id === selectedPaper.id) return baseWidth + 1.5;
     if (selectedPaper !== null && connectedPapers.has(p.id)) return baseWidth + 1;
-    if (bookmarkedPapers.has(p.id)) return baseWidth + 1;  // bookmark border
     return baseWidth;
   }
 
   function getLineColor(p, isolated = false) {
     if (selectedPaper !== null && p.id === selectedPaper.id) return '#00ffff';  // cyan for selection
     if (selectedPaper !== null && connectedPapers.has(p.id)) return '#ff6b6b';
-    if (bookmarkedPapers.has(p.id)) return '#ffd700';  // gold for bookmark
     if (isolated) return '#4a5568'; // 회색 테두리 (isolated)
     return '#0d1117';
   }
@@ -89,8 +107,7 @@ function render(filteredPapers) {
   const isIsolated = (p) => !connectedIds.has(p.id);
 
   // 검색 결과 glow 효과용
-  const isSearchActive = filteredIds.size < allPapers.length;
-  const glowItems = isSearchActive ? paperItems.filter(p => filteredIds.has(p.id)) : [];
+  const glowItems = hasActiveFilter ? fgPapers : [];
 
   // 단어 단위 줄바꿈
   function wrapText(text, maxLen = 25) {
@@ -119,11 +136,28 @@ function render(filteredPapers) {
     return para;
   }
 
-  // Papers trace
-  const paperTrace = {
-    x: paperItems.map(p => p.x),
-    y: paperItems.map(p => p.y),
-    text: paperItems.map(p => {
+  // Background papers trace (dimmed, no interaction, faint cluster colors)
+  const bgPaperTrace = {
+    x: bgPapers.map(p => p.x),
+    y: bgPapers.map(p => p.y),
+    mode: 'markers',
+    type: 'scatter',
+    name: 'Papers (bg)',
+    showlegend: false,
+    marker: {
+      size: bgPapers.map(p => getSize(p) * zoomScale),
+      color: bgPapers.map(p => muteColor(CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length])),
+      opacity: 1,
+      line: { width: 0.5, color: isLight ? '#ddd' : '#333' }
+    },
+    hoverinfo: 'skip'
+  };
+
+  // Foreground papers trace (highlighted, interactive)
+  const fgPaperTrace = {
+    x: fgPapers.map(p => p.x),
+    y: fgPapers.map(p => p.y),
+    text: fgPapers.map(p => {
       const wrappedTitle = wrapText(p.title || '', 28);
       const firstNote = getFirstParagraph(p.notes);
       const notePreview = firstNote ? `<br><br><i>"${wrapText(firstNote, 28)}"</i>` : '';
@@ -133,17 +167,17 @@ function render(filteredPapers) {
         `Cluster ${p.cluster}` +
         notePreview;
     }),
-    customdata: paperItems,
+    customdata: fgPapers,
     mode: 'markers',
     type: 'scatter',
     name: 'Papers',
     marker: {
-      size: paperItems.map(p => getSize(p) * zoomScale),
-      color: paperItems.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
-      opacity: paperItems.map(p => getOpacity(p, 0.8)),
+      size: fgPapers.map(p => getSize(p) * zoomScale),
+      color: fgPapers.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
+      opacity: fgPapers.map(p => getFgOpacity(p, 0.8)),
       line: {
-        width: paperItems.map(p => getLineWidth(p)),
-        color: paperItems.map(p => getLineColor(p, isIsolated(p)))
+        width: fgPapers.map(p => getLineWidth(p)),
+        color: fgPapers.map(p => getLineColor(p, isIsolated(p)))
       }
     },
     hovertemplate: '%{text}<extra></extra>'
@@ -164,49 +198,49 @@ function render(filteredPapers) {
     hoverinfo: 'skip'
   };
 
-  // 북마크 표시 (골드 링)
-  const bookmarkedItems = papers.filter(p => bookmarkedPapers.has(p.id));
-  const bookmarkTrace = {
-    x: bookmarkedItems.map(p => p.x),
-    y: bookmarkedItems.map(p => p.y),
+
+  // Background apps trace (dimmed, faint cluster colors)
+  const bgAppTrace = {
+    x: bgApps.map(p => p.x),
+    y: bgApps.map(p => p.y),
     mode: 'markers',
     type: 'scatter',
-    name: 'Bookmarked',
+    name: 'Apps (bg)',
     showlegend: false,
     marker: {
-      size: bookmarkedItems.map(p => (getSize(p) + 6) * zoomScale),
-      symbol: 'circle-open',
-      color: '#ffd700',
-      line: { width: 2, color: '#ffd700' }
+      size: 14 * zoomScale,
+      symbol: 'diamond',
+      color: bgApps.map(p => muteColor(CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length])),
+      opacity: 1,
+      line: { width: 1, color: isLight ? '#ddd' : '#444' }
     },
     hoverinfo: 'skip'
   };
 
-  // Apps trace
-  const appTrace = {
-    x: appItems.map(p => p.x),
-    y: appItems.map(p => p.y),
-    text: appItems.map(p => {
+  // Foreground apps trace (highlighted)
+  const fgAppTrace = {
+    x: fgApps.map(p => p.x),
+    y: fgApps.map(p => p.y),
+    text: fgApps.map(p => {
       const wrappedTitle = wrapText(p.title || '', 28);
       return `<b>${wrappedTitle}</b><br><br>` +
         `App/Service<br>` +
         `Cluster ${p.cluster}`;
     }),
-    customdata: appItems,
+    customdata: fgApps,
     mode: 'markers',
     type: 'scatter',
     name: 'Apps/Services',
     marker: {
       size: 14 * zoomScale,
       symbol: 'diamond',
-      color: appItems.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
-      opacity: appItems.map(p => getOpacity(p, 0.9)),
+      color: fgApps.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
+      opacity: fgApps.map(p => getFgOpacity(p, 0.9)),
       line: { width: 2, color: '#bc8cff' }
     },
     hovertemplate: '%{text}<extra></extra>'
   };
 
-  const isLight = document.documentElement.dataset.theme === 'light';
   const colors = isLight ? {
     bg: '#ffffff', grid: '#eaeef2', zero: '#d0d7de', text: '#656d76'
   } : {
@@ -334,9 +368,11 @@ function render(filteredPapers) {
     }
   }
 
+  // Order: background (dimmed) first, then glow, then foreground (highlighted)
+  if (bgPapers.length > 0) traces.push(bgPaperTrace);
+  if (bgApps.length > 0) traces.push(bgAppTrace);
   if (glowItems.length > 0) traces.push(glowTrace);
-  traces.push(paperTrace, appTrace);
-  if (bookmarkedItems.length > 0) traces.push(bookmarkTrace);
+  traces.push(fgPaperTrace, fgAppTrace);
 
   // 저장된 줌 상태 적용
   if (savedXRange) layout.xaxis.range = savedXRange;
@@ -460,26 +496,26 @@ function render(filteredPapers) {
     const initialRange = initialXRange[1] - initialXRange[0];
 
     function updateMarkerSizes() {
-      const paperIdx = plotDiv.data.findIndex(t => t.name === 'Papers');
-      const appIdx = plotDiv.data.findIndex(t => t.name === 'Apps/Services');
+      const bgPaperIdx = plotDiv.data.findIndex(t => t.name === 'Papers (bg)');
+      const fgPaperIdx = plotDiv.data.findIndex(t => t.name === 'Papers');
+      const bgAppIdx = plotDiv.data.findIndex(t => t.name === 'Apps (bg)');
+      const fgAppIdx = plotDiv.data.findIndex(t => t.name === 'Apps/Services');
       const glowIdx = plotDiv.data.findIndex(t => t.marker?.color === 'rgba(0, 255, 255, 0.3)');
-      const bookmarkIdx = plotDiv.data.findIndex(t => t.name === 'Bookmarked');
 
-      if (paperIdx >= 0) {
-        const newPaperSizes = paperItems.map(p => getSize(p) * zoomScale);
-        Plotly.restyle(plotDiv, { 'marker.size': [newPaperSizes] }, [paperIdx]);
+      if (bgPaperIdx >= 0 && bgPapers.length > 0) {
+        Plotly.restyle(plotDiv, { 'marker.size': [bgPapers.map(p => getSize(p) * zoomScale)] }, [bgPaperIdx]);
       }
-      if (appIdx >= 0) {
-        const newAppSizes = appItems.map(() => 14 * zoomScale);
-        Plotly.restyle(plotDiv, { 'marker.size': [newAppSizes] }, [appIdx]);
+      if (fgPaperIdx >= 0) {
+        Plotly.restyle(plotDiv, { 'marker.size': [fgPapers.map(p => getSize(p) * zoomScale)] }, [fgPaperIdx]);
+      }
+      if (bgAppIdx >= 0 && bgApps.length > 0) {
+        Plotly.restyle(plotDiv, { 'marker.size': [bgApps.map(() => 14 * zoomScale)] }, [bgAppIdx]);
+      }
+      if (fgAppIdx >= 0) {
+        Plotly.restyle(plotDiv, { 'marker.size': [fgApps.map(() => 14 * zoomScale)] }, [fgAppIdx]);
       }
       if (glowIdx >= 0 && glowItems.length > 0) {
-        const newGlowSizes = glowItems.map(p => (getSize(p) + 12) * zoomScale);
-        Plotly.restyle(plotDiv, { 'marker.size': [newGlowSizes] }, [glowIdx]);
-      }
-      if (bookmarkIdx >= 0 && bookmarkedItems.length > 0) {
-        const newBookmarkSizes = bookmarkedItems.map(p => (getSize(p) + 6) * zoomScale);
-        Plotly.restyle(plotDiv, { 'marker.size': [newBookmarkSizes] }, [bookmarkIdx]);
+        Plotly.restyle(plotDiv, { 'marker.size': [glowItems.map(p => (getSize(p) + 12) * zoomScale)] }, [glowIdx]);
       }
     }
 
