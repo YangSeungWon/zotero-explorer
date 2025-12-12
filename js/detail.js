@@ -312,7 +312,15 @@ function setupBookmarkButton(btn, item, onUpdate) {
   btn.parentNode.replaceChild(newBtn, btn);
 
   newBtn.addEventListener('click', async () => {
+    // Show loading state
+    newBtn.classList.add('loading');
+    newBtn.innerHTML = `<i data-lucide="loader"></i>`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
     const nowBookmarked = await toggleBookmark(item);
+
+    // Update to final state
+    newBtn.classList.remove('loading');
     newBtn.innerHTML = `<i data-lucide="star" ${nowBookmarked ? 'class="filled"' : ''}></i>`;
     newBtn.classList.toggle('active', nowBookmarked);
     if (typeof lucide !== 'undefined') lucide.createIcons();

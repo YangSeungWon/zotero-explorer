@@ -277,6 +277,14 @@
   animation: spin 1s linear infinite;
 }
 
+.list-bookmark-btn.loading {
+  pointer-events: none;
+}
+
+.list-bookmark-btn.loading [data-lucide] {
+  animation: spin 1s linear infinite;
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

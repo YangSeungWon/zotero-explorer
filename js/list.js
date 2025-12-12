@@ -137,15 +137,22 @@ function renderListView(papers) {
       const paperId = parseInt(btn.dataset.paperId);
       const paper = allPapers.find(p => p.id === paperId);
       if (paper) {
-        const nowBookmarked = await toggleBookmark(paper);
-        btn.classList.toggle('active', nowBookmarked);
+        // Show loading state
+        btn.classList.add('loading');
         const icon = btn.querySelector('[data-lucide]');
+        if (icon) icon.setAttribute('data-lucide', 'loader');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        const nowBookmarked = await toggleBookmark(paper);
+
+        // Update to final state
+        btn.classList.remove('loading');
+        btn.classList.toggle('active', nowBookmarked);
         if (icon) {
+          icon.setAttribute('data-lucide', 'star');
           icon.classList.toggle('filled', nowBookmarked);
         }
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons();
-        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
       }
     });
   });
