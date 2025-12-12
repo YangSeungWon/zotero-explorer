@@ -1271,10 +1271,10 @@ function showAuthorStats() {
   const papers = currentFiltered.length > 0 ? currentFiltered : allPapers;
   const authorCounts = {};
 
-  // Count authors
+  // Count authors - split by semicolon only (authors are "Lastname, Firstname; ...")
   papers.forEach(paper => {
     if (!paper.authors) return;
-    const authorList = paper.authors.split(/[,;]/).map(a => a.trim()).filter(a => a);
+    const authorList = paper.authors.split(/;/).map(a => a.trim()).filter(a => a);
     authorList.forEach(author => {
       // Normalize author name (remove extra spaces)
       const normalized = author.replace(/\s+/g, ' ').trim();
