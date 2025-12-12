@@ -283,9 +283,12 @@ function render(filteredPapers) {
     savedYRange = plotDiv.layout.yaxis?.range;
   }
 
-  // 인용 관계 선
+  // Order: bg papers (dimmed) first, below everything
   const traces = [];
+  if (bgPapers.length > 0) traces.push(bgPaperTrace);
+  if (bgApps.length > 0) traces.push(bgAppTrace);
 
+  // 인용 관계 선 (above bg papers, below fg papers)
   if (showCitations && citationLinks.length > 0) {
     const idToPos = {};
     papers.forEach(p => { idToPos[p.id] = { x: p.x, y: p.y }; });
@@ -368,9 +371,7 @@ function render(filteredPapers) {
     }
   }
 
-  // Order: background (dimmed) first, then glow, then foreground (highlighted)
-  if (bgPapers.length > 0) traces.push(bgPaperTrace);
-  if (bgApps.length > 0) traces.push(bgAppTrace);
+  // Glow and foreground (highlighted) papers on top
   if (glowItems.length > 0) traces.push(glowTrace);
   traces.push(fgPaperTrace, fgAppTrace);
 
@@ -421,13 +422,7 @@ function render(filteredPapers) {
         }
 
         pointClicked = true;
-
-        // Check if in link paper mode for Ideas
-        if (typeof handlePaperClickForIdea === 'function' && typeof linkPaperMode !== 'undefined' && linkPaperMode) {
-          handlePaperClickForIdea(paper);
-        } else {
-          showDetail(paper);
-        }
+        showDetail(paper);
       }
     });
 

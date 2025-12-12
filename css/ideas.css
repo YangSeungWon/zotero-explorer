@@ -410,6 +410,13 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 4px 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.connected-paper-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
 }
 
 .connected-paper-info {
@@ -489,25 +496,9 @@
 #ideaDetail.is-saving .keyword-add-btn,
 #ideaDetail.is-saving .keyword-remove,
 #ideaDetail.is-saving .btn-remove-paper,
-#ideaDetail.is-saving #toggleLinkMode,
 #ideaDetail.is-saving #deleteIdeaBtn {
   opacity: 0.5;
   pointer-events: none;
   cursor: not-allowed;
 }
 
-/* Link Mode Indicator */
-.link-mode-indicator {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--accent);
-  color: white;
-  padding: 8px 16px;
-  border-radius: var(--radius-md);
-  font-size: 12px;
-  font-weight: 500;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}

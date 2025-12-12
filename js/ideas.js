@@ -5,7 +5,6 @@
 // Ideas state
 let allIdeas = [];
 let selectedIdea = null;
-let linkPaperMode = false;  // When true, clicking papers links them to selected idea
 let isSaving = false;       // Prevent double submissions
 
 const IDEA_STATUSES = {
@@ -270,9 +269,6 @@ function renderIdeaDetail(idea) {
           <span class="saving-spinner"></span>
           <span class="saving-text">Saving...</span>
         </div>
-        <button class="btn-icon" id="toggleLinkMode" title="Link papers from map">
-          <span class="link-icon"><i data-lucide="${linkPaperMode ? 'link' : 'paperclip'}"></i></span>
-        </button>
         <button class="btn-icon btn-danger" id="deleteIdeaBtn" title="Delete idea"><i data-lucide="trash-2"></i></button>
       </div>
     </div>
@@ -325,7 +321,7 @@ function renderIdeaDetail(idea) {
     for (const paper of connectedPapers) {
       const clusterLabel = clusterLabels[paper.cluster] || `C${paper.cluster}`;
       html += `
-        <div class="connected-paper-item">
+        <div class="connected-paper-item" data-paper-id="${paper.id}">
           <div class="connected-paper-info">
             <div class="connected-paper-title">${escapeHtml(paper.title)}</div>
             <div class="connected-paper-meta">
@@ -359,7 +355,6 @@ function renderIdeaDetail(idea) {
   descInput.addEventListener('change', () => saveIdeaField(idea.zotero_key, 'description', descInput.value));
   statusSelect.addEventListener('change', () => saveIdeaField(idea.zotero_key, 'status', statusSelect.value));
 
-  document.getElementById('toggleLinkMode').addEventListener('click', toggleLinkPaperMode);
   document.getElementById('deleteIdeaBtn').addEventListener('click', () => confirmDeleteIdea(idea));
 
   // Keyword handlers
@@ -407,7 +402,8 @@ function renderIdeaDetail(idea) {
   });
 
   container.querySelectorAll('.btn-remove-paper').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       if (isSaving) return;
       const paperKey = btn.dataset.paperKey;
       showSavingIndicator('saving');
@@ -416,6 +412,17 @@ function renderIdeaDetail(idea) {
       if (result !== null) {
         renderIdeaDetail(idea);
         highlightIdeaPapers(idea);
+      }
+    });
+  });
+
+  // Click on connected paper to select it
+  container.querySelectorAll('.connected-paper-item[data-paper-id]').forEach(item => {
+    item.addEventListener('click', () => {
+      const paperId = parseInt(item.dataset.paperId);
+      const paper = allPapers.find(p => p.id === paperId);
+      if (paper && typeof showDetail === 'function') {
+        showDetail(paper);
       }
     });
   });
@@ -513,46 +520,6 @@ async function confirmDeleteIdea(idea) {
   }
 }
 
-function toggleLinkPaperMode() {
-  linkPaperMode = !linkPaperMode;
-  const btn = document.getElementById('toggleLinkMode');
-  if (btn) {
-    btn.querySelector('.link-icon').innerHTML = `<i data-lucide="${linkPaperMode ? 'link' : 'paperclip'}"></i>`;
-    btn.classList.toggle('active', linkPaperMode);
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-  }
-
-  // Show indicator on map
-  const indicator = document.getElementById('linkModeIndicator');
-  if (indicator) {
-    indicator.style.display = linkPaperMode ? 'block' : 'none';
-  }
-}
-
-// Called when clicking a paper on the map while in link mode
-async function handlePaperClickForIdea(paper) {
-  if (!linkPaperMode || !selectedIdea || isSaving) return false;
-
-  showSavingIndicator('saving');
-  const connected = selectedIdea.connected_papers || [];
-  let result;
-  if (connected.includes(paper.zotero_key)) {
-    // Already connected - remove
-    result = await removePaperFromIdea(selectedIdea.zotero_key, paper.zotero_key);
-  } else {
-    // Add connection
-    result = await addPaperToIdea(selectedIdea.zotero_key, paper.zotero_key);
-  }
-
-  showSavingIndicator(result !== null ? 'saved' : 'failed');
-  if (result !== null) {
-    renderIdeaDetail(selectedIdea);
-    highlightIdeaPapers(selectedIdea);
-  }
-  return true;  // Indicate we handled the click
-}
 
 // ============================================================
 // Map Integration

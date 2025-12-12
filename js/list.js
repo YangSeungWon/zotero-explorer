@@ -186,14 +186,34 @@ function renderListView(papers) {
             const ideaKey = menuItem.dataset.ideaKey;
             const isConnected = menuItem.classList.contains('connected');
 
-            if (isConnected) {
-              await removePaperFromIdea(ideaKey, zoteroKey);
-            } else {
-              await addPaperToIdea(ideaKey, zoteroKey);
+            // Show saving indicator
+            if (typeof showSavingIndicator === 'function') {
+              showSavingIndicator('saving');
             }
 
-            // Refresh the list
+            let result;
+            if (isConnected) {
+              result = await removePaperFromIdea(ideaKey, zoteroKey);
+            } else {
+              result = await addPaperToIdea(ideaKey, zoteroKey);
+            }
+
+            // Show result
+            if (typeof showSavingIndicator === 'function') {
+              showSavingIndicator(result !== null ? 'saved' : 'failed');
+            }
+
+            // Refresh the list and ideas panel
             renderListView(currentFiltered);
+            if (typeof renderIdeasPanel === 'function') {
+              renderIdeasPanel();
+            }
+            // Refresh idea detail if this idea is selected
+            if (typeof selectedIdea !== 'undefined' && selectedIdea?.zotero_key === ideaKey) {
+              if (typeof renderIdeaDetail === 'function') {
+                renderIdeaDetail(selectedIdea);
+              }
+            }
           });
         });
       }
