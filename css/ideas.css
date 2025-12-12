@@ -236,6 +236,7 @@
 
 .idea-detail-status,
 .idea-detail-description,
+.idea-detail-keywords,
 .idea-detail-clusters,
 .idea-detail-papers {
   margin-bottom: 8px;
@@ -243,6 +244,7 @@
 
 .idea-detail-status label,
 .idea-detail-description label,
+.idea-detail-keywords label,
 .idea-detail-clusters label,
 .idea-detail-papers label {
   display: block;
@@ -297,6 +299,91 @@
   font-size: 11px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* Keywords */
+.keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.keyword-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent);
+  background: rgba(88, 166, 255, 0.15);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.keyword-remove {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.keyword-remove:hover {
+  opacity: 1;
+  color: var(--red-600);
+}
+
+.keyword-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.keyword-input {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--text-primary);
+  width: 100px;
+}
+
+.keyword-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.keyword-input::placeholder {
+  color: var(--text-muted);
+}
+
+.keyword-add-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyword-add-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.keyword-add-btn svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* Connected Papers (compact) */
@@ -356,6 +443,57 @@
 .btn-remove-paper:hover {
   color: var(--red-600);
   background: transparent;
+}
+
+/* Saving Indicator */
+.idea-saving-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: background 0.2s, color 0.2s;
+}
+
+.idea-saving-indicator.saved {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.idea-saving-indicator.failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--red-400);
+}
+
+.saving-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Disabled state while saving */
+#ideaDetail.is-saving .idea-title-input,
+#ideaDetail.is-saving .idea-description-input,
+#ideaDetail.is-saving .idea-status-select,
+#ideaDetail.is-saving .keyword-input,
+#ideaDetail.is-saving .keyword-add-btn,
+#ideaDetail.is-saving .keyword-remove,
+#ideaDetail.is-saving .btn-remove-paper,
+#ideaDetail.is-saving #toggleLinkMode,
+#ideaDetail.is-saving #deleteIdeaBtn {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 /* Link Mode Indicator */

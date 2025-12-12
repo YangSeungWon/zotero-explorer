@@ -6,6 +6,7 @@
 let allIdeas = [];
 let selectedIdea = null;
 let linkPaperMode = false;  // When true, clicking papers links them to selected idea
+let isSaving = false;       // Prevent double submissions
 
 const IDEA_STATUSES = {
   drafting: { label: 'Drafting', color: '#6c757d' },
@@ -265,6 +266,10 @@ function renderIdeaDetail(idea) {
     <div class="idea-detail-header">
       <input type="text" class="idea-title-input" value="${escapeHtml(idea.title)}" data-field="title">
       <div class="idea-detail-actions">
+        <div class="idea-saving-indicator" style="display: none">
+          <span class="saving-spinner"></span>
+          <span class="saving-text">Saving...</span>
+        </div>
         <button class="btn-icon" id="toggleLinkMode" title="Link papers from map">
           <span class="link-icon"><i data-lucide="${linkPaperMode ? 'link' : 'paperclip'}"></i></span>
         </button>
@@ -284,6 +289,22 @@ function renderIdeaDetail(idea) {
     <div class="idea-detail-description">
       <label>Description:</label>
       <textarea class="idea-description-input" data-field="description" rows="4">${escapeHtml(idea.description || '')}</textarea>
+    </div>
+
+    <div class="idea-detail-keywords">
+      <label>Keywords to Explore:</label>
+      <div class="keywords-list">
+        ${(idea.keywords || []).map(kw => `
+          <span class="keyword-tag">
+            ${escapeHtml(kw)}
+            <button class="keyword-remove" data-keyword="${escapeHtml(kw)}" title="Remove">×</button>
+          </span>
+        `).join('')}
+        <div class="keyword-add">
+          <input type="text" class="keyword-input" placeholder="Add keyword..." />
+          <button class="keyword-add-btn" title="Add"><i data-lucide="plus"></i></button>
+        </div>
+      </div>
     </div>
 
     <div class="idea-detail-clusters">
@@ -341,12 +362,61 @@ function renderIdeaDetail(idea) {
   document.getElementById('toggleLinkMode').addEventListener('click', toggleLinkPaperMode);
   document.getElementById('deleteIdeaBtn').addEventListener('click', () => confirmDeleteIdea(idea));
 
+  // Keyword handlers
+  const keywordInput = container.querySelector('.keyword-input');
+  const keywordAddBtn = container.querySelector('.keyword-add-btn');
+
+  const addKeyword = async () => {
+    if (isSaving) return;
+    const kw = keywordInput.value.trim();
+    if (!kw) return;
+
+    const keywords = idea.keywords || [];
+    if (!keywords.includes(kw)) {
+      keywords.push(kw);
+      idea.keywords = keywords;
+      keywordInput.value = '';
+      showSavingIndicator('saving');
+      const success = await updateIdea(idea.zotero_key, { keywords });
+      showSavingIndicator(success ? 'saved' : 'failed');
+      if (success) renderIdeaDetail(idea);
+    } else {
+      keywordInput.value = '';
+    }
+  };
+
+  keywordAddBtn?.addEventListener('click', addKeyword);
+  keywordInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addKeyword();
+    }
+  });
+
+  container.querySelectorAll('.keyword-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (isSaving) return;
+      const kw = btn.dataset.keyword;
+      const keywords = (idea.keywords || []).filter(k => k !== kw);
+      idea.keywords = keywords;
+      showSavingIndicator('saving');
+      const success = await updateIdea(idea.zotero_key, { keywords });
+      showSavingIndicator(success ? 'saved' : 'failed');
+      if (success) renderIdeaDetail(idea);
+    });
+  });
+
   container.querySelectorAll('.btn-remove-paper').forEach(btn => {
     btn.addEventListener('click', async () => {
+      if (isSaving) return;
       const paperKey = btn.dataset.paperKey;
-      await removePaperFromIdea(idea.zotero_key, paperKey);
-      renderIdeaDetail(idea);
-      highlightIdeaPapers(idea);
+      showSavingIndicator('saving');
+      const result = await removePaperFromIdea(idea.zotero_key, paperKey);
+      showSavingIndicator(result !== null ? 'saved' : 'failed');
+      if (result !== null) {
+        renderIdeaDetail(idea);
+        highlightIdeaPapers(idea);
+      }
     });
   });
 }
@@ -354,6 +424,55 @@ function renderIdeaDetail(idea) {
 // ============================================================
 // Idea Operations
 // ============================================================
+
+function showSavingIndicator(state) {
+  // state: 'saving', 'saved', 'failed', or false to hide
+  isSaving = (state === 'saving');
+
+  // Toggle disabled class on container
+  const container = document.getElementById('ideaDetail');
+  if (container) {
+    container.classList.toggle('is-saving', isSaving);
+  }
+
+  const indicator = document.querySelector('.idea-saving-indicator');
+  if (!indicator) return;
+
+  if (!state) {
+    indicator.style.display = 'none';
+    return;
+  }
+
+  indicator.style.display = 'flex';
+  const spinner = indicator.querySelector('.saving-spinner');
+  const text = indicator.querySelector('.saving-text');
+
+  if (state === 'saving') {
+    spinner.style.display = 'block';
+    text.textContent = 'Saving...';
+    indicator.classList.remove('saved', 'failed');
+  } else if (state === 'saved') {
+    spinner.style.display = 'none';
+    text.textContent = 'Saved!';
+    indicator.classList.add('saved');
+    indicator.classList.remove('failed');
+    // Auto-hide after 1.5s
+    setTimeout(() => {
+      indicator.style.display = 'none';
+      indicator.classList.remove('saved');
+    }, 1500);
+  } else if (state === 'failed') {
+    spinner.style.display = 'none';
+    text.textContent = 'Failed';
+    indicator.classList.add('failed');
+    indicator.classList.remove('saved');
+    // Auto-hide after 2s
+    setTimeout(() => {
+      indicator.style.display = 'none';
+      indicator.classList.remove('failed');
+    }, 2000);
+  }
+}
 
 function selectIdea(idea) {
   selectedIdea = idea;
@@ -363,11 +482,15 @@ function selectIdea(idea) {
 }
 
 async function saveIdeaField(zoteroKey, field, value) {
+  if (isSaving) return;
   const idea = allIdeas.find(i => i.zotero_key === zoteroKey);
   if (!idea) return;
 
   idea[field] = value;
+  showSavingIndicator('saving');
+
   const success = await updateIdea(zoteroKey, { [field]: value });
+  showSavingIndicator(success ? 'saved' : 'failed');
 
   if (success) {
     renderIdeasPanel();
@@ -410,19 +533,24 @@ function toggleLinkPaperMode() {
 
 // Called when clicking a paper on the map while in link mode
 async function handlePaperClickForIdea(paper) {
-  if (!linkPaperMode || !selectedIdea) return false;
+  if (!linkPaperMode || !selectedIdea || isSaving) return false;
 
+  showSavingIndicator('saving');
   const connected = selectedIdea.connected_papers || [];
+  let result;
   if (connected.includes(paper.zotero_key)) {
     // Already connected - remove
-    await removePaperFromIdea(selectedIdea.zotero_key, paper.zotero_key);
+    result = await removePaperFromIdea(selectedIdea.zotero_key, paper.zotero_key);
   } else {
     // Add connection
-    await addPaperToIdea(selectedIdea.zotero_key, paper.zotero_key);
+    result = await addPaperToIdea(selectedIdea.zotero_key, paper.zotero_key);
   }
 
-  renderIdeaDetail(selectedIdea);
-  highlightIdeaPapers(selectedIdea);
+  showSavingIndicator(result !== null ? 'saved' : 'failed');
+  if (result !== null) {
+    renderIdeaDetail(selectedIdea);
+    highlightIdeaPapers(selectedIdea);
+  }
   return true;  // Indicate we handled the click
 }
 

@@ -500,12 +500,23 @@ def parse_idea_from_note(item: dict) -> dict | None:
     else:
         idea['connected_papers'] = []
 
+    # Extract keywords from data-keywords attribute (pipe-delimited)
+    keywords_match = re.search(
+        r'<div[^>]*class="keywords"[^>]*data-keywords="([^"]*)"',
+        note_html, re.IGNORECASE
+    )
+    if keywords_match and keywords_match.group(1):
+        idea['keywords'] = [k.strip() for k in keywords_match.group(1).split('|') if k.strip()]
+    else:
+        idea['keywords'] = []
+
     return idea
 
 
 def create_idea_html(idea: dict) -> str:
     """Create structured HTML from idea dict"""
     from datetime import datetime
+    import html as html_lib
 
     idea_id = idea.get('id', f"idea-{datetime.now().strftime('%Y%m%d%H%M%S')}")
     status = idea.get('status', 'drafting')
@@ -514,19 +525,27 @@ def create_idea_html(idea: dict) -> str:
     title = idea.get('title', 'Untitled Idea')
     description = idea.get('description', '')
     connected_papers = idea.get('connected_papers', [])
+    keywords = idea.get('keywords', [])
 
     papers_keys = ','.join(connected_papers) if connected_papers else ''
+    # Use pipe delimiter for keywords (to allow commas in keyword text)
+    keywords_data = '|'.join(keywords) if keywords else ''
+    # Format keywords for display
+    keywords_display = ', '.join([html_lib.escape(k) for k in keywords]) if keywords else '<em>None</em>'
 
-    html = f'''<div class="idea" data-id="{idea_id}" data-status="{status}" data-created="{created}" data-updated="{updated}">
+    result = f'''<div class="idea" data-id="{idea_id}" data-status="{status}" data-created="{created}" data-updated="{updated}">
   <h1>{title}</h1>
   <div class="description">
     {description}
+  </div>
+  <div class="keywords" data-keywords="{html_lib.escape(keywords_data)}">
+    <strong>Keywords to Explore:</strong> {keywords_display}
   </div>
   <div class="connected-papers" data-keys="{papers_keys}">
   </div>
 </div>'''
 
-    return html
+    return result
 
 
 def create_idea(zot: zotero.Zotero, idea: dict) -> dict | None:
