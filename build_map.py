@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Zotero Paper Map Builder
+Zotero Explorer - Map Builder
 - CSV에서 논문 데이터 로드
 - 텍스트 임베딩 (sentence-transformers 또는 OpenAI)
 - 메타데이터 기반 가중치

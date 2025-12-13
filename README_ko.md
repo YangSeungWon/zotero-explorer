@@ -1,4 +1,4 @@
-# Zotero Paper Map
+# Zotero Explorer
 
 Zotero 논문 라이브러리를 위한 인터랙티브 시각화 도구. 시맨틱 클러스터링, 인용 네트워크, AI 검색으로 연구 컬렉션을 탐색하세요.
 

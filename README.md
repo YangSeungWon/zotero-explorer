@@ -1,4 +1,4 @@
-# Zotero Paper Map
+# Zotero Explorer
 
 Interactive visualization tool for your Zotero paper library. Explore your research collection through semantic clustering, citation networks, and AI-powered search.
 

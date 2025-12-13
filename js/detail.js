@@ -576,7 +576,7 @@ function showDefaultPanel() {
     </div>
   ` : '';
 
-  document.getElementById('detailTitle').textContent = 'Paper Map';
+  document.getElementById('detailTitle').textContent = 'Zotero Explorer';
   document.getElementById('detailMeta').innerHTML = `
     ${filterStatusHtml}
     <div class="default-stats">
