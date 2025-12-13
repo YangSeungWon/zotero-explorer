@@ -6,3 +6,4 @@ __pycache__/
 papers.json
 .env
 papers_filtered.json
+.claude/

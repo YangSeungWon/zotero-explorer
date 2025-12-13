@@ -1,98 +1,135 @@
 # Zotero Paper Map
 
-Interactive visualization map for your Zotero library
+Interactive visualization tool for your Zotero paper library. Explore your research collection through semantic clustering, citation networks, and AI-powered search.
 
 [한국어](README_ko.md)
 
 ## Features
 
-- **Clustering**: Group similar papers using UMAP + KMeans
-- **Citation Network**: Visualize citation relationships
-  - Blue lines: References (papers you cite)
-  - Orange lines: Cited by (papers citing you)
-- **Filtering**: Year, venue quality, tags, keyword search
-- **Discovery**:
-  - Classics: Foundational papers frequently cited by your library
-  - New Work: Recent papers citing your library
-- **Notes**: Render Zotero notes with HTML support
+### Visualization
+- **Map View**: 2D scatter plot with semantic clustering (UMAP + KMeans)
+- **Timeline View**: Papers plotted by year and cluster
+- **List View**: Sortable table with metadata
+
+### Filtering & Search
+- Quick filters: Venue quality, tags, year range, bookmarks
+- Text search across titles, authors, abstracts
+- Semantic search using sentence-transformers embeddings
+- Advanced filter pipeline builder
+
+### Citation Network
+- Blue lines: References (papers you cite)
+- Orange lines: Cited by (papers citing yours)
+- Discovery features:
+  - **Classics**: Frequently cited papers not in your library
+  - **New Work**: Recent papers citing your collection
+
+### Research Management
+- Bookmark papers (syncs as "starred" tag to Zotero)
+- Create and manage research ideas
+- Link papers to ideas
+- Batch tag operations
+- Two-way Zotero sync (cluster labels, custom tags)
 
 ## Quick Start
 
+### Option 1: Static (No Server)
+
 ```bash
-# 1. Setup virtual environment
+# 1. Setup
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# 2. Export CSV from Zotero (zotero_export.csv)
+# 2. Configure
+cp .env.example .env
+# Edit .env with your Zotero credentials
 
-# 3. Build map + fetch citation data
-python update.py
+# 3. Build map
+python build_map.py --source api
 
-# 4. Open in browser
+# 4. Fetch citations (optional)
+python fetch_citations.py
+
+# 5. Open in browser
 open index.html
-# or
+# or serve locally
 python -m http.server 8080
 ```
+
+### Option 2: With API Server (Full Features)
+
+```bash
+# 1. Setup (same as above)
+
+# 2. Start server
+docker-compose up -d
+# or
+python api_server.py
+
+# 3. Access at http://localhost:20680
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ZOTERO_LIBRARY_ID` | Yes | Your Zotero library ID |
+| `ZOTERO_API_KEY` | Yes | Zotero API key ([Get here](https://www.zotero.org/settings/keys)) |
+| `ZOTERO_LIBRARY_TYPE` | Yes | `user` or `group` |
+| `S2_API_KEY` | No | Semantic Scholar API key (anonymous access works, key for higher rate limits) |
+| `APP_API_KEY` | Server only | Authentication key for API server |
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `update.py` | Full update (build map + fetch citations) |
-| `build_map.py` | CSV → JSON conversion, embedding, clustering |
-| `fetch_citations.py` | Fetch citation data via Semantic Scholar API |
-| `fetch_citations_crossref.py` | Fetch citation data via CrossRef API (DOI-based) |
-| `find_missing_papers.py` | Find frequently cited papers not in your library |
+| `build_map.py` | Build papers.json with embeddings and clustering |
+| `fetch_citations.py` | Fetch citation data from Semantic Scholar |
+| `api_server.py` | Flask API server for full sync features |
+| `zotero_api.py` | Zotero API utilities |
 
-## Data Flow
-
-```
-Zotero Export (CSV)
-       ↓
-  build_map.py
-  - sentence-transformers embedding
-  - UMAP dimensionality reduction
-  - KMeans clustering
-       ↓
-  papers.json
-       ↓
-fetch_citations.py + fetch_citations_crossref.py
-  - Semantic Scholar API
-  - CrossRef API
-       ↓
-  papers.json (with citations)
-       ↓
-   index.html (Plotly.js visualization)
-```
-
-## Options
-
-### build_map.py
+### build_map.py Options
 
 ```bash
-python build_map.py --input my_papers.csv    # Input CSV file
-python build_map.py --clusters 10            # Number of clusters
-python build_map.py --notes-only             # Papers with notes only
-python build_map.py --embedding openai       # Use OpenAI embeddings
+python build_map.py --source api        # Fetch from Zotero API (recommended)
+python build_map.py --source csv        # Use exported CSV file
+python build_map.py --clusters 10       # Number of clusters
+python build_map.py --notes-only        # Only papers with notes
+python build_map.py --embedding openai  # Use OpenAI embeddings
 ```
 
 ## Tech Stack
 
-- **Backend**: Python, pandas, scikit-learn, sentence-transformers
-- **Frontend**: Plotly.js, vanilla JS
-- **APIs**: Semantic Scholar, CrossRef
+- **Frontend**: Vanilla JS, Plotly.js, Lucide Icons
+- **Backend**: Python, Flask, pyzotero
+- **ML**: sentence-transformers, UMAP, scikit-learn
+- **APIs**: Zotero, Semantic Scholar, CrossRef
 
-## Files
+## Data Flow
 
 ```
-zotero-viz/
-├── index.html              # Main visualization page
-├── papers.json             # Paper data + citation links
-├── zotero_export.csv            # Zotero export CSV
-├── build_map.py            # Map builder
-├── fetch_citations.py      # S2 API
-├── fetch_citations_crossref.py  # CrossRef API
-├── update.py               # Unified update script
-└── requirements.txt        # Python dependencies
+Zotero Library
+     ↓
+build_map.py (--source api)
+  - Fetch items via Zotero API
+  - Generate embeddings (sentence-transformers)
+  - UMAP dimensionality reduction
+  - KMeans clustering
+     ↓
+papers.json
+     ↓
+fetch_citations.py
+  - Semantic Scholar API
+  - Citation counts & references
+     ↓
+papers.json (enriched)
+     ↓
+index.html (Plotly.js visualization)
 ```
+
+## License
+
+MIT
