@@ -352,6 +352,7 @@ const VENUE_ABBREVIATIONS = {
   'mobilehci': 'MobileHCI',
   'mobile hci': 'MobileHCI',
   'mobile human-computer': 'MobileHCI',
+  'interaction with mobile devices': 'MobileHCI',
   'uist': 'UIST',
   'user interface software': 'UIST',
   'symposium on user interface': 'UIST',

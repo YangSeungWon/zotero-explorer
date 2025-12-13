@@ -111,31 +111,46 @@ function render(filteredPapers) {
   // 검색 결과 glow 효과용
   const glowItems = hasActiveFilter ? fgPapers : [];
 
-  // 단어 단위 줄바꿈
-  function wrapText(text, maxLen = 25) {
-    const words = text.split(' ');
+  // 단순 줄바꿈 (단어 경계에서 maxWidth마다)
+  function wrapText(text, maxWidth = 55) {
+    if (!text) return '';
+    const clean = text.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+
+    const words = clean.split(' ');
     const lines = [];
     let line = '';
+
     for (const word of words) {
-      if ((line + ' ' + word).trim().length <= maxLen) {
-        line = (line + ' ' + word).trim();
+      const testLine = line ? line + ' ' + word : word;
+      if (testLine.length <= maxWidth) {
+        line = testLine;
       } else {
         if (line) lines.push(line);
         line = word;
       }
     }
     if (line) lines.push(line);
+
     return lines.join('<br>');
   }
 
-  // 노트 첫 문단 추출
-  function getFirstParagraph(notes, maxLen = 100) {
+  // 노트 추출 (툴팁용) - 모든 줄바꿈 제거 후 단어 단위로만 줄바꿈
+  function getNotesPreview(notes, maxLen = 330) {
     if (!notes) return '';
-    const para = notes.split(/\n\s*\n/)[0].trim();
-    if (para.length > maxLen) {
-      return para.substring(0, maxLen) + '...';
+    let clean = notes.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (clean.length > maxLen) {
+      clean = clean.substring(0, maxLen) + '...';
     }
-    return para;
+    return wrapText(clean, 55);
+  }
+
+  // 클러스터 라벨 가져오기
+  function getClusterLabel(cluster) {
+    const label = clusterLabels[cluster];
+    if (label && label !== `Cluster ${cluster}`) {
+      return label.length > 20 ? label.substring(0, 20) + '...' : label;
+    }
+    return `Cluster ${cluster}`;
   }
 
   // Background papers trace (dimmed, no interaction, faint cluster colors)
@@ -160,14 +175,15 @@ function render(filteredPapers) {
     x: fgPapers.map(p => p.x),
     y: fgPapers.map(p => p.y),
     text: fgPapers.map(p => {
-      const wrappedTitle = wrapText(p.title || '', 28);
-      const firstNote = getFirstParagraph(p.notes);
-      const notePreview = firstNote ? `<br><br><i>"${wrapText(firstNote, 28)}"</i>` : '';
-      return `<b>${wrappedTitle}</b><br><br>` +
-        `${p.year || 'N/A'}<br>` +
-        `${(p.venue || '').substring(0, 30)}<br>` +
-        `Cluster ${p.cluster}` +
-        notePreview;
+      const title = wrapText(p.title || 'Untitled', 55);
+      const notesPreview = getNotesPreview(p.notes, 330);
+      const noteSection = notesPreview ? `<br><br><i>"${notesPreview}"</i>` : '';
+      const citationInfo = p.citation_count ? ` · ${p.citation_count} cited` : '';
+      const clusterName = getClusterLabel(p.cluster);
+      return `<b>${title}</b><br>` +
+        `${p.year || 'N/A'} · ${(p.venue || 'Unknown').substring(0, 25)}${citationInfo}<br>` +
+        `<span style="color: ${CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]}">● </span>${clusterName}` +
+        noteSection;
     }),
     customdata: fgPapers,
     mode: 'markers',
@@ -224,10 +240,11 @@ function render(filteredPapers) {
     x: fgApps.map(p => p.x),
     y: fgApps.map(p => p.y),
     text: fgApps.map(p => {
-      const wrappedTitle = wrapText(p.title || '', 28);
-      return `<b>${wrappedTitle}</b><br><br>` +
+      const title = wrapText(p.title || 'Untitled', 55);
+      const clusterName = getClusterLabel(p.cluster);
+      return `<b>${title}</b><br>` +
         `App/Service<br>` +
-        `Cluster ${p.cluster}`;
+        `<span style="color: ${CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]}">● </span>${clusterName}`;
     }),
     customdata: fgApps,
     mode: 'markers',
