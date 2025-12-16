@@ -607,6 +607,8 @@ def main():
         '및', '등', '를', '을', '이', '가', '은', '는', '에', '의', '로', '으로', '와', '과',
         '하는', '있는', '되는', '한', '된', '수', '것', '대한', '통해', '위해', '대해',
         '연구', '기술', '위한', '사용', '제안', '보여', '제시', '기반', '활용', '가능',
+        '사용자', '논문', '시스템', '인터페이스', '사람', '정보', '방법', '결과',
+        '모델', '분석', '설계', '개발', '평가', '실험', '참여자', '프로세스',
     ]
 
     tfidf_vec = TfidfVectorizer(
@@ -626,8 +628,8 @@ def main():
     cluster_labels = {}
     for i in range(n_clusters):
         scores = tfidf_dense[i].copy()
-        # 여러 클러스터에 등장하는 단어는 점수 낮춤 (distinctiveness)
-        distinctiveness = 1.0 / np.maximum(term_cluster_count, 1)
+        # 여러 클러스터에 등장하는 단어는 점수 강하게 낮춤 (1/n² 패널티)
+        distinctiveness = 1.0 / np.maximum(term_cluster_count, 1) ** 2
         adjusted_scores = scores * distinctiveness
 
         top_idx = adjusted_scores.argsort()[-3:][::-1]  # 상위 3개 키워드
