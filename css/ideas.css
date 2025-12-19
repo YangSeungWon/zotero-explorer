@@ -1,18 +1,62 @@
 /* ===========================================
+   Detail Panel Tabs
+   =========================================== */
+
+.detail-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.detail-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.detail-tab i {
+  width: 14px;
+  height: 14px;
+}
+
+.detail-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.detail-tab.active {
+  color: var(--accent);
+  background: rgba(88, 166, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.tab-close-btn {
+  margin-left: auto;
+  position: static;
+}
+
+/* ===========================================
    Ideas Section (in detail panel)
    =========================================== */
 
 .ideas-section {
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 12px;
-}
-
-.ideas-section.collapsed .ideas-section-content {
-  display: none;
-}
-
-.ideas-section.collapsed .ideas-collapse-btn {
-  transform: rotate(-90deg);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .ideas-section-header {
@@ -20,7 +64,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .ideas-section-title {
@@ -44,34 +88,39 @@
   font-size: 14px;
   line-height: 1;
   border-radius: var(--radius-sm);
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .btn-new-idea-sm:hover {
   background: var(--green-400);
 }
 
-.ideas-collapse-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 10px;
-  padding: 4px;
-  border-radius: var(--radius-sm);
-  transition: transform 0.2s;
-}
-
-.ideas-collapse-btn:hover {
-  background: var(--bg-tertiary);
-}
-
 .ideas-section-content {
-  padding-bottom: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 12px;
 }
 
+/* Full-height lists for tab view */
+.ideas-list-full {
+  flex: 0 0 auto;
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+.idea-detail-full {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Legacy compact styles (for backwards compatibility) */
 .ideas-list-compact {
   max-height: 150px;
   overflow-y: auto;

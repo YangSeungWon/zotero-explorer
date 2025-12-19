@@ -622,33 +622,53 @@ async function submitNewIdea() {
 // Initialization
 // ============================================================
 
+let currentDetailTab = 'paper'; // 'paper' or 'ideas'
+
+function switchDetailTab(tab) {
+  currentDetailTab = tab;
+  const paperSection = document.getElementById('paperDetailSection');
+  const ideasSection = document.getElementById('ideasSection');
+  const tabPaper = document.getElementById('tabPaper');
+  const tabIdeas = document.getElementById('tabIdeas');
+
+  if (tab === 'paper') {
+    paperSection.style.display = '';
+    ideasSection.style.display = 'none';
+    tabPaper.classList.add('active');
+    tabIdeas.classList.remove('active');
+  } else {
+    paperSection.style.display = 'none';
+    ideasSection.style.display = '';
+    tabPaper.classList.remove('active');
+    tabIdeas.classList.add('active');
+  }
+}
+
+function initDetailTabs() {
+  const tabPaper = document.getElementById('tabPaper');
+  const tabIdeas = document.getElementById('tabIdeas');
+
+  if (tabPaper) {
+    tabPaper.addEventListener('click', () => switchDetailTab('paper'));
+  }
+  if (tabIdeas) {
+    tabIdeas.addEventListener('click', () => switchDetailTab('ideas'));
+  }
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 function initIdeasPanel() {
+  // Initialize tabs
+  initDetailTabs();
+
   // New idea button
   const newBtn = document.getElementById('newIdeaBtn');
   if (newBtn) {
     newBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       showNewIdeaDialog();
-    });
-  }
-
-  // Toggle collapse
-  const toggleBtn = document.getElementById('toggleIdeasSection');
-  const ideasSection = document.getElementById('ideasSection');
-  const header = document.getElementById('ideasSectionHeader');
-
-  if (toggleBtn && ideasSection) {
-    toggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      ideasSection.classList.toggle('collapsed');
-    });
-  }
-
-  if (header && ideasSection) {
-    header.addEventListener('click', (e) => {
-      if (e.target === header || e.target.classList.contains('ideas-section-title')) {
-        ideasSection.classList.toggle('collapsed');
-      }
     });
   }
 

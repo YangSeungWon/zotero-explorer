@@ -266,24 +266,34 @@
     <div class="detail-panel" id="detailPanel">
       <div class="resize-handle" id="resizeHandle"></div>
 
-      <!-- Ideas Section (collapsible, top) -->
-      <div class="ideas-section" id="ideasSection">
+      <!-- Tab Navigation -->
+      <div class="detail-tabs" id="detailTabs">
+        <button class="detail-tab active" data-tab="paper" id="tabPaper">
+          <i data-lucide="file-text"></i> Paper
+        </button>
+        <button class="detail-tab" data-tab="ideas" id="tabIdeas">
+          <i data-lucide="lightbulb"></i> Ideas
+        </button>
+        <button class="close-btn tab-close-btn" id="closeDetail" title="Close"><i data-lucide="x"></i></button>
+      </div>
+
+      <!-- Ideas Section (shown when Ideas tab active) -->
+      <div class="ideas-section" id="ideasSection" style="display: none;">
         <div class="ideas-section-header" id="ideasSectionHeader">
           <span class="ideas-section-title">Ideas</span>
           <div class="ideas-section-actions">
             <button class="btn-new-idea-sm" id="newIdeaBtn" title="New idea">+</button>
-            <button class="ideas-collapse-btn" id="toggleIdeasSection"><i data-lucide="chevron-down"></i></button>
           </div>
         </div>
         <div class="ideas-section-content" id="ideasSectionContent">
-          <div class="ideas-list-compact" id="ideasContainer"></div>
-          <div class="idea-detail-compact" id="ideaDetail">
+          <div class="ideas-list-full" id="ideasContainer"></div>
+          <div class="idea-detail-full" id="ideaDetail">
             <div class="idea-detail-empty">Select or create an idea</div>
           </div>
         </div>
       </div>
 
-      <!-- Paper Detail Section (bottom) -->
+      <!-- Paper Detail Section (shown when Paper tab active) -->
       <div class="paper-detail-section" id="paperDetailSection">
         <div class="detail-title-row">
           <div class="detail-actions" id="detailActions">
@@ -294,7 +304,6 @@
             </div>
           </div>
           <h2 id="detailTitle">-</h2>
-          <button class="close-btn" id="closeDetail" title="Close"><i data-lucide="x"></i></button>
         </div>
         <div class="meta" id="detailMeta"></div>
         <div class="links" id="detailLinks"></div>

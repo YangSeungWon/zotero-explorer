@@ -586,8 +586,7 @@ function showDefaultPanel() {
   const savedWidth = localStorage.getItem('detailPanelWidth');
   if (savedWidth) panel.style.width = savedWidth;
 
-  // 닫기 버튼, 액션 버튼들 숨기기
-  document.getElementById('closeDetail').style.display = 'none';
+  // 액션 버튼들 숨기기 (default panel에서는 안 보임)
   const detailActions = document.getElementById('detailActions');
   if (detailActions) detailActions.style.display = 'none';
 
@@ -713,8 +712,7 @@ function showHoverPreview(item) {
   const paperSection = document.getElementById('paperDetailSection');
   if (paperSection) paperSection.scrollTop = 0;
 
-  // 닫기 버튼, 액션 버튼들 숨기기 (호버 미리보기에서는)
-  document.getElementById('closeDetail').style.display = 'none';
+  // 액션 버튼들 숨기기 (호버 미리보기에서는)
   const hoverDetailActions = document.getElementById('detailActions');
   if (hoverDetailActions) hoverDetailActions.style.display = 'none';
 
@@ -790,8 +788,6 @@ function showDetail(item) {
   // Scroll to top
   const paperSection = document.getElementById('paperDetailSection');
   if (paperSection) paperSection.scrollTop = 0;
-
-  document.getElementById('closeDetail').style.display = 'block';
 
   selectedPaper = item;
   connectedPapers = new Set();
