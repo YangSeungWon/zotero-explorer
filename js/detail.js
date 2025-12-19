@@ -380,21 +380,48 @@ function renderLinksHtml(item, includeCopyLink = true) {
   return html;
 }
 
+// Generate citation key in Google Scholar style: authoryearword1word2word3
+const SKIP_WORDS = new Set(['a', 'an', 'the', 'of', 'for', 'to', 'in', 'on', 'with', 'from', 'by', 'at', 'as', 'and', 'or', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'how', 'what', 'when', 'where', 'why', 'who', 'which', 'can', 'could', 'do', 'does', 'did', 'will', 'would', 'should', 'may', 'might', 'must', 'toward', 'towards', 'into', 'onto', 'upon', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among', 'under', 'over']);
+
+function generateCitationKey(paper) {
+  const authors = paper.authors || '';
+  const year = paper.year || '';
+  const title = paper.title || '';
+
+  if (!authors || !year || !title) return null;
+
+  // Get first author's last name (lowercase)
+  const firstAuthor = authors.split(';')[0].split(',')[0].trim().toLowerCase().replace(/[^a-z]/g, '');
+
+  // Get first 3 meaningful words from title
+  const words = title.toLowerCase().match(/[a-z]+/g) || [];
+  const meaningful = words.filter(w => !SKIP_WORDS.has(w)).slice(0, 3);
+
+  return `${firstAuthor}${year}_${meaningful.join('_')}`;
+}
+
 // Fetch BibTeX from DOI.org and copy to clipboard
-async function copyBibTeX(doi, btn) {
+async function copyBibTeX(paper, btn) {
   const originalHtml = btn.innerHTML;
   btn.innerHTML = '<i data-lucide="loader"></i> ...';
   btn.disabled = true;
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
   try {
-    const response = await fetch(`https://doi.org/${doi}`, {
+    const response = await fetch(`https://doi.org/${paper.doi}`, {
       headers: { 'Accept': 'application/x-bibtex' }
     });
 
     if (!response.ok) throw new Error('Failed to fetch');
 
-    const bibtex = await response.text();
+    let bibtex = await response.text();
+
+    // Replace citation key with our generated one
+    const newKey = generateCitationKey(paper);
+    if (newKey) {
+      bibtex = bibtex.replace(/@(\w+)\{[^,]+,/, `@$1{${newKey},`);
+    }
+
     await navigator.clipboard.writeText(bibtex);
 
     btn.innerHTML = '<i data-lucide="check"></i> Copied!';
@@ -433,7 +460,7 @@ function setupCopyCitationButton(item, containerId = 'detailLinks') {
   if (bibtexBtn) {
     const newBtn = bibtexBtn.cloneNode(true);
     bibtexBtn.parentNode.replaceChild(newBtn, bibtexBtn);
-    newBtn.addEventListener('click', () => copyBibTeX(newBtn.dataset.doi, newBtn));
+    newBtn.addEventListener('click', () => copyBibTeX(item, newBtn));
   }
 }
 
