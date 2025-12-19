@@ -107,9 +107,13 @@ function copyPaperCitation(item) {
   navigator.clipboard.writeText(citation).then(() => {
     const btn = document.querySelector('.copy-link-btn');
     if (btn) {
-      const originalText = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(() => { btn.textContent = originalText; }, 1500);
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="check"></i> Copied!';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }, 1500);
     }
   });
 }
@@ -353,24 +357,83 @@ function attachPaperListClickHandlers(containerSelector, onPaperClick) {
 // Generate links HTML for a paper
 function renderLinksHtml(item, includeCopyLink = true) {
   let html = '';
+  // First row: Copy buttons (with clipboard icon)
+  html += '<div class="links-row copy-row">';
   if (includeCopyLink) {
-    html += `<button class="copy-link-btn">Copy Citation</button>`;
+    html += `<button class="copy-link-btn btn-copy"><i data-lucide="clipboard"></i> Citation</button>`;
   }
-  if (item.zotero_key) html += `<a href="${getZoteroUrl(item.zotero_key)}" class="zotero-link">Zotero</a>`;
-  if (item.pdf_key) html += `<a href="${getZoteroPdfUrl(item.pdf_key)}" class="pdf-link">PDF</a>`;
-  if (item.url) html += `<a href="${item.url}" target="_blank">URL</a>`;
-  if (item.doi) html += `<a href="https://doi.org/${item.doi}" target="_blank">DOI</a>`;
+  if (item.doi) {
+    html += `<button class="copy-bibtex-btn btn-copy" data-doi="${item.doi}" title="Copy BibTeX from DOI.org"><i data-lucide="clipboard"></i> BibTeX</button>`;
+  }
+  html += '</div>';
+  // Second row: Links (all external)
+  html += '<div class="links-row">';
+  if (item.zotero_key) html += `<a href="${getZoteroUrl(item.zotero_key)}" class="zotero-link btn-external">Zotero <i data-lucide="arrow-up-right"></i></a>`;
+  if (item.pdf_key) html += `<a href="${getZoteroPdfUrl(item.pdf_key)}" class="pdf-link btn-external">PDF <i data-lucide="arrow-up-right"></i></a>`;
+  if (item.doi) html += `<a href="https://doi.org/${item.doi}" target="_blank" class="doi-link btn-external">DOI <i data-lucide="arrow-up-right"></i></a>`;
+  if (item.title) {
+    const scholarUrl = `https://scholar.google.com/scholar?hl=ko&q=${encodeURIComponent(item.title)}`;
+    html += `<a href="${scholarUrl}" target="_blank" class="scholar-link btn-external" title="Search on Google Scholar">Scholar <i data-lucide="arrow-up-right"></i></a>`;
+  }
+  if (item.url) html += `<a href="${item.url}" target="_blank" class="url-link btn-external">URL <i data-lucide="arrow-up-right"></i></a>`;
+  html += '</div>';
   return html;
+}
+
+// Fetch BibTeX from DOI.org and copy to clipboard
+async function copyBibTeX(doi, btn) {
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = '<i data-lucide="loader"></i> ...';
+  btn.disabled = true;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  try {
+    const response = await fetch(`https://doi.org/${doi}`, {
+      headers: { 'Accept': 'application/x-bibtex' }
+    });
+
+    if (!response.ok) throw new Error('Failed to fetch');
+
+    const bibtex = await response.text();
+    await navigator.clipboard.writeText(bibtex);
+
+    btn.innerHTML = '<i data-lucide="check"></i> Copied!';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }, 1500);
+  } catch (e) {
+    btn.innerHTML = '<i data-lucide="x"></i> Error';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }, 1500);
+    console.error('BibTeX fetch error:', e);
+  }
 }
 
 // Setup copy citation button click handler
 function setupCopyCitationButton(item, containerId = 'detailLinks') {
   const container = document.getElementById(containerId);
-  const btn = container?.querySelector('.copy-link-btn');
-  if (btn) {
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
+
+  // Copy Citation button
+  const citationBtn = container?.querySelector('.copy-link-btn');
+  if (citationBtn) {
+    const newBtn = citationBtn.cloneNode(true);
+    citationBtn.parentNode.replaceChild(newBtn, citationBtn);
     newBtn.addEventListener('click', () => copyPaperCitation(item));
+  }
+
+  // BibTeX button
+  const bibtexBtn = container?.querySelector('.copy-bibtex-btn');
+  if (bibtexBtn) {
+    const newBtn = bibtexBtn.cloneNode(true);
+    bibtexBtn.parentNode.replaceChild(newBtn, bibtexBtn);
+    newBtn.addEventListener('click', () => copyBibTeX(newBtn.dataset.doi, newBtn));
   }
 }
 
@@ -754,6 +817,7 @@ function showDetail(item) {
 
   // Links
   document.getElementById('detailLinks').innerHTML = renderLinksHtml(item);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
   setupCopyCitationButton(item);
   updateUrlWithPaper(item.zotero_key);
 
@@ -829,6 +893,7 @@ function showMobileDetail(item) {
 
   // Links
   document.getElementById('mobileDetailLinks').innerHTML = renderLinksHtml(item);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
   setupCopyCitationButton(item, 'mobileDetailLinks');
   updateUrlWithPaper(item.zotero_key);
 

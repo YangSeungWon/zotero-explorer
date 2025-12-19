@@ -72,11 +72,52 @@ input[type="checkbox"] {
 
 /* Link chips in detail panel - unified styling in layout.css */
 /* Keep specific colors subtle */
+/* Copy buttons - clipboard style */
+.btn-copy {
+  border-width: 2px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+}
+.btn-copy i {
+  width: 14px;
+  height: 14px;
+}
+.copy-link-btn.btn-copy {
+  border-color: var(--accent) !important;
+}
+.copy-bibtex-btn.btn-copy {
+  border-color: #22c55e !important;
+}
+
+/* App links */
+.zotero-link {
+  border-color: #cc2545 !important;
+}
 .pdf-link {
   border-color: var(--color-error) !important;
 }
-.zotero-link {
-  border-color: #cc2545 !important;
+
+/* External links - with arrow icon */
+.btn-external {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 2px;
+}
+.btn-external i {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+.doi-link {
+  border-color: #f59e0b !important;
+}
+.scholar-link {
+  border-color: #4285f4 !important;
+}
+.url-link {
+  border-color: var(--text-muted) !important;
 }
 
 .close-btn {
