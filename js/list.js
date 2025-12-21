@@ -303,6 +303,14 @@ function sortPapersForList(papers, sortBy) {
     case 'citations':
       sorted.sort((a, b) => (b.citation_count || 0) - (a.citation_count || 0));
       break;
+
+    case 'internal-cited':
+      sorted.sort((a, b) => {
+        const citedDiff = (internalCited[b.id] || 0) - (internalCited[a.id] || 0);
+        if (citedDiff !== 0) return citedDiff;
+        return (b.year || 0) - (a.year || 0);
+      });
+      break;
   }
 
   return sorted;
