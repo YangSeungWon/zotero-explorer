@@ -316,11 +316,58 @@ CURRENT_YEAR = 2025
 # ============================================================
 
 def extract_text_from_html(html_content: str) -> str:
-    """HTML에서 텍스트만 추출"""
+    """HTML에서 텍스트만 추출 (문단 구분 보존)"""
+    import re
     if pd.isna(html_content) or not html_content:
         return ""
-    soup = BeautifulSoup(html_content, "html.parser")
-    return soup.get_text(separator="\n", strip=True)
+
+    # 블록 요소 뒤에만 줄바꿈 추가 (인라인 요소는 유지)
+    html = str(html_content)
+
+    # 테이블 셀 내부의 <p> 태그 제거 (셀끼리 탭으로 구분)
+    html = re.sub(r'<t[dh][^>]*>\s*<p>', '<td>', html, flags=re.IGNORECASE)
+    html = re.sub(r'</p>\s*</t[dh]>', '</td>', html, flags=re.IGNORECASE)
+    # 테이블 행은 줄바꿈, 셀은 탭으로 구분
+    html = re.sub(r'</t[dh]>\s*<t[dh][^>]*>', '\t', html, flags=re.IGNORECASE)
+    html = re.sub(r'</tr>', '</tr>{LINE}', html, flags=re.IGNORECASE)
+    # 테이블 전체는 하나의 문단으로
+    html = re.sub(r'<table[^>]*>', '', html, flags=re.IGNORECASE)
+    html = re.sub(r'</table>', '{PARA}', html, flags=re.IGNORECASE)
+
+    # 블록 요소 닫는 태그 뒤에 마커 추가
+    # </p> 뒤에 <ul>, <ol>이 오면 붙이기 (같은 섹션)
+    html = re.sub(r'</p>\s*<(ul|ol)', r'</p>{LINE}<\1', html, flags=re.IGNORECASE)
+
+    # 일반 </p>, </div> 등은 문단 분리
+    block_para_tags = ['p', 'div', 'tr', 'blockquote']
+    for tag in block_para_tags:
+        # 이미 {LINE}이 붙은 경우 제외
+        html = re.sub(f'</{tag}>(?!{{)', f'</{tag}>{{PARA}}', html, flags=re.IGNORECASE)
+
+    # 헤더는 다음 내용과 연결 (단일 줄바꿈)
+    for i in range(1, 7):
+        html = re.sub(f'</h{i}>', f'</h{i}>{{LINE}}', html, flags=re.IGNORECASE)
+
+    # 리스트 항목은 단일 줄바꿈 (문단 분리 아님)
+    html = re.sub(r'</li>', '</li>{LINE}', html, flags=re.IGNORECASE)
+
+    # <br>은 단일 줄바꿈, <hr>은 문단 분리 (섹션 구분)
+    html = re.sub(r'<br\s*/?>', '{LINE}', html, flags=re.IGNORECASE)
+    html = re.sub(r'<hr\s*/?>', '{PARA}', html, flags=re.IGNORECASE)
+
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text(separator=" ", strip=True)
+
+    # 마커를 실제 줄바꿈으로 변환
+    text = text.replace('{PARA}', '\n\n')
+    text = text.replace('{LINE}', '\n')
+
+    # 연속된 줄바꿈/공백 정리
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r' +', ' ', text)
+    text = re.sub(r'\n +', '\n', text)
+
+    return text.strip()
 
 
 def get_venue_score(row) -> float:
@@ -484,7 +531,7 @@ def chunk_text(text: str, max_chars: int = 1500) -> list:
 
 def embed_with_weighted_sections(df: pd.DataFrame, model_name: str = "paraphrase-multilingual-MiniLM-L12-v2",
                                   title_weight: float = 0.3, abstract_weight: float = 0.4, notes_weight: float = 0.3) -> np.ndarray:
-    """섹션별 가중치 + 청킹으로 임베딩"""
+    """섹션별 가중치 + 청킹으로 임베딩 (단일 벡터 버전 - legacy)"""
     from sentence_transformers import SentenceTransformer
 
     print(f"Loading model: {model_name}")
@@ -547,6 +594,64 @@ def embed_with_weighted_sections(df: pd.DataFrame, model_name: str = "paraphrase
 
     print(f"  Processed {total}/{total}")
     return np.array(embeddings)
+
+
+def embed_multi_vector(df: pd.DataFrame, model_name: str = "paraphrase-multilingual-MiniLM-L12-v2") -> list:
+    """Multi-vector 임베딩: 논문당 여러 벡터 (title, abstract chunks, note chunks)"""
+    from sentence_transformers import SentenceTransformer
+
+    print(f"Loading model: {model_name}")
+    model = SentenceTransformer(model_name)
+
+    all_embeddings = []  # list of lists
+    total = len(df)
+    total_vectors = 0
+
+    print(f"Embedding {total} papers with multi-vector approach...")
+
+    for idx, (_, row) in enumerate(df.iterrows()):
+        if (idx + 1) % 50 == 0 or idx == 0:
+            print(f"  Processed {idx + 1}/{total} (total vectors: {total_vectors})")
+
+        paper_embs = []
+
+        # Title (always include)
+        title = row.get("Title", "")
+        if pd.notna(title) and title and str(title).lower() != "nan":
+            title_emb = model.encode(str(title))
+            paper_embs.append(title_emb.tolist())
+
+        # Abstract chunks
+        abstract = row.get("Abstract Note", "")
+        if pd.notna(abstract) and abstract and str(abstract).lower() != "nan":
+            abstract_str = str(abstract)
+            chunks = chunk_text(abstract_str)
+            for chunk in chunks:
+                chunk_emb = model.encode(chunk)
+                paper_embs.append(chunk_emb.tolist())
+
+        # Note chunks
+        notes = row.get("Notes", "")
+        if pd.notna(notes) and notes and str(notes).lower() != "nan":
+            notes_text = extract_text_from_html(str(notes))
+            if notes_text:
+                chunks = chunk_text(notes_text)
+                for chunk in chunks:
+                    chunk_emb = model.encode(chunk)
+                    paper_embs.append(chunk_emb.tolist())
+
+        # Fallback: at least title
+        if not paper_embs:
+            fallback_title = row.get("Title", "Untitled")
+            fallback_emb = model.encode(str(fallback_title) if pd.notna(fallback_title) else "Untitled")
+            paper_embs.append(fallback_emb.tolist())
+
+        all_embeddings.append(paper_embs)
+        total_vectors += len(paper_embs)
+
+    print(f"  Processed {total}/{total}")
+    print(f"  Total vectors: {total_vectors} (avg {total_vectors/total:.1f} per paper)")
+    return all_embeddings
 
 
 def embed_with_openai(texts: list, model: str = "text-embedding-3-small") -> np.ndarray:
@@ -612,8 +717,8 @@ def main():
     parser.add_argument("--output", default="papers.json", help="Output JSON file")
     parser.add_argument("--source", choices=["csv", "api"], default="csv",
                         help="Data source: csv (default) or api (Zotero API)")
-    parser.add_argument("--embedding", choices=["local", "local-large", "weighted", "openai"], default="weighted",
-                        help="Embedding: local (simple), local-large, weighted (chunking+weights, recommended), openai")
+    parser.add_argument("--embedding", choices=["multi", "local", "local-large", "weighted", "openai"], default="multi",
+                        help="Embedding: multi (multi-vector, recommended), weighted (legacy), local, local-large, openai")
     parser.add_argument("--clusters", type=int, default=0,
                         help="Number of clusters (0 = auto-detect optimal k)")
     parser.add_argument("--dim-reduction", choices=["tsne", "pca", "umap"], default="umap",
@@ -643,6 +748,7 @@ def main():
     # 중복 제거 (Title + DOI 기준)
     before_dedup = len(df)
     df = df.drop_duplicates(subset=["Title", "DOI"], keep="first")
+    df = df.reset_index(drop=True)  # 항상 인덱스 리셋
     if len(df) < before_dedup:
         print(f"  Removed {before_dedup - len(df)} duplicates")
     print(f"  Total: {len(df)} items")
@@ -671,20 +777,32 @@ def main():
     # 3. 텍스트 임베딩
     print("\n[3/5] Building embeddings...")
 
-    if args.embedding == "weighted":
-        # 청킹 + 섹션별 가중치 (추천)
+    use_multi_vector = False
+    multi_vector_embeddings = None  # 시맨틱 서치용 (논문당 여러 벡터)
+    if args.embedding == "multi":
+        # Multi-vector: 논문당 여러 벡터 (추천)
+        multi_vector_embeddings = embed_multi_vector(df, "paraphrase-multilingual-MiniLM-L12-v2")
+        use_multi_vector = True
+        print(f"  Multi-vector embeddings: {len(multi_vector_embeddings)} papers")
+        # UMAP용 평균 벡터 계산 (multi_vector_embeddings는 이미 list of lists)
+        embeddings = np.array([np.mean(np.array(vecs), axis=0) for vecs in multi_vector_embeddings])
+        print(f"  Mean embedding shape for UMAP: {embeddings.shape}")
+    elif args.embedding == "weighted":
+        # 청킹 + 섹션별 가중치 (legacy)
         embeddings = embed_with_weighted_sections(df, "paraphrase-multilingual-MiniLM-L12-v2")
+        print(f"  Embedding shape: {embeddings.shape}")
     elif args.embedding == "local":
         texts = [build_text_for_embedding(row) for _, row in df.iterrows()]
         embeddings = embed_with_sentence_transformers(texts, "paraphrase-multilingual-MiniLM-L12-v2")
+        print(f"  Embedding shape: {embeddings.shape}")
     elif args.embedding == "local-large":
         texts = [build_text_for_embedding(row) for _, row in df.iterrows()]
         embeddings = embed_with_sentence_transformers(texts, "paraphrase-multilingual-mpnet-base-v2")
+        print(f"  Embedding shape: {embeddings.shape}")
     else:
         texts = [build_text_for_embedding(row) for _, row in df.iterrows()]
         embeddings = embed_with_openai(texts)
-
-    print(f"  Embedding shape: {embeddings.shape}")
+        print(f"  Embedding shape: {embeddings.shape}")
 
     # 4. 메타데이터 feature 결합
     print("\n[4/5] Combining features and reducing dimensions...")
@@ -881,7 +999,7 @@ def main():
 
     records = []
     review_count = 0
-    for idx, row in df.iterrows():
+    for idx, (_, row) in enumerate(df.iterrows()):
         # 기존 태그 가져오기
         raw_tags = row.get("Manual Tags", "")
         manual_tags = str(raw_tags) if pd.notna(raw_tags) and raw_tags else ""
@@ -932,7 +1050,11 @@ def main():
             rec["citations"] = cdata["citations"]
 
         # 임베딩 추가 (시맨틱 검색용)
-        rec["embedding"] = embeddings[idx].tolist()
+        if use_multi_vector:
+            # multi_vector_embeddings는 list of list of lists (이미 tolist() 됨)
+            rec["embeddings"] = multi_vector_embeddings[idx]
+        else:
+            rec["embedding"] = embeddings[idx].tolist()
 
         records.append(rec)
 

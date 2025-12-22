@@ -988,6 +988,25 @@ def get_semantic_model():
     return _semantic_model
 
 
+def compute_hybrid_score(query_norm, paper_embeddings, alpha=0.6, top_k_mean=3):
+    """Compute hybrid score: α * max + (1-α) * mean(top_k)"""
+    import numpy as np
+
+    # Normalize paper embeddings
+    emb_array = np.array(paper_embeddings)
+    emb_norms = emb_array / np.linalg.norm(emb_array, axis=1, keepdims=True)
+
+    # Cosine similarities for all chunks
+    sims = np.dot(emb_norms, query_norm)
+
+    # Hybrid: max + top-k mean
+    max_sim = np.max(sims)
+    top_k_sims = np.sort(sims)[::-1][:top_k_mean]
+    mean_sim = np.mean(top_k_sims)
+
+    return alpha * max_sim + (1 - alpha) * mean_sim
+
+
 @app.route('/api/semantic-search', methods=['GET'])
 def semantic_search():
     """Search papers using semantic similarity
@@ -995,6 +1014,10 @@ def semantic_search():
     Query params:
         q: search query (required)
         top_k: number of results (default 20)
+
+    Supports both:
+        - Legacy: 'embedding' (single vector)
+        - Multi-vector: 'embeddings' (list of vectors) with hybrid scoring
     """
     import numpy as np
 
@@ -1012,22 +1035,38 @@ def semantic_search():
 
         papers = papers_data.get('papers', [])
 
-        # Filter papers with embeddings
-        papers_with_emb = [(i, p) for i, p in enumerate(papers) if p.get('embedding')]
+        # Check which format: multi-vector or legacy
+        use_multi_vector = any(p.get('embeddings') for p in papers)
+
+        if use_multi_vector:
+            # Multi-vector mode with hybrid scoring
+            papers_with_emb = [(i, p) for i, p in enumerate(papers) if p.get('embeddings')]
+        else:
+            # Legacy mode (single embedding)
+            papers_with_emb = [(i, p) for i, p in enumerate(papers) if p.get('embedding')]
+
         if not papers_with_emb:
             return jsonify({"error": "No embeddings found. Run build_map.py first."}), 500
-
-        # Get embeddings matrix
-        embeddings = np.array([p['embedding'] for _, p in papers_with_emb])
 
         # Encode query
         model = get_semantic_model()
         query_emb = model.encode([query])[0]
-
-        # Cosine similarity
         query_norm = query_emb / np.linalg.norm(query_emb)
-        emb_norms = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-        similarities = np.dot(emb_norms, query_norm)
+
+        # Compute similarities
+        similarities = []
+        if use_multi_vector:
+            # Hybrid scoring for multi-vector
+            for _, paper in papers_with_emb:
+                score = compute_hybrid_score(query_norm, paper['embeddings'])
+                similarities.append(score)
+        else:
+            # Legacy: single vector cosine similarity
+            embeddings = np.array([p['embedding'] for _, p in papers_with_emb])
+            emb_norms = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+            similarities = np.dot(emb_norms, query_norm).tolist()
+
+        similarities = np.array(similarities)
 
         # Get top K
         top_indices = np.argsort(similarities)[::-1][:top_k]
@@ -1047,7 +1086,8 @@ def semantic_search():
 
         return jsonify({
             "query": query,
-            "results": results
+            "results": results,
+            "mode": "multi-vector" if use_multi_vector else "legacy"
         })
 
     except Exception as e:
