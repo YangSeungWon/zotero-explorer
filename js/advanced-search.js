@@ -289,7 +289,7 @@ function setupBlockContentListeners(blockEl, block) {
 
     semanticInput.addEventListener('input', (e) => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(updateSemantic, 500);
+      debounceTimer = setTimeout(updateSemantic, 1000);
     });
     semanticInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -303,7 +303,7 @@ function setupBlockContentListeners(blockEl, block) {
       thresholdSlider.addEventListener('input', () => {
         if (thresholdValue) thresholdValue.textContent = thresholdSlider.value + '%';
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(updateSemantic, 300);
+        debounceTimer = setTimeout(updateSemantic, 500);
       });
     }
   }
