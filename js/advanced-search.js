@@ -189,9 +189,9 @@ function getBlockContentHtml(block) {
       const semQuery = block.value?.query || '';
       const semThreshold = block.value?.threshold || 30;
       return `
-        <input type="text" class="block-semantic-input" placeholder="찾고 싶은 내용을 설명하세요..." value="${semQuery}">
+        <input type="text" class="block-semantic-input" placeholder="Describe what you're looking for..." value="${semQuery}">
         <div class="semantic-threshold">
-          <label>유사도 ≥ <span class="threshold-value">${semThreshold}%</span></label>
+          <label>Similarity ≥ <span class="threshold-value">${semThreshold}%</span></label>
           <input type="range" class="block-threshold-slider" min="10" max="80" value="${semThreshold}">
         </div>
         <div class="semantic-hint"></div>
@@ -224,7 +224,7 @@ function getBlockContentHtml(block) {
       return `
         <select class="block-idea-select""><option value="">Select idea...</option>${ideaOptions2}</select>
         <div style="margin-top: 8px;">
-          <label style="font-size: 11px; color: var(--text-muted);">근접도: <span class="proximity-value">${proximity}</span>%</label>
+          <label style="font-size: 11px; color: var(--text-muted);">Proximity: <span class="proximity-value">${proximity}</span>%</label>
           <input type="range" class="block-proximity-slider" min="5" max="50" value="${proximity}" style="width: 100%;">
         </div>
       `;
@@ -496,7 +496,7 @@ async function applySemanticFilter(papers, value) {
     // Show hint message
     if (blockEl) {
       const hint = blockEl.querySelector('.semantic-hint');
-      if (hint) hint.textContent = query ? '2글자 이상 입력하세요' : '';
+      if (hint) hint.textContent = query ? 'Enter at least 2 characters' : '';
     }
     return papers;
   }

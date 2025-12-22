@@ -46,7 +46,7 @@ async function apiCall(endpoint, options = {}) {
     return data;
   } catch (e) {
     if (e.name === 'TypeError' && e.message.includes('fetch')) {
-      throw new Error('API 서버에 연결할 수 없습니다.');
+      throw new Error('Cannot connect to API server.');
     }
     throw e;
   }

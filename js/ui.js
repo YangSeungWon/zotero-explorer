@@ -1113,14 +1113,14 @@ function initSyncModalHandlers() {
     const clusterCount = Object.keys(clusterLabels).length;
     const paperCount = allPapers.length;
 
-    if (!confirm(`클러스터 라벨을 Zotero 태그로 동기화합니다.\n\n${clusterCount}개 클러스터, ${paperCount}개 논문\n태그 형식: "cluster: [라벨명]"\n\n계속하시겠습니까?`)) return;
+    if (!confirm(`Sync cluster labels to Zotero tags.\n\n${clusterCount} clusters, ${paperCount} papers\nTag format: "cluster: [label]"\n\nContinue?`)) return;
 
     try {
-      showToast('동기화 중...', '클러스터 태그를 Zotero에 동기화하는 중입니다.');
+      showToast('Syncing...', 'Syncing cluster tags to Zotero.');
       const result = await syncClusterTags('cluster:', clusterLabels);
-      showToast('동기화 완료', `성공: ${result.success || 0}, 실패: ${result.failed || 0}, 건너뜀: ${result.skipped || 0}`);
+      showToast('Sync complete', `Success: ${result.success || 0}, Failed: ${result.failed || 0}, Skipped: ${result.skipped || 0}`);
     } catch (e) {
-      alert('동기화 실패: ' + e.message);
+      alert('Sync failed: ' + e.message);
     }
   });
 
@@ -1236,29 +1236,29 @@ function initBatchTagHandlers() {
     const tag = batchTagInput.value.trim();
     const action = batchAction.value;
 
-    if (!tag) { alert('태그를 입력하세요.'); return; }
+    if (!tag) { alert('Please enter a tag.'); return; }
 
     const papers = currentFiltered;
-    if (papers.length === 0) { alert('필터된 논문이 없습니다.'); return; }
+    if (papers.length === 0) { alert('No filtered papers.'); return; }
 
     const zoteroKeys = papers.map(p => p.id).filter(Boolean);
-    if (zoteroKeys.length === 0) { alert('Zotero key가 있는 논문이 없습니다.'); return; }
+    if (zoteroKeys.length === 0) { alert('No papers with Zotero key.'); return; }
 
-    const actionText = action === 'add' ? '추가' : '제거';
-    if (!confirm(`${zoteroKeys.length}개 논문에 태그 "${tag}"를 ${actionText}합니다.\n계속하시겠습니까?`)) return;
+    const actionText = action === 'add' ? 'add' : 'remove';
+    if (!confirm(`${actionText} tag "${tag}" to ${zoteroKeys.length} papers.\n\nContinue?`)) return;
 
     batchProgress.style.display = 'block';
     batchProgressFill.style.width = '0%';
-    batchProgressStatus.textContent = '처리 중...';
+    batchProgressStatus.textContent = 'Processing...';
 
     try {
       const result = await batchTagOperationWithProgress(action, tag, zoteroKeys, (done, total) => {
         const pct = Math.round((done / total) * 100);
         batchProgressFill.style.width = pct + '%';
-        batchProgressStatus.textContent = `${done} / ${total} 처리 중...`;
+        batchProgressStatus.textContent = `Processing ${done} / ${total}...`;
       });
 
-      batchProgressStatus.textContent = `완료! 성공: ${result.success}, 실패: ${result.failed}`;
+      batchProgressStatus.textContent = `Done! Success: ${result.success}, Failed: ${result.failed}`;
 
       if (action === 'add') {
         papers.forEach(p => {
@@ -1272,11 +1272,11 @@ function initBatchTagHandlers() {
         refreshTagFilter();
       }
 
-      showToast('일괄 처리 완료', `${result.success}개 성공, ${result.failed}개 실패`);
+      showToast('Batch complete', `${result.success} success, ${result.failed} failed`);
       setTimeout(() => batchTagModal.classList.remove('active'), 1500);
     } catch (e) {
-      batchProgressStatus.textContent = '오류: ' + e.message;
-      alert('일괄 처리 실패: ' + e.message);
+      batchProgressStatus.textContent = 'Error: ' + e.message;
+      alert('Batch operation failed: ' + e.message);
     }
   });
 }
