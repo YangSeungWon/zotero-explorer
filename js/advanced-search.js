@@ -220,12 +220,12 @@ function getBlockContentHtml(block) {
       const ideaOptions2 = (typeof allIdeas !== 'undefined' ? allIdeas : [])
         .map(idea => `<option value="${idea.zotero_key}" ${block.value?.ideaKey === idea.zotero_key ? 'selected' : ''}>${idea.title}</option>`)
         .join('');
-      const distance = block.value?.distance || 15;
+      const proximity = block.value?.proximity || 40;
       return `
         <select class="block-idea-select""><option value="">Select idea...</option>${ideaOptions2}</select>
         <div style="margin-top: 8px;">
-          <label style="font-size: 11px; color: var(--text-muted);">Radius: <span class="distance-value">${distance}</span>%</label>
-          <input type="range" class="block-distance-slider" min="5" max="50" value="${distance}" style="width: 100%;">
+          <label style="font-size: 11px; color: var(--text-muted);">근접도: <span class="proximity-value">${proximity}</span>%</label>
+          <input type="range" class="block-proximity-slider" min="5" max="50" value="${proximity}" style="width: 100%;">
         </div>
       `;
 
@@ -330,28 +330,28 @@ function setupBlockContentListeners(blockEl, block) {
 
   // Idea + Nearby filter
   if (ideaSelect && block.type === 'idea-nearby') {
-    const distanceSlider = blockEl.querySelector('.block-distance-slider');
-    const distanceValue = blockEl.querySelector('.distance-value');
+    const proximitySlider = blockEl.querySelector('.block-proximity-slider');
+    const proximityValue = blockEl.querySelector('.proximity-value');
     let sliderDebounce = null;
 
     const updateIdeaNearby = (immediate = false) => {
       const ideaKey = ideaSelect.value || null;
-      const distance = parseInt(distanceSlider?.value || 15);
-      if (distanceValue) distanceValue.textContent = distance;
+      const proximity = parseInt(proximitySlider?.value || 40);
+      if (proximityValue) proximityValue.textContent = proximity;
 
       if (immediate) {
-        updateBlockValue(block.id, ideaKey ? { ideaKey, distance } : null);
+        updateBlockValue(block.id, ideaKey ? { ideaKey, proximity } : null);
       } else {
         clearTimeout(sliderDebounce);
         sliderDebounce = setTimeout(() => {
-          updateBlockValue(block.id, ideaKey ? { ideaKey, distance } : null);
+          updateBlockValue(block.id, ideaKey ? { ideaKey, proximity } : null);
         }, 150);
       }
     };
 
     ideaSelect.addEventListener('change', () => updateIdeaNearby(true));
-    if (distanceSlider) {
-      distanceSlider.addEventListener('input', () => updateIdeaNearby(false));
+    if (proximitySlider) {
+      proximitySlider.addEventListener('input', () => updateIdeaNearby(false));
     }
   }
 }
@@ -465,8 +465,10 @@ function applyIdeaNearbyFilter(papers, value) {
   const yMax = Math.max(...allPapers.map(p => p.y));
   const mapDiagonal = Math.sqrt(Math.pow(xMax - xMin, 2) + Math.pow(yMax - yMin, 2));
 
-  // Slider is percentage (5-50%), convert to actual distance
-  const radiusPercent = value.distance || 15;
+  // 근접도 슬라이더: 높을수록 더 가까운 것만 포함 (반경 감소)
+  // proximity 5% → radius 50%, proximity 50% → radius 5%
+  const proximity = value.proximity || 40;
+  const radiusPercent = 55 - proximity;
   const maxDistance = (radiusPercent / 100) * mapDiagonal;
 
   // Filter papers that are either connected OR within distance of any connected paper
