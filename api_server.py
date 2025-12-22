@@ -365,7 +365,7 @@ def run_full_sync_background():
         print("Starting full sync: building papers.json from Zotero API...")
 
         process = subprocess.Popen(
-            ["python", "-u", "build_map.py", "--source", "api"],
+            ["python", "-u", "build_map.py", "--source", "api", "--embedding", "multi", "--all"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
