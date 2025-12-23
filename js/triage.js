@@ -189,32 +189,26 @@ function showPaper(index) {
 // Actions
 // ============================================================
 
-async function setImpact(level) {
+function setImpact(level) {
   if (currentIndex >= papers.length) return;
 
   const paper = papers[currentIndex];
   const impactTag = `impact-${level}`;
   const statusTag = 'status-summarized';
 
-  // Disable buttons during API call
-  document.querySelectorAll('.btn-impact').forEach(btn => btn.classList.add('loading'));
+  // Optimistic UI: move to next immediately
+  currentIndex++;
+  showPaper(currentIndex);
 
-  try {
-    // Add both tags
-    await addTags(paper.zotero_key, [impactTag, statusTag]);
-
-    showToast(`Tagged as impact-${level}`, 'success');
-
-    // Move to next
-    currentIndex++;
-    showPaper(currentIndex);
-
-  } catch (e) {
-    console.error('Failed to add tags:', e);
-    showToast('Failed to add tags: ' + e.message, 'error');
-  } finally {
-    document.querySelectorAll('.btn-impact').forEach(btn => btn.classList.remove('loading'));
-  }
+  // Add tags in background
+  addTags(paper.zotero_key, [impactTag, statusTag])
+    .then(() => {
+      showToast(`Tagged as impact-${level}`, 'success');
+    })
+    .catch(e => {
+      console.error('Failed to add tags:', e);
+      showToast('Failed to add tags: ' + e.message, 'error');
+    });
 }
 
 async function addTags(zoteroKey, tags) {
