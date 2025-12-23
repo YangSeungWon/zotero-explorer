@@ -9,6 +9,13 @@ let papers = [];
 let currentIndex = 0;
 let apiKey = '';
 
+// Session Stats State
+let sessionCount = 0;
+let sessionStartTime = null;
+let sessionTimerInterval = null;
+let sessionGoal = 10;
+let goalCompleted = false;
+
 // DOM Elements
 const loginOverlay = document.getElementById('loginOverlay');
 const loginForm = document.getElementById('loginForm');
@@ -26,6 +33,199 @@ const paperVenue = document.getElementById('paperVenue');
 const paperYear = document.getElementById('paperYear');
 const paperTags = document.getElementById('paperTags');
 const noteContent = document.getElementById('noteContent');
+
+// Stats DOM Elements
+const sessionCountEl = document.getElementById('sessionCount');
+const sessionTimerEl = document.getElementById('sessionTimer');
+const streakCountEl = document.getElementById('streakCount');
+const goalTextEl = document.getElementById('goalText');
+const goalProgressFill = document.getElementById('goalProgressFill');
+const goalModal = document.getElementById('goalModal');
+const goalInput = document.getElementById('goalInput');
+
+// ============================================================
+// Streak & Stats Management
+// ============================================================
+
+function getTodayKey() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function loadStreak() {
+  const lastDate = localStorage.getItem('triage_streak_date');
+  const streak = parseInt(localStorage.getItem('triage_streak_count') || '0');
+  const today = getTodayKey();
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  if (lastDate === today) {
+    // Already reviewed today, keep streak
+    return streak;
+  } else if (lastDate === yesterday) {
+    // Reviewed yesterday, streak continues
+    return streak;
+  } else if (lastDate) {
+    // Streak broken
+    return 0;
+  }
+  return 0;
+}
+
+function updateStreak() {
+  const lastDate = localStorage.getItem('triage_streak_date');
+  const today = getTodayKey();
+  let streak = parseInt(localStorage.getItem('triage_streak_count') || '0');
+
+  if (lastDate !== today) {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    if (lastDate === yesterday) {
+      streak++;
+    } else {
+      streak = 1;
+    }
+    localStorage.setItem('triage_streak_date', today);
+    localStorage.setItem('triage_streak_count', streak.toString());
+  }
+
+  streakCountEl.textContent = streak;
+}
+
+function loadTodayCount() {
+  const saved = localStorage.getItem('triage_today');
+  if (saved) {
+    const data = JSON.parse(saved);
+    if (data.date === getTodayKey()) {
+      return data.count;
+    }
+  }
+  return 0;
+}
+
+function saveTodayCount(count) {
+  localStorage.setItem('triage_today', JSON.stringify({
+    date: getTodayKey(),
+    count: count
+  }));
+}
+
+function loadSessionGoal() {
+  return parseInt(localStorage.getItem('triage_session_goal') || '10');
+}
+
+function saveSessionGoal(goal) {
+  localStorage.setItem('triage_session_goal', goal.toString());
+}
+
+// ============================================================
+// Session Timer
+// ============================================================
+
+function startSessionTimer() {
+  sessionStartTime = Date.now();
+  sessionTimerInterval = setInterval(updateTimerDisplay, 1000);
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  if (!sessionStartTime) return;
+  const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  sessionTimerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ============================================================
+// Goal Progress
+// ============================================================
+
+function updateGoalDisplay() {
+  const progress = Math.min(sessionCount / sessionGoal, 1);
+  goalProgressFill.style.width = (progress * 100) + '%';
+  goalTextEl.textContent = `${sessionCount}/${sessionGoal}`;
+
+  // Check if goal completed
+  if (sessionCount >= sessionGoal && !goalCompleted) {
+    goalCompleted = true;
+    celebrateGoal();
+  }
+}
+
+function celebrateGoal() {
+  showToast('Goal completed!', 'success');
+
+  // Simple confetti effect
+  const colors = ['#22c55e', '#eab308', '#3b82f6', '#ec4899'];
+  for (let i = 0; i < 50; i++) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti';
+    confetti.style.cssText = `
+      left: ${Math.random() * 100}vw;
+      top: -10px;
+      width: 10px;
+      height: 10px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+      animation: confettiFall ${2 + Math.random() * 2}s linear forwards;
+      animation-delay: ${Math.random() * 0.5}s;
+    `;
+    document.body.appendChild(confetti);
+    setTimeout(() => confetti.remove(), 4000);
+  }
+}
+
+function showGoalModal() {
+  goalInput.value = sessionGoal;
+  goalModal.style.display = 'flex';
+  goalInput.focus();
+  goalInput.select();
+}
+
+function hideGoalModal() {
+  goalModal.style.display = 'none';
+}
+
+function setGoal(value) {
+  sessionGoal = Math.max(1, Math.min(100, parseInt(value) || 10));
+  saveSessionGoal(sessionGoal);
+  goalCompleted = sessionCount >= sessionGoal;
+  updateGoalDisplay();
+  hideGoalModal();
+}
+
+// ============================================================
+// Stats Update
+// ============================================================
+
+function incrementSessionCount() {
+  sessionCount++;
+  sessionCountEl.textContent = sessionCount;
+
+  // Update today's total
+  const todayTotal = loadTodayCount() + 1;
+  saveTodayCount(todayTotal);
+
+  // Update streak on first review of the day
+  if (todayTotal === 1) {
+    updateStreak();
+  }
+
+  updateGoalDisplay();
+}
+
+function initStats() {
+  // Load saved goal
+  sessionGoal = loadSessionGoal();
+
+  // Load and display streak
+  const streak = loadStreak();
+  streakCountEl.textContent = streak;
+
+  // Initialize displays
+  sessionCountEl.textContent = '0';
+  updateGoalDisplay();
+
+  // Start timer
+  startSessionTimer();
+}
 
 // ============================================================
 // Authentication
@@ -196,15 +396,15 @@ function setImpact(level) {
   const impactTag = `impact-${level}`;
   const statusTag = 'status-summarized';
 
+  // Update stats
+  incrementSessionCount();
+
   // Optimistic UI: move to next immediately
   currentIndex++;
   showPaper(currentIndex);
 
   // Add tags in background
   addTags(paper.zotero_key, [impactTag, statusTag])
-    .then(() => {
-      showToast(`Tagged as impact-${level}`, 'success');
-    })
     .catch(e => {
       console.error('Failed to add tags:', e);
       showToast('Failed to add tags: ' + e.message, 'error');
@@ -305,6 +505,22 @@ document.querySelectorAll('.btn-impact').forEach(btn => {
 // Skip button
 document.getElementById('skipBtn').addEventListener('click', skip);
 
+// Goal modal
+document.getElementById('goalEditBtn').addEventListener('click', showGoalModal);
+document.getElementById('goalCancelBtn').addEventListener('click', hideGoalModal);
+document.getElementById('goalSaveBtn').addEventListener('click', () => setGoal(goalInput.value));
+goalInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    setGoal(goalInput.value);
+  } else if (e.key === 'Escape') {
+    hideGoalModal();
+  }
+});
+goalModal.addEventListener('click', (e) => {
+  if (e.target === goalModal) hideGoalModal();
+});
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   // Don't trigger if typing in input
@@ -339,6 +555,7 @@ async function init() {
 
   const authed = await checkAuth();
   if (authed) {
+    initStats();
     await loadPapers();
   }
 }

@@ -42,6 +42,45 @@
       </div>
     </header>
 
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-item">
+        <i data-lucide="file-text"></i>
+        <span><span id="sessionCount">0</span> reviewed</span>
+      </div>
+      <div class="stat-item">
+        <i data-lucide="clock"></i>
+        <span id="sessionTimer">00:00</span>
+      </div>
+      <div class="stat-item streak-item">
+        <i data-lucide="flame"></i>
+        <span><span id="streakCount">0</span> day streak</span>
+      </div>
+      <div class="stat-item goal-item">
+        <div class="goal-display" id="goalDisplay">
+          <span>Goal:</span>
+          <div class="goal-progress">
+            <div class="goal-progress-fill" id="goalProgressFill"></div>
+          </div>
+          <span id="goalText">0/10</span>
+          <button class="goal-edit-btn" id="goalEditBtn" title="Set goal"><i data-lucide="settings"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Goal Modal -->
+    <div class="goal-modal" id="goalModal" style="display: none;">
+      <div class="goal-modal-content">
+        <h3>Set Session Goal</h3>
+        <p>How many papers do you want to review?</p>
+        <input type="number" id="goalInput" min="1" max="100" value="10">
+        <div class="goal-modal-actions">
+          <button id="goalCancelBtn" class="btn-secondary">Cancel</button>
+          <button id="goalSaveBtn" class="btn-primary">Start</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Empty State -->
     <div class="triage-empty" id="emptyState" style="display: none;">
       <i data-lucide="check-circle"></i>
