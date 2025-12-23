@@ -48,10 +48,11 @@ async function checkAuth() {
   }
 
   try {
-    const resp = await fetch(`${API_BASE}/papers`, {
+    const resp = await fetch(`${API_BASE}/auth/verify`, {
+      method: 'POST',
       headers: { 'X-API-Key': apiKey }
     });
-    if (resp.status === 401) {
+    if (!resp.ok) {
       showLogin();
       return false;
     }
@@ -92,9 +93,7 @@ loginForm.addEventListener('submit', async (e) => {
 
 async function loadPapers() {
   try {
-    const resp = await fetch(`${API_BASE}/papers`, {
-      headers: { 'X-API-Key': apiKey }
-    });
+    const resp = await fetch('/papers.json');
     const data = await resp.json();
     const allPapers = data.papers || data;
 
