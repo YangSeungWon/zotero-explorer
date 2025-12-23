@@ -42,6 +42,9 @@
           <i data-lucide="volume-2"></i>
           <span>Read</span>
         </button>
+        <button id="ttsSettingsBtn" class="btn-skip" title="TTS Settings">
+          <i data-lucide="settings"></i>
+        </button>
         <button id="skipBtn" class="btn-skip" title="Skip (N)"><i data-lucide="skip-forward"></i> Skip</button>
       </div>
     </header>
@@ -81,6 +84,42 @@
         <div class="goal-modal-actions">
           <button id="goalCancelBtn" class="btn-secondary">Cancel</button>
           <button id="goalSaveBtn" class="btn-primary">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TTS Settings Modal -->
+    <div class="goal-modal" id="ttsModal" style="display: none;">
+      <div class="goal-modal-content tts-settings">
+        <h3>TTS Settings</h3>
+
+        <div class="tts-setting-group">
+          <label>Korean Voice</label>
+          <select id="ttsKoVoice">
+            <option value="">Auto</option>
+          </select>
+        </div>
+
+        <div class="tts-setting-group">
+          <label>English Voice</label>
+          <select id="ttsEnVoice">
+            <option value="">Auto</option>
+          </select>
+        </div>
+
+        <div class="tts-setting-group">
+          <label>Speed: <span id="ttsRateValue">1.0</span>x</label>
+          <input type="range" id="ttsRate" min="0.5" max="2" step="0.1" value="1">
+        </div>
+
+        <div class="tts-setting-group">
+          <label>Status</label>
+          <div id="ttsStatus" class="tts-status">Checking...</div>
+        </div>
+
+        <div class="goal-modal-actions">
+          <button id="ttsTestBtn" class="btn-secondary">Test</button>
+          <button id="ttsCloseBtn" class="btn-primary">Close</button>
         </div>
       </div>
     </div>
@@ -144,8 +183,9 @@
         <span><kbd>2</kbd> Mid</span>
         <span><kbd>3</kbd> Low</span>
         <span><kbd>N</kbd> Skip</span>
-        <span><kbd>←</kbd> Previous</span>
-        <span><kbd>T</kbd> Read</span>
+        <span><kbd>←</kbd> Prev</span>
+        <span><kbd>T</kbd> TTS</span>
+        <span><kbd>K</kbd>/<kbd>J</kbd> Next/Prev</span>
       </div>
     </footer>
 

@@ -350,6 +350,9 @@ function showPaper(index) {
     stopTTS();
   }
 
+  // Reset reading mode
+  resetReadingMode();
+
   // Reset collapsed state on mobile
   const paperInfoEl = document.querySelector('.paper-info');
   if (paperInfoEl) {
@@ -395,6 +398,9 @@ function showPaper(index) {
 
   updateProgress();
   lucide.createIcons();
+
+  // Initialize reading mode for new paper
+  setTimeout(initReadingMode, 100);
 }
 
 // ============================================================
@@ -477,11 +483,12 @@ function previous() {
 }
 
 // ============================================================
-// Text-to-Speech
+// Text-to-Speech with Visual Highlighting
 // ============================================================
 
-let ttsUtterance = null;
 let isSpeaking = false;
+let ttsQueue = [];
+let currentTTSIndex = 0;
 const ttsBtn = document.getElementById('ttsBtn');
 
 function toggleTTS() {
@@ -492,53 +499,122 @@ function toggleTTS() {
   }
 }
 
+// Detect if text contains Korean characters
+function hasKorean(text) {
+  return /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/.test(text);
+}
+
+function getVoiceForLang(lang) {
+  const voices = window.speechSynthesis.getVoices();
+  if (lang === 'ko') {
+    return voices.find(v => v.lang === 'ko-KR')
+      || voices.find(v => v.lang.startsWith('ko'));
+  } else {
+    return voices.find(v => v.lang === 'en-US')
+      || voices.find(v => v.lang.startsWith('en'));
+  }
+}
+
 function startTTS() {
   if (!('speechSynthesis' in window)) {
-    showToast('TTS not supported in this browser', 'error');
+    showToast('TTS not supported', 'error');
     return;
   }
 
-  // Stop any ongoing speech
   window.speechSynthesis.cancel();
 
-  // Get text content from notes (strip HTML)
-  const text = noteContent.innerText || noteContent.textContent;
-  if (!text || text.trim() === '' || text === 'No notes available') {
+  // Get all text blocks (paragraphs, list items)
+  const blocks = noteContent.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6');
+  if (blocks.length === 0) {
+    // Fallback: treat whole content as one block
+    const text = noteContent.innerText.trim();
+    if (!text || text === 'No notes available') {
+      showToast('No notes to read', 'error');
+      return;
+    }
+    ttsQueue = [{ element: noteContent, text }];
+  } else {
+    ttsQueue = Array.from(blocks)
+      .map(el => ({ element: el, text: el.innerText.trim() }))
+      .filter(b => b.text.length > 0);
+  }
+
+  if (ttsQueue.length === 0) {
     showToast('No notes to read', 'error');
     return;
   }
 
-  ttsUtterance = new SpeechSynthesisUtterance(text);
+  // Start from selected paragraph if any
+  if (currentReadingIndex >= 0 && currentReadingIndex < ttsQueue.length) {
+    currentTTSIndex = currentReadingIndex;
+  } else {
+    currentTTSIndex = 0;
+  }
+  isSpeaking = true;
+  ttsBtn.classList.add('playing');
+  ttsBtn.querySelector('span').textContent = 'Stop';
+  noteContent.classList.add('tts-active');
 
-  // Try to find Korean voice, fallback to default
-  const voices = window.speechSynthesis.getVoices();
-  const koreanVoice = voices.find(v => v.lang.startsWith('ko'));
-  if (koreanVoice) {
-    ttsUtterance.voice = koreanVoice;
+  speakNext();
+}
+
+function speakNext() {
+  if (!isSpeaking || currentTTSIndex >= ttsQueue.length) {
+    stopTTS();
+    return;
   }
 
-  ttsUtterance.rate = 1.1;
-  ttsUtterance.pitch = 1;
+  const current = ttsQueue[currentTTSIndex];
+  const text = current.text;
 
-  ttsUtterance.onstart = () => {
-    isSpeaking = true;
-    ttsBtn.classList.add('playing');
-    ttsBtn.querySelector('span').textContent = 'Stop';
+  // Highlight current block
+  ttsQueue.forEach((b, i) => {
+    b.element.classList.remove('tts-current', 'tts-done');
+    if (i < currentTTSIndex) {
+      b.element.classList.add('tts-done');
+    } else if (i === currentTTSIndex) {
+      b.element.classList.add('tts-current');
+      // Scroll into view
+      b.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+
+  // Detect language and select voice
+  const lang = hasKorean(text) ? 'ko' : 'en';
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = lang === 'ko' ? 'ko-KR' : 'en-US';
+
+  // Use saved voice settings
+  const voices = window.speechSynthesis.getVoices();
+  let voice = null;
+  if (lang === 'ko' && selectedKoVoice) {
+    voice = voices.find(v => v.name === selectedKoVoice);
+  } else if (lang === 'en' && selectedEnVoice) {
+    voice = voices.find(v => v.name === selectedEnVoice);
+  }
+  if (!voice) {
+    voice = getVoiceForLang(lang);
+  }
+  if (voice) {
+    utterance.voice = voice;
+  }
+
+  utterance.rate = ttsRate;
+  utterance.pitch = 1;
+
+  utterance.onend = () => {
+    current.element.classList.remove('tts-current');
+    current.element.classList.add('tts-done');
+    currentTTSIndex++;
+    speakNext();
   };
 
-  ttsUtterance.onend = () => {
-    isSpeaking = false;
-    ttsBtn.classList.remove('playing');
-    ttsBtn.querySelector('span').textContent = 'Read';
+  utterance.onerror = () => {
+    currentTTSIndex++;
+    speakNext();
   };
 
-  ttsUtterance.onerror = () => {
-    isSpeaking = false;
-    ttsBtn.classList.remove('playing');
-    ttsBtn.querySelector('span').textContent = 'Read';
-  };
-
-  window.speechSynthesis.speak(ttsUtterance);
+  window.speechSynthesis.speak(utterance);
 }
 
 function stopTTS() {
@@ -546,14 +622,200 @@ function stopTTS() {
   isSpeaking = false;
   ttsBtn.classList.remove('playing');
   ttsBtn.querySelector('span').textContent = 'Read';
+
+  // Clear all highlights
+  noteContent.classList.remove('tts-active');
+  ttsQueue.forEach(b => {
+    b.element.classList.remove('tts-current', 'tts-done');
+  });
+  ttsQueue = [];
+  currentTTSIndex = 0;
 }
+
+// ============================================================
+// TTS Settings
+// ============================================================
+
+const ttsModal = document.getElementById('ttsModal');
+const ttsKoVoiceSelect = document.getElementById('ttsKoVoice');
+const ttsEnVoiceSelect = document.getElementById('ttsEnVoice');
+const ttsRateSlider = document.getElementById('ttsRate');
+const ttsRateValue = document.getElementById('ttsRateValue');
+const ttsStatus = document.getElementById('ttsStatus');
+
+let ttsRate = parseFloat(localStorage.getItem('tts_rate') || '1.0');
+let selectedKoVoice = localStorage.getItem('tts_ko_voice') || '';
+let selectedEnVoice = localStorage.getItem('tts_en_voice') || '';
+
+function showTTSSettings() {
+  ttsModal.style.display = 'flex';
+  populateVoices();
+  ttsRateSlider.value = ttsRate;
+  ttsRateValue.textContent = ttsRate.toFixed(1);
+  checkTTSStatus();
+}
+
+function hideTTSSettings() {
+  ttsModal.style.display = 'none';
+}
+
+function populateVoices() {
+  const voices = window.speechSynthesis.getVoices();
+
+  // Korean voices
+  ttsKoVoiceSelect.innerHTML = '<option value="">Auto</option>';
+  voices.filter(v => v.lang.startsWith('ko')).forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if (v.name === selectedKoVoice) opt.selected = true;
+    ttsKoVoiceSelect.appendChild(opt);
+  });
+
+  // English voices
+  ttsEnVoiceSelect.innerHTML = '<option value="">Auto</option>';
+  voices.filter(v => v.lang.startsWith('en')).forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if (v.name === selectedEnVoice) opt.selected = true;
+    ttsEnVoiceSelect.appendChild(opt);
+  });
+}
+
+function checkTTSStatus() {
+  if (!('speechSynthesis' in window)) {
+    ttsStatus.textContent = 'TTS not supported in this browser';
+    ttsStatus.className = 'tts-status error';
+    return;
+  }
+
+  const voices = window.speechSynthesis.getVoices();
+  const koVoices = voices.filter(v => v.lang.startsWith('ko'));
+  const enVoices = voices.filter(v => v.lang.startsWith('en'));
+
+  let status = `Total: ${voices.length} voices\n`;
+  status += `Korean: ${koVoices.length} (${koVoices.map(v => v.name).join(', ') || 'none'})\n`;
+  status += `English: ${enVoices.length}`;
+
+  ttsStatus.textContent = status;
+  ttsStatus.className = koVoices.length > 0 ? 'tts-status success' : 'tts-status error';
+}
+
+function testTTS() {
+  window.speechSynthesis.cancel();
+
+  const testText = '안녕하세요. Hello, this is a test.';
+  const utterance = new SpeechSynthesisUtterance(testText);
+  utterance.rate = ttsRate;
+
+  // Try Korean voice first
+  const voices = window.speechSynthesis.getVoices();
+  const koVoice = selectedKoVoice
+    ? voices.find(v => v.name === selectedKoVoice)
+    : voices.find(v => v.lang.startsWith('ko'));
+
+  if (koVoice) {
+    utterance.voice = koVoice;
+    utterance.lang = 'ko-KR';
+  }
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// Save settings on change
+ttsKoVoiceSelect?.addEventListener('change', () => {
+  selectedKoVoice = ttsKoVoiceSelect.value;
+  localStorage.setItem('tts_ko_voice', selectedKoVoice);
+});
+
+ttsEnVoiceSelect?.addEventListener('change', () => {
+  selectedEnVoice = ttsEnVoiceSelect.value;
+  localStorage.setItem('tts_en_voice', selectedEnVoice);
+});
+
+ttsRateSlider?.addEventListener('input', () => {
+  ttsRate = parseFloat(ttsRateSlider.value);
+  ttsRateValue.textContent = ttsRate.toFixed(1);
+  localStorage.setItem('tts_rate', ttsRate.toString());
+});
 
 // Preload voices
 if ('speechSynthesis' in window) {
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => {
     window.speechSynthesis.getVoices();
+    if (ttsModal.style.display === 'flex') {
+      populateVoices();
+      checkTTSStatus();
+    }
   };
+}
+
+// ============================================================
+// Manual Reading Mode (Click + J/K navigation)
+// ============================================================
+
+let readingBlocks = [];
+let currentReadingIndex = -1;
+
+function initReadingMode() {
+  readingBlocks = Array.from(noteContent.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6'))
+    .filter(el => el.innerText.trim().length > 0);
+
+  // Add click handlers to each block
+  readingBlocks.forEach((block, index) => {
+    block.style.cursor = 'pointer';
+    block.addEventListener('click', (e) => {
+      if (isSpeaking) return; // Don't interfere with TTS
+      setReadingIndex(index);
+    });
+  });
+}
+
+function setReadingIndex(index) {
+  if (readingBlocks.length === 0) return;
+
+  // Clamp index
+  index = Math.max(-1, Math.min(index, readingBlocks.length - 1));
+  currentReadingIndex = index;
+
+  // Update highlights
+  readingBlocks.forEach((block, i) => {
+    block.classList.remove('read-current', 'read-done');
+    if (index >= 0) {
+      if (i < index) {
+        block.classList.add('read-done');
+      } else if (i === index) {
+        block.classList.add('read-current');
+      }
+    }
+  });
+
+  // Scroll current into view
+  if (index >= 0 && readingBlocks[index]) {
+    readingBlocks[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function nextReadingBlock() {
+  if (isSpeaking) return;
+  if (readingBlocks.length === 0) initReadingMode();
+  setReadingIndex(currentReadingIndex + 1);
+}
+
+function prevReadingBlock() {
+  if (isSpeaking) return;
+  if (readingBlocks.length === 0) initReadingMode();
+  setReadingIndex(currentReadingIndex - 1);
+}
+
+function resetReadingMode() {
+  currentReadingIndex = -1;
+  readingBlocks.forEach(block => {
+    block.classList.remove('read-current', 'read-done');
+  });
+  readingBlocks = [];
 }
 
 // ============================================================
@@ -605,6 +867,14 @@ document.getElementById('goalSaveBtn').addEventListener('click', () => setGoal(g
 // TTS button
 ttsBtn.addEventListener('click', toggleTTS);
 
+// TTS Settings
+document.getElementById('ttsSettingsBtn').addEventListener('click', showTTSSettings);
+document.getElementById('ttsCloseBtn').addEventListener('click', hideTTSSettings);
+document.getElementById('ttsTestBtn').addEventListener('click', testTTS);
+ttsModal.addEventListener('click', (e) => {
+  if (e.target === ttsModal) hideTTSSettings();
+});
+
 // Mobile: toggle paper info collapse
 const paperInfo = document.querySelector('.paper-info');
 let lastScrollTop = 0;
@@ -647,31 +917,40 @@ goalModal.addEventListener('click', (e) => {
   if (e.target === goalModal) hideGoalModal();
 });
 
-// Keyboard shortcuts
+// Keyboard shortcuts (using e.code for layout-independent physical keys)
 document.addEventListener('keydown', (e) => {
   // Don't trigger if typing in input
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
+  // Numbers work the same in all layouts
   switch (e.key) {
     case '1':
       setImpact('high');
-      break;
+      return;
     case '2':
       setImpact('mid');
-      break;
+      return;
     case '3':
       setImpact('low');
-      break;
-    case 'n':
-    case 'N':
-      skip();
-      break;
+      return;
     case 'ArrowLeft':
       previous();
+      return;
+  }
+
+  // Use physical key position for letters (works with Colemak, Dvorak, etc.)
+  switch (e.code) {
+    case 'KeyN':
+      skip();
       break;
-    case 't':
-    case 'T':
+    case 'KeyT':
       toggleTTS();
+      break;
+    case 'KeyJ':
+      prevReadingBlock();
+      break;
+    case 'KeyK':
+      nextReadingBlock();
       break;
   }
 });
