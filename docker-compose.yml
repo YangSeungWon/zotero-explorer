@@ -5,6 +5,7 @@ services:
       - "20680:80"
     volumes:
       - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./triage.html:/usr/share/nginx/html/triage.html:ro
       - ./css:/usr/share/nginx/html/css:ro
       - ./js:/usr/share/nginx/html/js:ro
       - ./papers.json:/usr/share/nginx/html/papers.json:ro
