@@ -150,7 +150,7 @@ function showPaper(index) {
     return;
   }
 
-  mainContent.style.display = 'flex';
+  mainContent.style.display = 'grid';
   emptyState.style.display = 'none';
 
   const paper = papers[index];
@@ -164,9 +164,18 @@ function showPaper(index) {
   const tags = (paper.tags || '').split(/[;,]/).map(t => t.trim()).filter(Boolean);
   paperTags.innerHTML = tags.map(t => `<span class="tag">${t}</span>`).join('');
 
-  // Notes
+  // Notes - render as markdown if plain text, otherwise as HTML
   if (paper.notes) {
-    noteContent.innerHTML = paper.notes;
+    const notes = paper.notes;
+    // Check if it's already HTML (has tags) or plain text/markdown
+    const hasHtmlTags = /<[a-z][\s\S]*>/i.test(notes);
+    if (hasHtmlTags) {
+      // Already HTML - render directly but also parse any markdown inside text nodes
+      noteContent.innerHTML = notes;
+    } else {
+      // Plain text/markdown - parse with marked
+      noteContent.innerHTML = marked.parse(notes);
+    }
   } else {
     noteContent.innerHTML = '<em>No notes available</em>';
   }

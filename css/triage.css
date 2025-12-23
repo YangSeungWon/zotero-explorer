@@ -17,9 +17,8 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 20px;
+  margin: 0;
+  padding: 0 16px;
 }
 
 /* Header */
@@ -169,34 +168,53 @@ body {
   background: var(--accent-hover);
 }
 
-/* Main Content */
+/* Main Content - Two Column Layout */
 .triage-main {
   flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  padding: 20px 0;
+  min-height: 0;
+}
+
+/* Left Sidebar */
+.triage-sidebar {
   display: flex;
   flex-direction: column;
-  padding: 24px 0;
-  gap: 24px;
+  gap: 20px;
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
 }
 
 /* Paper Info */
 .paper-info {
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
 .paper-title {
   margin: 0 0 12px 0;
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.4;
 }
 
 .paper-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  font-size: 14px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
   color: var(--text-muted);
+}
+
+.paper-authors {
+  line-height: 1.4;
 }
 
 .paper-venue {
@@ -207,53 +225,36 @@ body {
 .paper-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   margin-top: 12px;
 }
 
 .paper-tags .tag {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 2px 6px;
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
 /* Note Section */
 .note-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.note-section h3 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.note-section h3 svg {
-  width: 16px;
-  height: 16px;
+  min-height: 0;
 }
 
 .note-content {
   flex: 1;
-  padding: 20px;
+  padding: 24px 32px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 15px;
-  line-height: 1.7;
+  line-height: 1.8;
   overflow-y: auto;
-  max-height: 50vh;
+  max-height: calc(100vh - 200px);
 }
 
 .note-content h1, .note-content h2, .note-content h3,
@@ -264,7 +265,7 @@ body {
 }
 
 .note-content h1:first-child, .note-content h2:first-child,
-.note-content h3:first-child {
+.note-content h3:first-child, .note-content > *:first-child {
   margin-top: 0;
 }
 
@@ -278,7 +279,7 @@ body {
 }
 
 .note-content li {
-  margin: 0.3em 0;
+  margin: 0.4em 0;
 }
 
 .note-content blockquote {
@@ -289,54 +290,91 @@ body {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
+.note-content code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.note-content pre {
+  background: var(--bg-tertiary);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.note-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.note-content strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.note-content a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.note-content a:hover {
+  text-decoration: underline;
+}
+
 /* Action Buttons */
 .triage-actions {
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
 .action-hint {
-  margin: 0 0 16px 0;
-  font-size: 14px;
+  margin: 0 0 12px 0;
+  font-size: 12px;
   color: var(--text-muted);
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .impact-buttons {
   display: flex;
-  gap: 12px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .btn-impact {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 20px 32px;
-  background: var(--bg-secondary);
+  padding: 12px 16px;
+  background: var(--bg-primary);
   border: 2px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s;
-  min-width: 120px;
 }
 
 .btn-impact svg {
-  width: 32px;
-  height: 32px;
+  width: 20px;
+  height: 20px;
 }
 
 .btn-impact span {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
+  flex: 1;
 }
 
 .btn-impact kbd {
-  padding: 2px 8px;
+  padding: 2px 6px;
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 11px;
   font-family: inherit;
   color: var(--text-muted);
 }
@@ -437,10 +475,20 @@ body {
 }
 
 /* Mobile responsive */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .triage-main {
+    grid-template-columns: 1fr;
+  }
+
+  .triage-sidebar {
+    position: static;
+    max-height: none;
+  }
+
   .triage-header {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
 
   .triage-nav {
@@ -456,19 +504,11 @@ body {
   }
 
   .impact-buttons {
-    flex-direction: column;
-  }
-
-  .btn-impact {
     flex-direction: row;
-    justify-content: center;
-    padding: 16px 24px;
-    min-width: auto;
   }
 
-  .btn-impact svg {
-    width: 24px;
-    height: 24px;
+  .note-content {
+    max-height: 50vh;
   }
 
   .shortcuts-help {

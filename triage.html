@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Triage - Zotero Explorer</title>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/login.css">
   <link rel="stylesheet" href="css/triage.css">
@@ -51,44 +52,44 @@
 
     <!-- Main Content -->
     <main class="triage-main" id="mainContent">
-      <!-- Paper Info -->
-      <section class="paper-info">
-        <h2 class="paper-title" id="paperTitle">Loading...</h2>
-        <div class="paper-meta">
-          <span class="paper-authors" id="paperAuthors"></span>
-          <span class="paper-venue" id="paperVenue"></span>
-          <span class="paper-year" id="paperYear"></span>
-        </div>
-        <div class="paper-tags" id="paperTags"></div>
-      </section>
+      <!-- Left Column: Paper Info + Actions -->
+      <aside class="triage-sidebar">
+        <section class="paper-info">
+          <h2 class="paper-title" id="paperTitle">Loading...</h2>
+          <div class="paper-meta">
+            <div class="paper-authors" id="paperAuthors"></div>
+            <div class="paper-venue" id="paperVenue"></div>
+            <div class="paper-year" id="paperYear"></div>
+          </div>
+          <div class="paper-tags" id="paperTags"></div>
+        </section>
 
-      <!-- Note Content -->
+        <section class="triage-actions">
+          <p class="action-hint">Rate impact:</p>
+          <div class="impact-buttons">
+            <button class="btn-impact btn-high" data-impact="high">
+              <i data-lucide="arrow-up-circle"></i>
+              <span>High</span>
+              <kbd>1</kbd>
+            </button>
+            <button class="btn-impact btn-mid" data-impact="mid">
+              <i data-lucide="minus-circle"></i>
+              <span>Mid</span>
+              <kbd>2</kbd>
+            </button>
+            <button class="btn-impact btn-low" data-impact="low">
+              <i data-lucide="arrow-down-circle"></i>
+              <span>Low</span>
+              <kbd>3</kbd>
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Right Column: Notes -->
       <section class="note-section">
-        <h3><i data-lucide="file-text"></i> Notes</h3>
         <div class="note-content" id="noteContent">
           Loading notes...
-        </div>
-      </section>
-
-      <!-- Action Buttons -->
-      <section class="triage-actions">
-        <p class="action-hint">Rate the impact of this paper:</p>
-        <div class="impact-buttons">
-          <button class="btn-impact btn-high" data-impact="high">
-            <i data-lucide="arrow-up-circle"></i>
-            <span>High</span>
-            <kbd>1</kbd>
-          </button>
-          <button class="btn-impact btn-mid" data-impact="mid">
-            <i data-lucide="minus-circle"></i>
-            <span>Mid</span>
-            <kbd>2</kbd>
-          </button>
-          <button class="btn-impact btn-low" data-impact="low">
-            <i data-lucide="arrow-down-circle"></i>
-            <span>Low</span>
-            <kbd>3</kbd>
-          </button>
         </div>
       </section>
     </main>
