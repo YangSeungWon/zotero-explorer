@@ -170,11 +170,14 @@ function showPaper(index) {
     // Check if it's already HTML (has tags) or plain text/markdown
     const hasHtmlTags = /<[a-z][\s\S]*>/i.test(notes);
     if (hasHtmlTags) {
-      // Already HTML - render directly but also parse any markdown inside text nodes
+      // Already HTML - render directly
       noteContent.innerHTML = notes;
-    } else {
+    } else if (typeof marked !== 'undefined') {
       // Plain text/markdown - parse with marked
       noteContent.innerHTML = marked.parse(notes);
+    } else {
+      // Fallback: simple text with line breaks
+      noteContent.innerHTML = notes.replace(/\n/g, '<br>');
     }
   } else {
     noteContent.innerHTML = '<em>No notes available</em>';
