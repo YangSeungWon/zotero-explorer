@@ -522,14 +522,27 @@ function initUIHandlers() {
 function initFilterHandlers() {
   const debouncedApplyFilters = debounce(applyFilters, DEBOUNCE_DELAY);
 
+  const semanticLoadingOverlay = document.getElementById('semanticLoadingOverlay');
+
+  const showSemanticLoading = () => {
+    if (semanticLoadingOverlay) semanticLoadingOverlay.style.display = 'flex';
+  };
+
+  const hideSemanticLoading = () => {
+    if (semanticLoadingOverlay) semanticLoadingOverlay.style.display = 'none';
+  };
+
   const debouncedSemanticSearch = debounce(async () => {
     const query = document.getElementById('searchFilter').value.trim();
     if (!semanticSearchMode || !query) {
       semanticSearchResults = null;
+      hideSemanticLoading();
       applyFilters();
       return;
     }
+    showSemanticLoading();
     const results = await performSemanticSearch(query);
+    hideSemanticLoading();
     if (results) {
       semanticSearchResults = new Map(results.map(r => [r.id, r.similarity]));
       // Auto-switch to similarity sort when semantic search has results

@@ -96,6 +96,38 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 
+/* Semantic search loading overlay */
+.semantic-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 50;
+  color: white;
+  font-size: 14px;
+  backdrop-filter: blur(2px);
+}
+
+.semantic-loading-overlay .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--color-semantic);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Link chips in detail panel - unified styling in layout.css */
 /* Keep specific colors subtle */
 /* Copy buttons - clipboard style */
