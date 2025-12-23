@@ -353,6 +353,13 @@ function showPaper(index) {
   // Reset reading mode
   resetReadingMode();
 
+  // Reset scroll position
+  noteContent.scrollTop = 0;
+
+  // Hide mobile actions until scrolled
+  document.querySelector('.mobile-actions')?.classList.remove('visible');
+  document.querySelector('.triage-container')?.classList.remove('actions-visible');
+
   // Reset collapsed state on mobile
   const paperInfoEl = document.querySelector('.paper-info');
   if (paperInfoEl) {
@@ -888,11 +895,17 @@ paperInfo.addEventListener('click', (e) => {
 });
 
 // Auto-collapse on scroll down, expand on scroll to top
+// Also show/hide mobile action buttons based on scroll
+const mobileActions = document.querySelector('.mobile-actions');
+
 noteContent.addEventListener('scroll', () => {
   if (window.innerWidth > 768) return;
 
   const scrollTop = noteContent.scrollTop;
+  const scrollHeight = noteContent.scrollHeight;
+  const clientHeight = noteContent.clientHeight;
 
+  // Paper info collapse/expand
   if (scrollTop > 50 && scrollTop > lastScrollTop) {
     // Scrolling down - collapse
     paperInfo.classList.add('collapsed');
@@ -901,6 +914,17 @@ noteContent.addEventListener('scroll', () => {
     // At top - expand
     paperInfo.classList.remove('collapsed');
     mainContent.classList.remove('info-collapsed');
+  }
+
+  // Show action buttons when scrolled near bottom (90%)
+  const scrollPercent = (scrollTop + clientHeight) / scrollHeight;
+  const container = document.querySelector('.triage-container');
+  if (scrollPercent > 0.9 || scrollHeight <= clientHeight) {
+    mobileActions?.classList.add('visible');
+    container?.classList.add('actions-visible');
+  } else {
+    mobileActions?.classList.remove('visible');
+    container?.classList.remove('actions-visible');
   }
 
   lastScrollTop = scrollTop;
