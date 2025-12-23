@@ -747,12 +747,48 @@ body {
     display: none;
   }
 
+  /* Collapsible paper info on mobile */
   .paper-info {
     padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .paper-info::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin: 8px auto 0;
+  }
+
+  .paper-info.collapsed {
+    padding: 8px 12px;
+  }
+
+  .paper-info.collapsed .paper-meta,
+  .paper-info.collapsed .paper-tags {
+    display: none;
+  }
+
+  .paper-info.collapsed .paper-title {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0;
   }
 
   .paper-title {
     font-size: 14px;
+  }
+
+  /* Expand note area when paper info is collapsed */
+  .triage-main.info-collapsed .note-section {
+    flex: 1;
   }
 
   .note-content {

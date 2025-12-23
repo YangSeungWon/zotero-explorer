@@ -350,6 +350,13 @@ function showPaper(index) {
     stopTTS();
   }
 
+  // Reset collapsed state on mobile
+  const paperInfoEl = document.querySelector('.paper-info');
+  if (paperInfoEl) {
+    paperInfoEl.classList.remove('collapsed');
+    mainContent.classList.remove('info-collapsed');
+  }
+
   if (index >= papers.length) {
     showEmpty();
     return;
@@ -597,6 +604,37 @@ document.getElementById('goalSaveBtn').addEventListener('click', () => setGoal(g
 
 // TTS button
 ttsBtn.addEventListener('click', toggleTTS);
+
+// Mobile: toggle paper info collapse
+const paperInfo = document.querySelector('.paper-info');
+let lastScrollTop = 0;
+
+paperInfo.addEventListener('click', (e) => {
+  // Only on mobile
+  if (window.innerWidth > 768) return;
+
+  paperInfo.classList.toggle('collapsed');
+  mainContent.classList.toggle('info-collapsed');
+});
+
+// Auto-collapse on scroll down, expand on scroll to top
+noteContent.addEventListener('scroll', () => {
+  if (window.innerWidth > 768) return;
+
+  const scrollTop = noteContent.scrollTop;
+
+  if (scrollTop > 50 && scrollTop > lastScrollTop) {
+    // Scrolling down - collapse
+    paperInfo.classList.add('collapsed');
+    mainContent.classList.add('info-collapsed');
+  } else if (scrollTop <= 10) {
+    // At top - expand
+    paperInfo.classList.remove('collapsed');
+    mainContent.classList.remove('info-collapsed');
+  }
+
+  lastScrollTop = scrollTop;
+});
 goalInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
