@@ -70,6 +70,32 @@ input[type="checkbox"] {
   cursor: wait;
 }
 
+/* Semantic threshold inline slider (PC header) */
+.semantic-threshold-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 4px 8px;
+  background: var(--color-semantic-bg, rgba(139, 92, 246, 0.1));
+  border: 1px solid var(--color-semantic);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--color-semantic);
+}
+
+.semantic-threshold-inline label {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.semantic-threshold-inline input[type="range"] {
+  width: 60px;
+  height: 4px;
+  accent-color: var(--color-semantic);
+  cursor: pointer;
+}
+
 /* Link chips in detail panel - unified styling in layout.css */
 /* Keep specific colors subtle */
 /* Copy buttons - clipboard style */

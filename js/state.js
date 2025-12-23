@@ -48,3 +48,4 @@ let currentView = 'map'; // 'map' or 'timeline'
 let yearRange = null; // { min, max } for mini timeline filter
 let semanticSearchMode = false; // When true, use semantic search API
 let semanticSearchResults = null; // Cached semantic search results
+let semanticThreshold = 30; // Minimum similarity % for semantic search (0-100)

@@ -119,6 +119,10 @@
         <label>Search:</label>
         <input type="text" id="searchFilter" placeholder="Title/Author/Abstract" style="width: 120px;">
         <button id="semanticToggle" class="semantic-toggle" title="Toggle semantic search (AI-powered)"><i data-lucide="brain"></i></button>
+        <div id="semanticThresholdContainer" class="semantic-threshold-inline" style="display: none;">
+          <label>≥<span id="semanticThresholdValue">30</span>%</label>
+          <input type="range" id="semanticThresholdSlider" min="10" max="80" value="30">
+        </div>
       </div>
       <div class="control-group">
         <input type="checkbox" id="showCitations" checked>

@@ -144,11 +144,12 @@ function filterPapers() {
   // Semantic search mode: use pre-fetched results
   if (semanticSearchMode && semanticSearchResults && searchFilter) {
     // Get papers that match semantic search (sorted by similarity)
-    const matchingIds = new Set(semanticSearchResults.keys());
+    const thresholdDecimal = (semanticThreshold || 30) / 100;
 
     let filtered = allPapers.filter(p => {
       if (!p.has_notes) return false;
-      if (!matchingIds.has(p.id)) return false;
+      const similarity = semanticSearchResults.get(p.id);
+      if (similarity === undefined || similarity < thresholdDecimal) return false;
       if (p.venue_quality < minVenue) return false;
       if (papersOnly && !p.is_paper) return false;
       if (bookmarkedOnly && !bookmarkedPapers.has(p.id)) return false;

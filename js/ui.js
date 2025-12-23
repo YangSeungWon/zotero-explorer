@@ -557,10 +557,19 @@ function initFilterHandlers() {
 
   // Semantic search toggle
   const semanticToggle = document.getElementById('semanticToggle');
+  const thresholdContainer = document.getElementById('semanticThresholdContainer');
+  const thresholdSlider = document.getElementById('semanticThresholdSlider');
+  const thresholdValue = document.getElementById('semanticThresholdValue');
+
   semanticToggle.addEventListener('click', () => {
     semanticSearchMode = !semanticSearchMode;
     semanticToggle.classList.toggle('active', semanticSearchMode);
     semanticToggle.title = semanticSearchMode ? 'Semantic search ON (AI-powered)' : 'Toggle semantic search (AI-powered)';
+
+    // Show/hide threshold slider
+    if (thresholdContainer) {
+      thresholdContainer.style.display = semanticSearchMode ? 'flex' : 'none';
+    }
 
     const searchInput = document.getElementById('searchFilter');
     searchInput.placeholder = semanticSearchMode ? 'Describe what you\'re looking for...' : 'Title/Author/Abstract';
@@ -581,6 +590,18 @@ function initFilterHandlers() {
       }
     }
   });
+
+  // Threshold slider handler
+  if (thresholdSlider) {
+    thresholdSlider.addEventListener('input', () => {
+      semanticThreshold = parseInt(thresholdSlider.value);
+      if (thresholdValue) thresholdValue.textContent = semanticThreshold;
+      // Re-filter with new threshold (no new API call needed)
+      if (semanticSearchMode && semanticSearchResults) {
+        applyFilters();
+      }
+    });
+  }
 
   // Reset
   document.getElementById('resetFilter').addEventListener('click', resetAllFilters);
@@ -604,7 +625,14 @@ function resetAllFilters() {
   highlightCluster = null;
   semanticSearchMode = false;
   semanticSearchResults = null;
+  semanticThreshold = 30;
   document.getElementById('semanticToggle').classList.remove('active');
+  const thresholdContainer = document.getElementById('semanticThresholdContainer');
+  if (thresholdContainer) thresholdContainer.style.display = 'none';
+  const thresholdSlider = document.getElementById('semanticThresholdSlider');
+  if (thresholdSlider) thresholdSlider.value = 30;
+  const thresholdValue = document.getElementById('semanticThresholdValue');
+  if (thresholdValue) thresholdValue.textContent = '30';
   document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('active'));
   selectedPaper = null;
   connectedPapers = new Set();
