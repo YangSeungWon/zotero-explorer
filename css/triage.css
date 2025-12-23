@@ -275,12 +275,21 @@ body {
 }
 
 .note-content ul, .note-content ol {
-  padding-left: 1.5em;
+  padding-left: 2em;
   margin: 0.8em 0;
+}
+
+.note-content ul {
+  list-style-type: disc;
+}
+
+.note-content ol {
+  list-style-type: decimal;
 }
 
 .note-content li {
   margin: 0.4em 0;
+  display: list-item;
 }
 
 .note-content blockquote {
