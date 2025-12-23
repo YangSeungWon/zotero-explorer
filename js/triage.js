@@ -345,6 +345,11 @@ function showEmpty() {
 }
 
 function showPaper(index) {
+  // Stop TTS when changing papers
+  if (isSpeaking) {
+    stopTTS();
+  }
+
   if (index >= papers.length) {
     showEmpty();
     return;
@@ -465,6 +470,86 @@ function previous() {
 }
 
 // ============================================================
+// Text-to-Speech
+// ============================================================
+
+let ttsUtterance = null;
+let isSpeaking = false;
+const ttsBtn = document.getElementById('ttsBtn');
+
+function toggleTTS() {
+  if (isSpeaking) {
+    stopTTS();
+  } else {
+    startTTS();
+  }
+}
+
+function startTTS() {
+  if (!('speechSynthesis' in window)) {
+    showToast('TTS not supported in this browser', 'error');
+    return;
+  }
+
+  // Stop any ongoing speech
+  window.speechSynthesis.cancel();
+
+  // Get text content from notes (strip HTML)
+  const text = noteContent.innerText || noteContent.textContent;
+  if (!text || text.trim() === '' || text === 'No notes available') {
+    showToast('No notes to read', 'error');
+    return;
+  }
+
+  ttsUtterance = new SpeechSynthesisUtterance(text);
+
+  // Try to find Korean voice, fallback to default
+  const voices = window.speechSynthesis.getVoices();
+  const koreanVoice = voices.find(v => v.lang.startsWith('ko'));
+  if (koreanVoice) {
+    ttsUtterance.voice = koreanVoice;
+  }
+
+  ttsUtterance.rate = 1.1;
+  ttsUtterance.pitch = 1;
+
+  ttsUtterance.onstart = () => {
+    isSpeaking = true;
+    ttsBtn.classList.add('playing');
+    ttsBtn.querySelector('span').textContent = 'Stop';
+  };
+
+  ttsUtterance.onend = () => {
+    isSpeaking = false;
+    ttsBtn.classList.remove('playing');
+    ttsBtn.querySelector('span').textContent = 'Read';
+  };
+
+  ttsUtterance.onerror = () => {
+    isSpeaking = false;
+    ttsBtn.classList.remove('playing');
+    ttsBtn.querySelector('span').textContent = 'Read';
+  };
+
+  window.speechSynthesis.speak(ttsUtterance);
+}
+
+function stopTTS() {
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+  ttsBtn.classList.remove('playing');
+  ttsBtn.querySelector('span').textContent = 'Read';
+}
+
+// Preload voices
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+  };
+}
+
+// ============================================================
 // Toast Notification
 // ============================================================
 
@@ -509,6 +594,9 @@ document.getElementById('skipBtn').addEventListener('click', skip);
 document.getElementById('goalEditBtn').addEventListener('click', showGoalModal);
 document.getElementById('goalCancelBtn').addEventListener('click', hideGoalModal);
 document.getElementById('goalSaveBtn').addEventListener('click', () => setGoal(goalInput.value));
+
+// TTS button
+ttsBtn.addEventListener('click', toggleTTS);
 goalInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -542,6 +630,10 @@ document.addEventListener('keydown', (e) => {
       break;
     case 'ArrowLeft':
       previous();
+      break;
+    case 't':
+    case 'T':
+      toggleTTS();
       break;
   }
 });
