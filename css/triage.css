@@ -1,0 +1,478 @@
+/* Triage Mode Styles */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.triage-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Header */
+.triage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-color);
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.triage-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.triage-nav h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.15s;
+}
+
+.back-link:hover {
+  color: var(--accent);
+}
+
+.back-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+.triage-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 300px;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.triage-actions-header {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-skip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-skip:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-skip svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Empty State */
+.triage-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.triage-empty svg {
+  width: 64px;
+  height: 64px;
+  color: var(--color-green);
+  margin-bottom: 20px;
+}
+
+.triage-empty h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+}
+
+.triage-empty p {
+  margin: 0 0 24px 0;
+  color: var(--text-muted);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Main Content */
+.triage-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  gap: 24px;
+}
+
+/* Paper Info */
+.paper-info {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.paper-title {
+  margin: 0 0 12px 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.paper-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.paper-venue {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.paper-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.paper-tags .tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Note Section */
+.note-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.note-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.note-section h3 svg {
+  width: 16px;
+  height: 16px;
+}
+
+.note-content {
+  flex: 1;
+  padding: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-y: auto;
+  max-height: 50vh;
+}
+
+.note-content h1, .note-content h2, .note-content h3,
+.note-content h4, .note-content h5, .note-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.note-content h1:first-child, .note-content h2:first-child,
+.note-content h3:first-child {
+  margin-top: 0;
+}
+
+.note-content p {
+  margin: 0.8em 0;
+}
+
+.note-content ul, .note-content ol {
+  padding-left: 1.5em;
+  margin: 0.8em 0;
+}
+
+.note-content li {
+  margin: 0.3em 0;
+}
+
+.note-content blockquote {
+  margin: 1em 0;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Action Buttons */
+.triage-actions {
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.action-hint {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.impact-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-impact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 32px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 120px;
+}
+
+.btn-impact svg {
+  width: 32px;
+  height: 32px;
+}
+
+.btn-impact span {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-impact kbd {
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-muted);
+}
+
+/* High Impact */
+.btn-high {
+  border-color: var(--color-green);
+  color: var(--color-green);
+}
+
+.btn-high:hover {
+  background: rgba(34, 197, 94, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Mid Impact */
+.btn-mid {
+  border-color: var(--color-yellow);
+  color: var(--color-yellow);
+}
+
+.btn-mid:hover {
+  background: rgba(234, 179, 8, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Low Impact */
+.btn-low {
+  border-color: var(--color-red);
+  color: var(--color-red);
+}
+
+.btn-low:hover {
+  background: rgba(239, 68, 68, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Active/Loading state */
+.btn-impact.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.btn-impact.active {
+  transform: scale(0.95);
+}
+
+/* Footer */
+.triage-footer {
+  padding: 16px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.shortcuts-help {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.shortcuts-help kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+/* Toast notification */
+.triage-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: 12px 24px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  font-size: 14px;
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.triage-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.triage-toast.success {
+  border-color: var(--color-green);
+  color: var(--color-green);
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .triage-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .triage-nav {
+    justify-content: space-between;
+  }
+
+  .triage-progress {
+    max-width: none;
+  }
+
+  .triage-actions-header {
+    justify-content: flex-end;
+  }
+
+  .impact-buttons {
+    flex-direction: column;
+  }
+
+  .btn-impact {
+    flex-direction: row;
+    justify-content: center;
+    padding: 16px 24px;
+    min-width: auto;
+  }
+
+  .btn-impact svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .shortcuts-help {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}

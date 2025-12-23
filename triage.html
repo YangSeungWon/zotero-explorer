@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triage - Zotero Explorer</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/triage.css">
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+      <h2>Triage Mode</h2>
+      <p>Enter your API Key</p>
+      <form id="loginForm" autocomplete="off">
+        <input type="password" id="loginApiKey" placeholder="API Key" autocomplete="off" data-lpignore="true" data-form-type="other" required>
+        <button type="submit" id="loginBtn">Login</button>
+      </form>
+      <div id="loginError" class="login-error"></div>
+    </div>
+  </div>
+
+  <div class="triage-container">
+    <!-- Header -->
+    <header class="triage-header">
+      <div class="triage-nav">
+        <a href="/" class="back-link"><i data-lucide="arrow-left"></i> Explorer</a>
+        <h1>Triage Mode</h1>
+      </div>
+      <div class="triage-progress">
+        <span class="progress-text"><span id="currentIndex">0</span> / <span id="totalCount">0</span> remaining</span>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+      <div class="triage-actions-header">
+        <button id="skipBtn" class="btn-skip" title="Skip (N)"><i data-lucide="skip-forward"></i> Skip</button>
+      </div>
+    </header>
+
+    <!-- Empty State -->
+    <div class="triage-empty" id="emptyState" style="display: none;">
+      <i data-lucide="check-circle"></i>
+      <h2>All Done!</h2>
+      <p>No papers left to triage.</p>
+      <a href="/" class="btn-primary">Back to Explorer</a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="triage-main" id="mainContent">
+      <!-- Paper Info -->
+      <section class="paper-info">
+        <h2 class="paper-title" id="paperTitle">Loading...</h2>
+        <div class="paper-meta">
+          <span class="paper-authors" id="paperAuthors"></span>
+          <span class="paper-venue" id="paperVenue"></span>
+          <span class="paper-year" id="paperYear"></span>
+        </div>
+        <div class="paper-tags" id="paperTags"></div>
+      </section>
+
+      <!-- Note Content -->
+      <section class="note-section">
+        <h3><i data-lucide="file-text"></i> Notes</h3>
+        <div class="note-content" id="noteContent">
+          Loading notes...
+        </div>
+      </section>
+
+      <!-- Action Buttons -->
+      <section class="triage-actions">
+        <p class="action-hint">Rate the impact of this paper:</p>
+        <div class="impact-buttons">
+          <button class="btn-impact btn-high" data-impact="high">
+            <i data-lucide="arrow-up-circle"></i>
+            <span>High</span>
+            <kbd>1</kbd>
+          </button>
+          <button class="btn-impact btn-mid" data-impact="mid">
+            <i data-lucide="minus-circle"></i>
+            <span>Mid</span>
+            <kbd>2</kbd>
+          </button>
+          <button class="btn-impact btn-low" data-impact="low">
+            <i data-lucide="arrow-down-circle"></i>
+            <span>Low</span>
+            <kbd>3</kbd>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Keyboard Shortcuts Help -->
+    <footer class="triage-footer">
+      <div class="shortcuts-help">
+        <span><kbd>1</kbd> High</span>
+        <span><kbd>2</kbd> Mid</span>
+        <span><kbd>3</kbd> Low</span>
+        <span><kbd>N</kbd> Skip</span>
+        <span><kbd>←</kbd> Previous</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/triage.js"></script>
+</body>
+</html>
