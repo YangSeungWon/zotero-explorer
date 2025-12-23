@@ -32,11 +32,11 @@ const noteContent = document.getElementById('noteContent');
 // ============================================================
 
 function getApiKey() {
-  return localStorage.getItem('zotero_api_key') || '';
+  return localStorage.getItem('app_api_key') || '';
 }
 
 function setApiKey(key) {
-  localStorage.setItem('zotero_api_key', key);
+  localStorage.setItem('app_api_key', key);
   apiKey = key;
 }
 
