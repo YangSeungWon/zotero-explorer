@@ -694,23 +694,24 @@ body {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .triage-main {
-    grid-template-columns: 1fr;
-  }
-
-  .triage-sidebar {
-    position: static;
-    max-height: none;
+  .triage-container {
+    padding: 0 12px;
+    padding-bottom: 100px; /* Space for fixed bottom bar */
   }
 
   .triage-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 8px;
+    padding: 8px 0;
   }
 
   .triage-nav {
     justify-content: space-between;
+  }
+
+  .triage-nav h1 {
+    font-size: 16px;
   }
 
   .triage-progress {
@@ -721,27 +722,91 @@ body {
     justify-content: flex-end;
   }
 
-  .impact-buttons {
-    flex-direction: row;
+  .stats-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+
+  .stat-item {
+    font-size: 12px;
+  }
+
+  .goal-progress {
+    width: 60px;
+  }
+
+  .triage-main {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  /* Hide sidebar actions on mobile - use bottom bar instead */
+  .triage-sidebar .triage-actions {
+    display: none;
+  }
+
+  .paper-info {
+    padding: 12px;
+  }
+
+  .paper-title {
+    font-size: 14px;
   }
 
   .note-content {
-    max-height: 60vh;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
   }
 
-  body {
-    overflow: auto;
-    height: auto;
+  /* Hide keyboard shortcuts on mobile */
+  .triage-footer {
+    display: none;
   }
 
-  .triage-container {
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-  }
-
-  .shortcuts-help {
-    flex-wrap: wrap;
+  /* Fixed bottom action bar for mobile */
+  .mobile-actions {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: 12px;
     gap: 12px;
+    z-index: 100;
+  }
+
+  .mobile-actions .btn-impact {
+    flex: 1;
+    padding: 16px 8px;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mobile-actions .btn-impact span {
+    font-size: 12px;
+    flex: none;
+  }
+
+  .mobile-actions .btn-impact kbd {
+    font-size: 20px;
+    font-weight: 700;
+    background: none;
+    padding: 0;
+  }
+
+  .mobile-actions .btn-impact svg {
+    display: none;
+  }
+}
+
+/* Desktop: hide mobile actions */
+@media (min-width: 769px) {
+  .mobile-actions {
+    display: none;
   }
 }
