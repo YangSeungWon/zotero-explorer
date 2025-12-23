@@ -180,6 +180,7 @@ body {
   padding: 16px 0;
   min-height: 0;
   overflow: hidden;
+  align-items: stretch;
 }
 
 /* Left Sidebar */
@@ -187,10 +188,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  position: sticky;
-  top: 20px;
-  align-self: start;
-  max-height: calc(100vh - 160px);
   overflow-y: auto;
 }
 
