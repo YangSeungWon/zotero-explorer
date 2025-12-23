@@ -13,7 +13,9 @@ function render(filteredPapers) {
   const paperItems = papers.filter(p => p.is_paper);
   const appItems = papers.filter(p => !p.is_paper);
 
-  const hasActiveFilter = filteredIds.size < allPapers.length;
+  // Compare against papers with notes (default filter), not all papers
+  const papersWithNotes = allPapers.filter(p => p.has_notes);
+  const hasActiveFilter = filteredIds.size < papersWithNotes.length;
   const isLight = document.documentElement.dataset.theme === 'light';
 
   // Muted color for background papers (faint cluster hint, lower brightness)
