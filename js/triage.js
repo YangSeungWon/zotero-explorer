@@ -293,7 +293,7 @@ loginForm.addEventListener('submit', async (e) => {
 
 async function loadPapers() {
   try {
-    const resp = await fetch('/papers.json');
+    const resp = await fetch('/papers.json?t=' + Date.now());
     const data = await resp.json();
     const allPapers = data.papers || data;
 
