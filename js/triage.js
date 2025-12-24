@@ -297,11 +297,12 @@ async function loadPapers() {
     const data = await resp.json();
     const allPapers = data.papers || data;
 
-    // Filter: has notes but no status-summarized tag
+    // Filter: has notes but no status-* tag (status-summarized, status-read, status-skimmed, etc.)
     papers = allPapers.filter(p => {
       if (!p.has_notes) return false;
       const tags = (p.tags || '').toLowerCase();
-      if (tags.includes('status-summarized')) return false;
+      // Exclude papers with any status- tag
+      if (/\bstatus-\w+/.test(tags)) return false;
       return true;
     });
 
