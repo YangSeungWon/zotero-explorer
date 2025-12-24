@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Outline Builder - Zotero Explorer</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/outline.css">
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+      <h2>Outline Builder</h2>
+      <p>Enter your API Key</p>
+      <form id="loginForm" autocomplete="off">
+        <input type="password" id="loginApiKey" placeholder="API Key" autocomplete="off" data-lpignore="true" data-form-type="other" required>
+        <button type="submit" id="loginBtn">Login</button>
+      </form>
+      <div id="loginError" class="login-error"></div>
+    </div>
+  </div>
+
+  <div class="outline-container">
+    <!-- Header -->
+    <header class="outline-header">
+      <div class="header-left">
+        <a href="/" class="back-link"><i data-lucide="arrow-left"></i> Explorer</a>
+        <h1>Outline Builder</h1>
+      </div>
+      <div class="header-actions">
+        <select id="outlineSelect" class="outline-select">
+          <option value="">Select outline...</option>
+        </select>
+        <button id="newOutlineBtn" class="btn-icon" title="New Outline">
+          <i data-lucide="plus"></i>
+        </button>
+        <button id="exportBtn" class="btn-icon" title="Export as Markdown">
+          <i data-lucide="download"></i>
+        </button>
+        <button id="deleteOutlineBtn" class="btn-icon btn-danger" title="Delete Outline">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="outline-main">
+      <!-- Left: Outline Editor -->
+      <section class="outline-panel">
+        <div class="outline-title-section">
+          <input type="text" id="outlineTitle" class="outline-title-input" placeholder="Outline Title...">
+        </div>
+
+        <div class="thesis-section">
+          <label>Main Thesis</label>
+          <textarea id="thesisInput" class="thesis-input" placeholder="Your main idea or thesis statement..."></textarea>
+        </div>
+
+        <div class="blocks-section">
+          <div class="blocks-header">
+            <h3>Building Blocks</h3>
+            <button id="addBlockBtn" class="btn-add-block">
+              <i data-lucide="plus"></i> Add Block
+            </button>
+          </div>
+          <div id="blocksList" class="blocks-list">
+            <!-- Blocks rendered here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Paper Search & Details -->
+      <aside class="search-panel">
+        <div class="search-section">
+          <div class="search-header">
+            <h3>Paper Search</h3>
+            <button id="semanticToggle" class="semantic-toggle" title="Semantic Search">
+              <i data-lucide="brain"></i>
+            </button>
+          </div>
+          <div class="search-input-wrapper">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search papers...">
+            <button id="searchBtn" class="search-btn">
+              <i data-lucide="search"></i>
+            </button>
+          </div>
+          <div id="searchResults" class="search-results">
+            <p class="empty-state">Search for papers to add to your outline</p>
+          </div>
+        </div>
+
+        <div class="detail-section" id="detailSection" style="display: none;">
+          <div class="detail-header">
+            <h3>Paper Details</h3>
+            <button id="closeDetailBtn" class="btn-close">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div id="paperDetail" class="paper-detail">
+            <!-- Paper detail rendered here -->
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- New Outline Modal -->
+  <div class="modal-overlay" id="newOutlineModal" style="display: none;">
+    <div class="modal">
+      <h3>New Outline</h3>
+      <input type="text" id="newOutlineTitle" class="modal-input" placeholder="Outline title...">
+      <div class="modal-actions">
+        <button id="cancelNewOutline" class="btn-secondary">Cancel</button>
+        <button id="createNewOutline" class="btn-primary">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="exportModal" style="display: none;">
+    <div class="modal modal-export">
+      <div class="modal-header">
+        <h3>Export Outline</h3>
+        <button id="closeExportModal" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <textarea id="exportContent" class="export-content" readonly></textarea>
+      <div class="modal-actions">
+        <button id="copyExport" class="btn-primary">
+          <i data-lucide="copy"></i> Copy to Clipboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Paper Note Modal -->
+  <div class="modal-overlay" id="addPaperModal" style="display: none;">
+    <div class="modal">
+      <h3>Add Paper to Block</h3>
+      <p id="addPaperTitle" class="add-paper-title"></p>
+      <textarea id="paperNoteInput" class="modal-textarea" placeholder="Why does this paper support your argument?"></textarea>
+      <div class="modal-actions">
+        <button id="cancelAddPaper" class="btn-secondary">Cancel</button>
+        <button id="confirmAddPaper" class="btn-primary">Add Paper</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/outline.js"></script>
+</body>
+</html>

@@ -1307,6 +1307,124 @@ def external_search():
 
 
 # ============================================================
+# Outlines API Endpoints
+# ============================================================
+
+OUTLINES_FILE = Path(__file__).parent / "outlines.json"
+
+
+def load_outlines():
+    """Load outlines from JSON file"""
+    if not OUTLINES_FILE.exists():
+        return {"outlines": []}
+    with open(OUTLINES_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def save_outlines(data):
+    """Save outlines to JSON file"""
+    with open(OUTLINES_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route('/api/outlines', methods=['GET'])
+def get_outlines():
+    """Get all outlines"""
+    try:
+        data = load_outlines()
+        return jsonify({"success": True, "outlines": data.get("outlines", [])})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/outlines/<outline_id>', methods=['GET'])
+def get_outline(outline_id):
+    """Get a single outline by ID"""
+    try:
+        data = load_outlines()
+        outline = next((o for o in data.get("outlines", []) if o["id"] == outline_id), None)
+        if outline:
+            return jsonify({"success": True, "outline": outline})
+        else:
+            return jsonify({"success": False, "error": "Outline not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/outlines', methods=['POST'])
+def create_outline():
+    """Create a new outline"""
+    try:
+        import uuid
+        req_data = request.json
+
+        new_outline = {
+            "id": str(uuid.uuid4()),
+            "title": req_data.get("title", "Untitled"),
+            "created": datetime.now().isoformat(),
+            "updated": datetime.now().isoformat(),
+            "thesis": req_data.get("thesis", ""),
+            "blocks": req_data.get("blocks", [])
+        }
+
+        data = load_outlines()
+        data["outlines"].append(new_outline)
+        save_outlines(data)
+
+        return jsonify({"success": True, "outline": new_outline})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/outlines/<outline_id>', methods=['PUT'])
+def update_outline(outline_id):
+    """Update an existing outline"""
+    try:
+        req_data = request.json
+        data = load_outlines()
+
+        outline_idx = next((i for i, o in enumerate(data["outlines"]) if o["id"] == outline_id), None)
+        if outline_idx is None:
+            return jsonify({"success": False, "error": "Outline not found"}), 404
+
+        outline = data["outlines"][outline_idx]
+
+        # Update fields
+        if "title" in req_data:
+            outline["title"] = req_data["title"]
+        if "thesis" in req_data:
+            outline["thesis"] = req_data["thesis"]
+        if "blocks" in req_data:
+            outline["blocks"] = req_data["blocks"]
+
+        outline["updated"] = datetime.now().isoformat()
+
+        data["outlines"][outline_idx] = outline
+        save_outlines(data)
+
+        return jsonify({"success": True, "outline": outline})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/outlines/<outline_id>', methods=['DELETE'])
+def delete_outline(outline_id):
+    """Delete an outline"""
+    try:
+        data = load_outlines()
+        original_len = len(data["outlines"])
+        data["outlines"] = [o for o in data["outlines"] if o["id"] != outline_id]
+
+        if len(data["outlines"]) == original_len:
+            return jsonify({"success": False, "error": "Outline not found"}), 404
+
+        save_outlines(data)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
 # Helper Functions
 # ============================================================
 

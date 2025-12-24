@@ -73,6 +73,13 @@
         <button class="dropdown-item header-dropdown-item" id="externalSearch" style="color: var(--color-purple);"><i data-lucide="globe"></i> S2 Search</button>
       </div>
     </div>
+    <div class="header-dropdown dropdown" id="toolsDropdown">
+      <button class="header-dropdown-btn"><i data-lucide="wrench"></i> Tools</button>
+      <div class="dropdown-menu">
+        <a href="/triage.html" class="dropdown-item header-dropdown-item" style="color: var(--accent); text-decoration: none;"><i data-lucide="list-checks"></i> Triage Mode</a>
+        <a href="/outline.html" class="dropdown-item header-dropdown-item" style="color: var(--color-semantic); text-decoration: none;"><i data-lucide="file-text"></i> Outline Builder</a>
+      </div>
+    </div>
     <div class="legend">
       <div class="legend-item">
         <div class="legend-dot" style="background: #58a6ff;"></div>
@@ -142,6 +149,19 @@
     <div class="mobile-menu-header">
       <h2>Settings</h2>
       <button class="theme-toggle" id="mobileThemeToggle" title="Toggle theme"><i data-lucide="moon"></i></button>
+    </div>
+
+    <div class="mobile-menu-section">
+      <a href="/triage.html" class="mobile-triage-link">
+        <i data-lucide="list-checks"></i>
+        <span>Triage Mode</span>
+        <i data-lucide="chevron-right"></i>
+      </a>
+      <a href="/outline.html" class="mobile-triage-link" style="background: var(--color-semantic); margin-top: 8px;">
+        <i data-lucide="file-text"></i>
+        <span>Outline Builder</span>
+        <i data-lucide="chevron-right"></i>
+      </a>
     </div>
 
     <div class="mobile-menu-section">
