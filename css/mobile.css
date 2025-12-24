@@ -124,6 +124,35 @@
   font-size: 16px;
 }
 
+/* Triage Link */
+.mobile-triage-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.mobile-triage-link i:first-child {
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-triage-link span {
+  flex: 1;
+}
+
+.mobile-triage-link i:last-child {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
 /* Cluster Chips */
 .cluster-chips {
   display: none;
