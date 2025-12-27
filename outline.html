@@ -66,9 +66,23 @@
               <button id="importIdeasBtn" class="btn-import-ideas" title="Import from Ideas">
                 <i data-lucide="lightbulb"></i> From Ideas
               </button>
-              <button id="addBlockBtn" class="btn-add-block">
-                <i data-lucide="plus"></i> Add Block
-              </button>
+              <div class="add-block-dropdown">
+                <button id="addBlockBtn" class="btn-add-block">
+                  <i data-lucide="plus"></i> Add <i data-lucide="chevron-down" class="chevron"></i>
+                </button>
+                <div class="add-block-menu" id="addBlockMenu">
+                  <button class="add-block-option" data-type="argument">
+                    <i data-lucide="message-square"></i> Argument
+                  </button>
+                  <div class="menu-divider"></div>
+                  <button class="add-block-option" data-type="literature-category">
+                    <i data-lucide="folder"></i> Literature Category
+                  </button>
+                  <button class="add-block-option" data-type="literature">
+                    <i data-lucide="book-open"></i> Literature
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           <div id="blocksList" class="blocks-list">

@@ -303,25 +303,60 @@ function renderOutline() {
   });
 }
 
+function getBlockTypeInfo(type) {
+  const types = {
+    'argument': { icon: 'message-square', label: 'Argument', color: 'accent' },
+    'literature-category': { icon: 'folder', label: 'Category', color: 'semantic' },
+    'literature': { icon: 'book-open', label: 'Literature', color: 'semantic' }
+  };
+  return types[type] || types['argument'];
+}
+
 function renderBlock(block) {
   const isActive = selectedBlockId === block.id;
+  const blockType = block.type || 'argument';
+  const typeInfo = getBlockTypeInfo(blockType);
+  const isCategory = blockType === 'literature-category';
+
   const linkedPapers = (block.papers || []).map(p => {
     const paper = papers.find(pp => pp.zotero_key === p.zotero_key || pp.id === p.paper_id);
     return { ...p, paper };
   }).filter(p => p.paper);
 
+  // Category blocks: just title, no claim or papers
+  if (isCategory) {
+    return `
+      <div class="block-card block-category ${isActive ? 'active' : ''}" data-block-id="${block.id}" data-block-type="${blockType}">
+        <div class="block-card-header">
+          <div class="block-type-badge type-${typeInfo.color}">
+            <i data-lucide="${typeInfo.icon}"></i>
+          </div>
+          <input type="text" class="block-title-input" value="${escapeHtml(block.title || '')}" placeholder="Category name...">
+          <button class="block-delete-btn" title="Delete">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Argument or Literature blocks: full structure
+  const placeholder = blockType === 'literature'
+    ? 'What does this group of papers address?'
+    : 'What does this block argue or claim?';
+
   return `
-    <div class="block-card ${isActive ? 'active' : ''}" data-block-id="${block.id}">
+    <div class="block-card block-${blockType} ${isActive ? 'active' : ''}" data-block-id="${block.id}" data-block-type="${blockType}">
       <div class="block-card-header">
-        <div class="block-drag-handle">
-          <i data-lucide="grip-vertical"></i>
+        <div class="block-type-badge type-${typeInfo.color}">
+          <i data-lucide="${typeInfo.icon}"></i>
         </div>
         <input type="text" class="block-title-input" value="${escapeHtml(block.title || '')}" placeholder="Block title...">
-        <button class="block-delete-btn" title="Delete block">
+        <button class="block-delete-btn" title="Delete">
           <i data-lucide="trash-2"></i>
         </button>
       </div>
-      <textarea class="block-claim-input" placeholder="What does this block argue or claim?">${escapeHtml(block.claim || '')}</textarea>
+      <textarea class="block-claim-input" placeholder="${placeholder}">${escapeHtml(block.claim || '')}</textarea>
       <div class="block-papers">
         <div class="block-papers-header">
           <span>${linkedPapers.length} paper${linkedPapers.length !== 1 ? 's' : ''} linked</span>
@@ -418,11 +453,12 @@ function showPaperDetail(paper) {
 // Block Operations
 // ===========================================
 
-function addBlock() {
+function addBlock(type = 'argument') {
   if (!currentOutline) return;
 
   const newBlock = {
     id: generateId(),
+    type: type,
     title: '',
     claim: '',
     papers: []
@@ -593,11 +629,20 @@ function exportToMarkdown() {
     md += `## Thesis\n\n${currentOutline.thesis}\n\n`;
   }
 
-  if (currentOutline.blocks && currentOutline.blocks.length > 0) {
-    md += `## Building Blocks\n\n`;
+  if (!currentOutline.blocks || currentOutline.blocks.length === 0) {
+    return md;
+  }
 
-    currentOutline.blocks.forEach((block, i) => {
-      md += `### ${i + 1}. ${block.title || 'Untitled Block'}\n\n`;
+  // Separate argument and literature blocks
+  const argumentBlocks = currentOutline.blocks.filter(b => !b.type || b.type === 'argument');
+  const literatureBlocks = currentOutline.blocks.filter(b => b.type === 'literature-category' || b.type === 'literature');
+
+  // Export argument blocks
+  if (argumentBlocks.length > 0) {
+    md += `## Main Arguments\n\n`;
+
+    argumentBlocks.forEach((block, i) => {
+      md += `### ${i + 1}. ${block.title || 'Untitled'}\n\n`;
 
       if (block.claim) {
         md += `${block.claim}\n\n`;
@@ -618,6 +663,39 @@ function exportToMarkdown() {
           }
         });
         md += '\n';
+      }
+    });
+  }
+
+  // Export literature/related work blocks
+  if (literatureBlocks.length > 0) {
+    md += `## Related Work\n\n`;
+
+    literatureBlocks.forEach(block => {
+      if (block.type === 'literature-category') {
+        md += `### ${block.title || 'Untitled Category'}\n\n`;
+      } else if (block.type === 'literature') {
+        md += `#### ${block.title || 'Untitled'}\n\n`;
+
+        if (block.claim) {
+          md += `${block.claim}\n\n`;
+        }
+
+        if (block.papers && block.papers.length > 0) {
+          block.papers.forEach(p => {
+            const paper = papers.find(pp => pp.zotero_key === p.zotero_key || pp.id === p.paper_id);
+            if (paper) {
+              md += `- ${paper.title}`;
+              if (paper.authors) md += ` (${paper.authors.split(',')[0]} et al.)`;
+              if (paper.year) md += `, ${paper.year}`;
+              md += '\n';
+              if (p.note) {
+                md += `  - *${p.note}*\n`;
+              }
+            }
+          });
+          md += '\n';
+        }
       }
     });
   }
@@ -706,8 +784,29 @@ function initEventListeners() {
   outlineTitle.addEventListener('input', debounce(() => saveOutline(), 500));
   thesisInput.addEventListener('input', debounce(() => saveOutline(), 500));
 
-  // Add block button
-  document.getElementById('addBlockBtn').addEventListener('click', addBlock);
+  // Add block dropdown
+  const addBlockBtn = document.getElementById('addBlockBtn');
+  const addBlockMenu = document.getElementById('addBlockMenu');
+
+  addBlockBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    addBlockMenu.classList.toggle('show');
+  });
+
+  // Add block options
+  document.querySelectorAll('.add-block-option').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const type = btn.dataset.type;
+      addBlock(type);
+      addBlockMenu.classList.remove('show');
+    });
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener('click', () => {
+    addBlockMenu.classList.remove('show');
+  });
 
   // Import from Ideas button
   document.getElementById('importIdeasBtn')?.addEventListener('click', showImportIdeasModal);
