@@ -117,6 +117,99 @@ async function semanticSearch(query, topK = 20) {
 }
 
 // ===========================================
+// Ideas Integration
+// ===========================================
+
+let allIdeas = [];
+
+async function fetchIdeas() {
+  try {
+    const response = await fetch('/api/ideas');
+    const data = await response.json();
+    if (data.success) {
+      allIdeas = data.ideas || [];
+      return allIdeas;
+    }
+    return [];
+  } catch (e) {
+    console.error('Failed to fetch ideas:', e);
+    return [];
+  }
+}
+
+function showImportIdeasModal() {
+  if (allIdeas.length === 0) {
+    alert('No ideas found. Create ideas in the Explorer first.');
+    return;
+  }
+
+  const modal = document.getElementById('importIdeasModal');
+  const list = document.getElementById('ideasList');
+
+  list.innerHTML = allIdeas.map(idea => `
+    <div class="idea-item" data-idea-key="${idea.zotero_key}">
+      <div class="idea-item-title">${escapeHtml(idea.title || 'Untitled')}</div>
+      <div class="idea-item-meta">
+        ${idea.connected_papers?.length || 0} papers connected
+        ${idea.status ? `· ${idea.status}` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  modal.style.display = 'flex';
+
+  // Add click listeners
+  list.querySelectorAll('.idea-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.ideaKey;
+      importIdeaAsBlock(key);
+      modal.style.display = 'none';
+    });
+  });
+}
+
+function importIdeaAsBlock(ideaKey) {
+  if (!currentOutline) {
+    alert('Please select or create an outline first.');
+    return;
+  }
+
+  const idea = allIdeas.find(i => i.zotero_key === ideaKey);
+  if (!idea) return;
+
+  // Create block from idea
+  const newBlock = {
+    id: generateId(),
+    title: idea.title || '',
+    claim: idea.description || '',
+    papers: [],
+    sourceIdea: ideaKey  // Track the source idea
+  };
+
+  // Add connected papers
+  if (idea.connected_papers && idea.connected_papers.length > 0) {
+    idea.connected_papers.forEach(paperKey => {
+      const paper = papers.find(p => p.zotero_key === paperKey);
+      if (paper) {
+        newBlock.papers.push({
+          zotero_key: paperKey,
+          paper_id: paper.id,
+          note: ''  // User can add notes later
+        });
+      }
+    });
+  }
+
+  if (!currentOutline.blocks) {
+    currentOutline.blocks = [];
+  }
+
+  currentOutline.blocks.push(newBlock);
+  saveOutline();
+  renderOutline();
+}
+
+// ===========================================
 // UI Rendering
 // ===========================================
 
@@ -616,6 +709,14 @@ function initEventListeners() {
   // Add block button
   document.getElementById('addBlockBtn').addEventListener('click', addBlock);
 
+  // Import from Ideas button
+  document.getElementById('importIdeasBtn')?.addEventListener('click', showImportIdeasModal);
+
+  // Import Ideas modal close
+  document.getElementById('closeImportIdeas')?.addEventListener('click', () => {
+    document.getElementById('importIdeasModal').style.display = 'none';
+  });
+
   // New outline button
   document.getElementById('newOutlineBtn').addEventListener('click', () => {
     document.getElementById('newOutlineModal').style.display = 'flex';
@@ -732,8 +833,9 @@ async function initApp() {
   // Load papers first
   await loadPapers();
 
-  // Load outlines
+  // Load outlines and ideas
   await fetchOutlines();
+  await fetchIdeas();
   renderOutlineSelect();
 
   // Initialize event listeners

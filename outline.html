@@ -62,9 +62,14 @@
         <div class="blocks-section">
           <div class="blocks-header">
             <h3>Building Blocks</h3>
-            <button id="addBlockBtn" class="btn-add-block">
-              <i data-lucide="plus"></i> Add Block
-            </button>
+            <div class="blocks-actions">
+              <button id="importIdeasBtn" class="btn-import-ideas" title="Import from Ideas">
+                <i data-lucide="lightbulb"></i> From Ideas
+              </button>
+              <button id="addBlockBtn" class="btn-add-block">
+                <i data-lucide="plus"></i> Add Block
+              </button>
+            </div>
           </div>
           <div id="blocksList" class="blocks-list">
             <!-- Blocks rendered here -->
@@ -146,6 +151,22 @@
       <div class="modal-actions">
         <button id="cancelAddPaper" class="btn-secondary">Cancel</button>
         <button id="confirmAddPaper" class="btn-primary">Add Paper</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Ideas Modal -->
+  <div class="modal-overlay" id="importIdeasModal" style="display: none;">
+    <div class="modal modal-ideas">
+      <div class="modal-header">
+        <h3>Import from Ideas</h3>
+        <button id="closeImportIdeas" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <p class="modal-subtitle">Select an idea to import as a building block</p>
+      <div id="ideasList" class="ideas-list">
+        <!-- Ideas rendered here -->
       </div>
     </div>
   </div>
