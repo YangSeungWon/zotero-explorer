@@ -496,13 +496,47 @@ function showPaperDetail(paper) {
   if (!paper) return;
 
   detailSection.style.display = 'block';
+
+  // Parse notes for zotero links
+  const { text: notesText, links: zoteroLinks } = parseNoteWithZoteroLinks(paper.notes || '');
+
+  const linksHtml = zoteroLinks.length > 0 ? `
+    <div class="detail-zotero-links">
+      ${zoteroLinks.map(link => `
+        <a href="${link.url}" class="zotero-link zotero-link-${link.type}" title="${link.type === 'pdf' ? 'Open PDF' : link.type === 'annotation' ? 'Open Annotation' : 'Open in Zotero'}">
+          <i data-lucide="${link.icon}"></i>
+          ${link.type === 'pdf' ? 'PDF' : link.type === 'annotation' ? 'Note' : 'Zotero'}
+        </a>
+      `).join('')}
+    </div>
+  ` : '';
+
+  const notesHtml = notesText ? `
+    <div class="paper-detail-section">
+      <div class="paper-detail-section-title">Notes</div>
+      <div class="paper-detail-notes">${escapeHtml(notesText)}</div>
+      ${linksHtml}
+    </div>
+  ` : '';
+
   paperDetail.innerHTML = `
     <div class="paper-detail-title">${escapeHtml(paper.title || 'Untitled')}</div>
     <div class="paper-detail-meta">
       ${paper.authors || ''} ${paper.year ? `(${paper.year})` : ''}
     </div>
-    <div class="paper-detail-abstract">${escapeHtml(paper.abstract || paper.notes || 'No abstract available')}</div>
+    ${paper.abstract ? `
+      <div class="paper-detail-section">
+        <div class="paper-detail-section-title">Abstract</div>
+        <div class="paper-detail-abstract">${escapeHtml(paper.abstract)}</div>
+      </div>
+    ` : ''}
+    ${notesHtml}
   `;
+
+  // Re-initialize lucide icons for the new content
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 }
 
 // ===========================================
