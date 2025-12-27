@@ -386,15 +386,16 @@ function parseNoteWithZoteroLinks(note) {
 
     if (url) {
       // Determine link type
+      // Check annotation first since annotation links also contain open-pdf
       let type = 'item';
       let icon = 'external-link';
 
-      if (url.includes('open-pdf')) {
-        type = 'pdf';
-        icon = 'file-text';
-      } else if (url.includes('annotation=')) {
+      if (url.includes('annotation=')) {
         type = 'annotation';
         icon = 'message-square';
+      } else if (url.includes('open-pdf')) {
+        type = 'pdf';
+        icon = 'file-text';
       }
 
       links.push({ url, label, type, icon });
@@ -423,7 +424,7 @@ function renderLinkedPaper(linkedPaper) {
       ${zoteroLinks.map(link => `
         <a href="${link.url}" class="zotero-link zotero-link-${link.type}" title="${link.type === 'pdf' ? 'Open PDF' : link.type === 'annotation' ? 'Open Annotation' : 'Open in Zotero'}">
           <i data-lucide="${link.icon}"></i>
-          ${link.type === 'pdf' ? 'PDF' : link.type === 'annotation' ? 'Note' : 'Zotero'}
+          ${link.type === 'pdf' ? 'PDF' : link.type === 'annotation' ? 'Annotation' : 'Zotero'}
         </a>
       `).join('')}
     </div>
@@ -505,7 +506,7 @@ function showPaperDetail(paper) {
       ${zoteroLinks.map(link => `
         <a href="${link.url}" class="zotero-link zotero-link-${link.type}" title="${link.type === 'pdf' ? 'Open PDF' : link.type === 'annotation' ? 'Open Annotation' : 'Open in Zotero'}">
           <i data-lucide="${link.icon}"></i>
-          ${link.type === 'pdf' ? 'PDF' : link.type === 'annotation' ? 'Note' : 'Zotero'}
+          ${link.type === 'pdf' ? 'PDF' : link.type === 'annotation' ? 'Annotation' : 'Zotero'}
         </a>
       `).join('')}
     </div>
