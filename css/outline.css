@@ -625,6 +625,60 @@ body {
   height: 14px;
 }
 
+.linked-paper-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.zotero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.zotero-link svg {
+  width: 12px;
+  height: 12px;
+}
+
+.zotero-link-pdf {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.zotero-link-pdf:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.zotero-link-annotation {
+  background: var(--color-positive-bg);
+  color: var(--color-positive);
+}
+
+.zotero-link-annotation:hover {
+  background: var(--color-positive);
+  color: white;
+}
+
+.zotero-link-item {
+  background: var(--color-semantic-bg);
+  color: var(--color-semantic);
+}
+
+.zotero-link-item:hover {
+  background: var(--color-semantic);
+  color: white;
+}
+
 /* ===========================================
    Search Panel
    =========================================== */

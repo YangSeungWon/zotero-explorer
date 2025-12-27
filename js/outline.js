@@ -370,16 +370,72 @@ function renderBlock(block) {
   `;
 }
 
+function parseNoteWithZoteroLinks(note) {
+  if (!note) return { text: '', links: [] };
+
+  const links = [];
+
+  // Find zotero:// links - both in markdown format and plain
+  // Pattern: [text](zotero://...) or just (zotero://...) or plain zotero://...
+  const zoteroLinkRegex = /\[([^\]]*)\]\((zotero:\/\/[^)]+)\)|\((zotero:\/\/[^)]+)\)|(?<![(\[])(zotero:\/\/\S+)/g;
+
+  let match;
+  while ((match = zoteroLinkRegex.exec(note)) !== null) {
+    const label = match[1] || '';
+    const url = match[2] || match[3] || match[4];
+
+    if (url) {
+      // Determine link type
+      let type = 'item';
+      let icon = 'external-link';
+
+      if (url.includes('open-pdf')) {
+        type = 'pdf';
+        icon = 'file-text';
+      } else if (url.includes('annotation=')) {
+        type = 'annotation';
+        icon = 'message-square';
+      }
+
+      links.push({ url, label, type, icon });
+    }
+  }
+
+  // Clean the note text (remove zotero links for display)
+  let cleanText = note
+    .replace(/\[([^\]]*)\]\(zotero:\/\/[^)]+\)/g, '$1')  // [text](zotero://...) → text
+    .replace(/\(zotero:\/\/[^)]+\)/g, '')  // (zotero://...)
+    .replace(/zotero:\/\/\S+/g, '')  // plain zotero://...
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return { text: cleanText, links };
+}
+
 function renderLinkedPaper(linkedPaper) {
   const { paper, note, zotero_key, paper_id } = linkedPaper;
   const key = zotero_key || paper_id;
+
+  const { text: noteText, links: zoteroLinks } = parseNoteWithZoteroLinks(note);
+
+  const linksHtml = zoteroLinks.length > 0 ? `
+    <div class="linked-paper-links">
+      ${zoteroLinks.map(link => `
+        <a href="${link.url}" class="zotero-link zotero-link-${link.type}" title="${link.type === 'pdf' ? 'Open PDF' : link.type === 'annotation' ? 'Open Annotation' : 'Open in Zotero'}">
+          <i data-lucide="${link.icon}"></i>
+          ${link.type === 'pdf' ? 'PDF' : link.type === 'annotation' ? 'Note' : 'Zotero'}
+        </a>
+      `).join('')}
+    </div>
+  ` : '';
 
   return `
     <div class="linked-paper">
       <i class="linked-paper-icon" data-lucide="file-text"></i>
       <div class="linked-paper-content">
         <div class="linked-paper-title">${escapeHtml(paper.title || 'Untitled')}</div>
-        ${note ? `<div class="linked-paper-note">"${escapeHtml(note)}"</div>` : ''}
+        ${noteText ? `<div class="linked-paper-note">"${escapeHtml(noteText)}"</div>` : ''}
+        ${linksHtml}
       </div>
       <button class="linked-paper-remove" data-paper-key="${key}" title="Remove paper">
         <i data-lucide="x"></i>
