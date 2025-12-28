@@ -493,9 +493,11 @@ body {
   height: 16px;
 }
 
-.block-claim-input {
+.block-claim-preview {
   width: 100%;
-  min-height: 60px;
+  min-height: 40px;
+  max-height: 80px;
+  overflow: hidden;
   padding: 10px 12px;
   font-size: 14px;
   line-height: 1.5;
@@ -503,13 +505,19 @@ body {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  resize: vertical;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: pre-wrap;
 }
 
-.block-claim-input:focus {
-  outline: none;
-  border-color: var(--accent);
+.block-claim-preview:hover {
+  border-color: var(--border-hover);
   background: var(--bg-primary);
+}
+
+.block-claim-preview .placeholder {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .block-papers {
@@ -1012,8 +1020,28 @@ body {
   resize: vertical;
 }
 
+.modal-textarea-large {
+  width: 100%;
+  min-height: 200px;
+  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  resize: vertical;
+}
+
+.modal-claim {
+  width: 90%;
+  max-width: 600px;
+}
+
 .modal-input:focus,
-.modal-textarea:focus {
+.modal-textarea:focus,
+.modal-textarea-large:focus {
   outline: none;
   border-color: var(--accent);
 }

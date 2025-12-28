@@ -185,6 +185,23 @@
     </div>
   </div>
 
+  <!-- Edit Block Claim Modal -->
+  <div class="modal-overlay" id="editClaimModal" style="display: none;">
+    <div class="modal modal-claim">
+      <div class="modal-header">
+        <h3 id="editClaimTitle">Edit Description</h3>
+        <button id="closeEditClaim" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <textarea id="editClaimInput" class="modal-textarea-large" placeholder="What does this block argue or claim?"></textarea>
+      <div class="modal-actions">
+        <button id="cancelEditClaim" class="btn-secondary">Cancel</button>
+        <button id="saveEditClaim" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/auth.js"></script>
   <script src="js/outline.js"></script>
 </body>

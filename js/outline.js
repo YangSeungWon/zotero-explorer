@@ -9,6 +9,7 @@ let papers = [];
 let selectedBlockId = null;
 let pendingPaper = null;
 let isSemanticSearch = true;
+let editingClaimBlockId = null;
 
 // DOM Elements
 const outlineSelect = document.getElementById('outlineSelect');
@@ -168,6 +169,44 @@ function showImportIdeasModal() {
   });
 }
 
+function openEditClaimModal(blockId, currentClaim, blockTitle) {
+  editingClaimBlockId = blockId;
+
+  const modal = document.getElementById('editClaimModal');
+  const titleEl = document.getElementById('editClaimTitle');
+  const input = document.getElementById('editClaimInput');
+
+  titleEl.textContent = blockTitle || 'Edit Description';
+  input.value = currentClaim;
+  modal.style.display = 'flex';
+
+  // Focus and select all text
+  setTimeout(() => {
+    input.focus();
+    input.setSelectionRange(0, input.value.length);
+  }, 50);
+}
+
+function closeEditClaimModal() {
+  document.getElementById('editClaimModal').style.display = 'none';
+  editingClaimBlockId = null;
+}
+
+function saveEditClaim() {
+  if (!currentOutline || !editingClaimBlockId) return;
+
+  const input = document.getElementById('editClaimInput');
+  const block = currentOutline.blocks.find(b => b.id === editingClaimBlockId);
+
+  if (block) {
+    block.claim = input.value;
+    saveOutline();
+    renderOutline();
+  }
+
+  closeEditClaimModal();
+}
+
 function importIdeaAsBlock(ideaKey) {
   if (!currentOutline) {
     alert('Please select or create an outline first.');
@@ -269,11 +308,10 @@ function renderOutline() {
       saveOutline();
     }, 500));
 
-    // Claim input
-    card.querySelector('.block-claim-input').addEventListener('input', debounce((e) => {
-      block.claim = e.target.value;
-      saveOutline();
-    }, 500));
+    // Claim preview click - open modal
+    card.querySelector('.block-claim-preview').addEventListener('click', () => {
+      openEditClaimModal(blockId, block.claim || '', block.title || 'Untitled');
+    });
 
     // Delete block
     card.querySelector('.block-delete-btn').addEventListener('click', () => {
@@ -356,7 +394,9 @@ function renderBlock(block) {
           <i data-lucide="trash-2"></i>
         </button>
       </div>
-      <textarea class="block-claim-input" placeholder="${placeholder}">${escapeHtml(block.claim || '')}</textarea>
+      <div class="block-claim-preview" data-placeholder="${placeholder}">
+        ${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}
+      </div>
       <div class="block-papers">
         <div class="block-papers-header">
           <span>${linkedPapers.length} paper${linkedPapers.length !== 1 ? 's' : ''} linked</span>
@@ -908,6 +948,19 @@ function initEventListeners() {
   // Import Ideas modal close
   document.getElementById('closeImportIdeas')?.addEventListener('click', () => {
     document.getElementById('importIdeasModal').style.display = 'none';
+  });
+
+  // Edit Claim modal
+  document.getElementById('closeEditClaim')?.addEventListener('click', closeEditClaimModal);
+  document.getElementById('cancelEditClaim')?.addEventListener('click', closeEditClaimModal);
+  document.getElementById('saveEditClaim')?.addEventListener('click', saveEditClaim);
+
+  // Allow Ctrl+Enter to save in edit claim modal
+  document.getElementById('editClaimInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      saveEditClaim();
+    }
   });
 
   // New outline button
