@@ -630,6 +630,38 @@ body {
   height: 16px;
 }
 
+.block-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
+.block-body h1,
+.block-body h2,
+.block-body h3,
+.block-body h4 {
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.block-body strong { font-weight: 600; color: var(--text-primary); }
+.block-body em { font-style: italic; }
+.block-body code { background: var(--bg-primary); padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 13px; }
+.block-body a { color: var(--accent); text-decoration: none; }
+.block-body a:hover { text-decoration: underline; }
+.block-body ul { margin: 8px 0; padding-left: 20px; }
+.block-body li { margin: 4px 0; }
+.block-body blockquote { border-left: 3px solid var(--accent); padding: 8px 12px; background: var(--bg-primary); color: var(--text-muted); font-style: italic; margin: 8px 0; }
+.block-body pre { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; overflow-x: auto; margin: 8px 0; }
+.block-body pre code { background: none; padding: 0; font-size: 13px; white-space: pre; }
+.block-body table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+.block-body th, .block-body td { padding: 8px; border: 1px solid var(--border-color); text-align: left; }
+.block-body th { background: var(--bg-primary); font-weight: 600; }
+
 .block-claim-section {
   display: flex;
   gap: 8px;

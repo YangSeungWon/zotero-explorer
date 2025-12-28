@@ -326,21 +326,10 @@ function renderOutline() {
       toggleBlockCollapse(blockId);
     });
 
-    // Title edit button
-    card.querySelector('.block-title-edit-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const newTitle = prompt('Edit title:', block.title || '');
-      if (newTitle !== null) {
-        block.title = newTitle;
-        saveOutline();
-        renderOutline();
-      }
-    });
-
     // Edit claim button - open modal
     card.querySelector('.block-claim-edit-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      openEditClaimModal(blockId, block.claim || '', block.title || 'Untitled');
+      openEditClaimModal(blockId, block.claim || '', getBlockTitle(block));
     });
 
     // Delete block
@@ -514,6 +503,27 @@ function getBlockTypeInfo(type) {
   return types[type] || types['argument'];
 }
 
+function getBlockTitle(block) {
+  // Use first line of claim as title
+  if (block.claim) {
+    const firstLine = block.claim.split('\n')[0].trim();
+    // Remove markdown heading syntax if present
+    return firstLine.replace(/^#+\s*/, '') || 'Untitled';
+  }
+  return 'Untitled';
+}
+
+function getBlockBody(block) {
+  // Get everything after the first line
+  if (block.claim) {
+    const lines = block.claim.split('\n');
+    if (lines.length > 1) {
+      return lines.slice(1).join('\n').trim();
+    }
+  }
+  return '';
+}
+
 function renderBlock(block) {
   const isActive = selectedBlockId === block.id;
   const blockType = block.type || 'argument';
@@ -526,6 +536,9 @@ function renderBlock(block) {
     return { ...p, paper };
   }).filter(p => p.paper);
 
+  const blockTitle = getBlockTitle(block);
+  const blockBody = getBlockBody(block);
+
   // Category blocks: just title, no claim or papers
   if (isCategory) {
     return `
@@ -537,8 +550,8 @@ function renderBlock(block) {
           <div class="block-type-badge type-${typeInfo.color}">
             <i data-lucide="${typeInfo.icon}"></i>
           </div>
-          <span class="block-title-text">${escapeHtml(block.title || 'Untitled')}</span>
-          <button class="block-title-edit-btn" title="Edit title">
+          <span class="block-title-text">${escapeHtml(blockTitle)}</span>
+          <button class="block-claim-edit-btn" title="Edit">
             <i data-lucide="pencil"></i>
           </button>
           <button class="block-delete-btn" title="Delete">
@@ -550,10 +563,6 @@ function renderBlock(block) {
   }
 
   // Argument or Literature blocks: full structure
-  const placeholder = blockType === 'literature'
-    ? 'What does this group of papers address?'
-    : 'What does this block argue or claim?';
-
   const paperCount = linkedPapers.length;
   const collapsedSummary = `${paperCount} paper${paperCount !== 1 ? 's' : ''}`;
 
@@ -566,9 +575,9 @@ function renderBlock(block) {
         <div class="block-type-badge type-${typeInfo.color}">
           <i data-lucide="${typeInfo.icon}"></i>
         </div>
-        <span class="block-title-text">${escapeHtml(block.title || 'Untitled')}</span>
+        <span class="block-title-text">${escapeHtml(blockTitle)}</span>
         ${isCollapsed ? `<span class="block-collapsed-summary">${collapsedSummary}</span>` : ''}
-        <button class="block-title-edit-btn" title="Edit title">
+        <button class="block-claim-edit-btn" title="Edit">
           <i data-lucide="pencil"></i>
         </button>
         <button class="block-delete-btn" title="Delete">
@@ -576,12 +585,7 @@ function renderBlock(block) {
         </button>
       </div>
       <div class="block-content">
-        <div class="block-claim-section">
-          <div class="block-claim-text">${block.claim ? renderMarkdown(block.claim) : `<span class="placeholder">${placeholder}</span>`}</div>
-          <button class="block-claim-edit-btn" title="Edit description">
-            <i data-lucide="pencil"></i>
-          </button>
-        </div>
+        ${blockBody ? `<div class="block-body">${renderMarkdown(blockBody)}</div>` : ''}
         <div class="block-papers">
           <div class="block-papers-header">
             <span>${linkedPapers.length} paper${linkedPapers.length !== 1 ? 's' : ''} linked</span>
@@ -802,7 +806,7 @@ function deleteBlock(blockId) {
   if (!currentOutline) return;
 
   const block = currentOutline.blocks.find(b => b.id === blockId);
-  const blockTitle = block?.title || 'Untitled';
+  const blockTitle = block ? getBlockTitle(block) : 'Untitled';
 
   if (!confirm(`Delete "${blockTitle}"?`)) return;
 
