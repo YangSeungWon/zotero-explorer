@@ -386,8 +386,22 @@ function renderOutline() {
         const midY = rect.top + rect.height / 2;
         const isTop = e.clientY < midY;
 
-        card.classList.remove('drag-over-top', 'drag-over-bottom');
-        card.classList.add(isTop ? 'drag-over-top' : 'drag-over-bottom');
+        // Check if this move would be a no-op
+        const blocks = currentOutline.blocks;
+        const draggedIdx = blocks.findIndex(b => b.id === draggedBlockId);
+        const targetIdx = blocks.findIndex(b => b.id === blockId);
+
+        // No-op: dropping right after or right before current position
+        const wouldBeNoOp = (isTop && targetIdx === draggedIdx + 1) ||
+                           (!isTop && targetIdx === draggedIdx - 1);
+
+        blocksList.querySelectorAll('.block-card').forEach(c => {
+          c.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        if (!wouldBeNoOp) {
+          card.classList.add(isTop ? 'drag-over-top' : 'drag-over-bottom');
+        }
       }
     });
 
