@@ -199,7 +199,7 @@ function hasUnsavedClaimChanges() {
 
 function closeEditClaimModal(force = false) {
   if (!force && hasUnsavedClaimChanges()) {
-    if (!confirm('변경 사항을 저장하지 않고 닫으시겠습니까?')) {
+    if (!confirm('Discard unsaved changes?')) {
       return false;
     }
   }
@@ -686,7 +686,12 @@ function addBlock(type = 'argument') {
 }
 
 function deleteBlock(blockId) {
-  if (!currentOutline || !confirm('Delete this block?')) return;
+  if (!currentOutline) return;
+
+  const block = currentOutline.blocks.find(b => b.id === blockId);
+  const blockTitle = block?.title || 'Untitled';
+
+  if (!confirm(`Delete "${blockTitle}"?`)) return;
 
   currentOutline.blocks = currentOutline.blocks.filter(b => b.id !== blockId);
   if (selectedBlockId === blockId) {
