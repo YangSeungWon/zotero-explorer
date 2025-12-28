@@ -1097,5 +1097,8 @@ async function initApp() {
   // Render outline (or empty state if none selected)
   renderOutline();
 
+  // Hide loading overlay
+  document.getElementById('loadingOverlay')?.classList.add('hidden');
+
   console.log('Outline Builder initialized');
 }
