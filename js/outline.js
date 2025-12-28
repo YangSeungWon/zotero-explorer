@@ -448,9 +448,7 @@ function renderBlock(block) {
       </div>
       <div class="block-content">
         <div class="block-claim-section">
-          <div class="block-claim-text">
-            ${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}
-          </div>
+          <div class="block-claim-text">${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}</div>
           <button class="block-claim-edit-btn" title="Edit description">
             <i data-lucide="pencil"></i>
           </button>
