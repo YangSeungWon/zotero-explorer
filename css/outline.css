@@ -604,12 +604,46 @@ body {
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-secondary);
-  white-space: pre-wrap;
 }
 
 .block-claim-text .placeholder {
   color: var(--text-muted);
   font-style: italic;
+}
+
+.block-claim-text strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.block-claim-text em {
+  font-style: italic;
+}
+
+.block-claim-text code {
+  padding: 2px 6px;
+  font-size: 13px;
+  font-family: 'SF Mono', Monaco, monospace;
+  background: var(--bg-primary);
+  border-radius: 4px;
+}
+
+.block-claim-text a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.block-claim-text a:hover {
+  text-decoration: underline;
+}
+
+.block-claim-text ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.block-claim-text li {
+  margin: 4px 0;
 }
 
 .block-claim-edit-btn {

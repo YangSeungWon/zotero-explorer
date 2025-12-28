@@ -448,7 +448,7 @@ function renderBlock(block) {
       </div>
       <div class="block-content">
         <div class="block-claim-section">
-          <div class="block-claim-text">${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}</div>
+          <div class="block-claim-text">${block.claim ? renderMarkdown(block.claim) : `<span class="placeholder">${placeholder}</span>`}</div>
           <button class="block-claim-edit-btn" title="Edit description">
             <i data-lucide="pencil"></i>
           </button>
@@ -981,6 +981,40 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function renderMarkdown(str) {
+  if (!str) return '';
+
+  // First escape HTML
+  let html = escapeHtml(str);
+
+  // Bold: **text** or __text__
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+  // Italic: *text* or _text_
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+  // Code: `code`
+  html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+
+  // Links: [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Bullet lists: lines starting with - or *
+  html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+  // Line breaks
+  html = html.replace(/\n/g, '<br>');
+
+  // Clean up extra <br> inside lists
+  html = html.replace(/<\/li><br>/g, '</li>');
+  html = html.replace(/<br><li>/g, '<li>');
+
+  return html;
 }
 
 function debounce(fn, delay) {
