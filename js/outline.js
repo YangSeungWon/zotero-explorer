@@ -705,19 +705,26 @@ function renderSearchResults(results) {
     return;
   }
 
+  // Get cluster labels from papers
+  const clusterLabels = {};
+  papers.forEach(p => {
+    if (p.cluster_label) clusterLabels[p.cluster] = p.cluster_label;
+  });
+
   searchResults.innerHTML = results.map(r => {
     const paper = papers.find(p => p.id === r.id) || r;
-    const similarity = r.similarity ? Math.round(r.similarity * 100) : null;
+    const similarity = r.similarity || null;
 
+    const itemHtml = renderPaperItemHtml(paper, {
+      similarity: similarity,
+      clusterLabels: clusterLabels,
+      compact: true
+    });
+
+    // Wrap with add button
     return `
-      <div class="search-result" data-paper-id="${r.id}">
-        <div class="search-result-content">
-          <div class="search-result-title">${escapeHtml(paper.title || r.title || 'Untitled')}</div>
-          <div class="search-result-meta">
-            ${paper.authors || r.authors || ''} ${paper.year || r.year || ''}
-            ${similarity ? `<span class="search-result-similarity">${similarity}%</span>` : ''}
-          </div>
-        </div>
+      <div class="search-result-wrapper" data-paper-id="${paper.id}">
+        ${itemHtml}
         <button class="search-result-add" title="Add to block">
           <i data-lucide="plus"></i>
         </button>
@@ -728,11 +735,11 @@ function renderSearchResults(results) {
   lucide.createIcons();
 
   // Add event listeners
-  searchResults.querySelectorAll('.search-result').forEach(el => {
+  searchResults.querySelectorAll('.search-result-wrapper').forEach(el => {
     const paperId = parseInt(el.dataset.paperId);
     const paper = papers.find(p => p.id === paperId);
 
-    el.addEventListener('click', () => {
+    el.querySelector('.list-item').addEventListener('click', () => {
       showPaperDetail(paper);
     });
 
@@ -1163,16 +1170,6 @@ function confirmAddPaper() {
 
 function generateId() {
   return 'block-' + Math.random().toString(36).substr(2, 9);
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 function renderMarkdown(str) {
