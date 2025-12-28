@@ -1196,6 +1196,9 @@ function renderMarkdown(str) {
     return tableHtml;
   });
 
+  // Horizontal rule: --- or *** or ___
+  html = html.replace(/^[-*_]{3,}$/gm, '<hr>');
+
   // Blockquotes: lines starting with >
   html = html.replace(/^&gt;\s?(.*)$/gm, '<blockquote>$1</blockquote>');
   html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
@@ -1218,6 +1221,8 @@ function renderMarkdown(str) {
   html = html.replace(/<br><pre>/g, '<pre>');
   html = html.replace(/<\/blockquote><br>/g, '</blockquote>');
   html = html.replace(/<br><blockquote>/g, '<blockquote>');
+  html = html.replace(/<hr><br>/g, '<hr>');
+  html = html.replace(/<br><hr>/g, '<hr>');
 
   return html;
 }

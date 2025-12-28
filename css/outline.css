@@ -661,6 +661,7 @@ body {
 .block-body table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
 .block-body th, .block-body td { padding: 8px; border: 1px solid var(--border-color); text-align: left; }
 .block-body th { background: var(--bg-primary); font-weight: 600; }
+.block-body hr { border: none; border-top: 1px solid var(--border-color); margin: 12px 0; }
 
 .block-claim-section {
   display: flex;
@@ -780,6 +781,12 @@ body {
   background: var(--bg-primary);
   color: var(--text-muted);
   font-style: italic;
+}
+
+.block-claim-text hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 12px 0;
 }
 
 .block-claim-edit-btn {
