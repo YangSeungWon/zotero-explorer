@@ -728,10 +728,30 @@ function showPaperDetail(paper) {
 
   detailSection.style.display = 'block';
 
-  // Parse notes for zotero links
+  // Build external links (like main page)
+  let externalLinks = '';
+  if (paper.zotero_key) {
+    externalLinks += `<a href="zotero://select/library/items/${paper.zotero_key}" class="btn-external">Zotero <i data-lucide="arrow-up-right"></i></a>`;
+  }
+  if (paper.pdf_key) {
+    externalLinks += `<a href="zotero://open-pdf/library/items/${paper.pdf_key}" class="btn-external">PDF <i data-lucide="arrow-up-right"></i></a>`;
+  }
+  if (paper.doi) {
+    externalLinks += `<a href="https://doi.org/${paper.doi}" target="_blank" class="btn-external">DOI <i data-lucide="arrow-up-right"></i></a>`;
+  }
+  if (paper.title) {
+    const scholarUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`;
+    externalLinks += `<a href="${scholarUrl}" target="_blank" class="btn-external">Scholar <i data-lucide="arrow-up-right"></i></a>`;
+  }
+
+  const linksSection = externalLinks ? `
+    <div class="paper-detail-links">${externalLinks}</div>
+  ` : '';
+
+  // Parse notes for zotero annotation links
   const { text: notesText, links: zoteroLinks } = parseNoteWithZoteroLinks(paper.notes || '');
 
-  const linksHtml = zoteroLinks.length > 0 ? `
+  const annotationLinksHtml = zoteroLinks.length > 0 ? `
     <div class="detail-zotero-links">
       ${zoteroLinks.map(link => `
         <a href="${link.url}" class="zotero-link zotero-link-${link.type}" title="${link.type === 'pdf' ? 'Open PDF' : link.type === 'annotation' ? 'Open Annotation' : 'Open in Zotero'}">
@@ -746,7 +766,7 @@ function showPaperDetail(paper) {
     <div class="paper-detail-section">
       <div class="paper-detail-section-title">Notes</div>
       <div class="paper-detail-notes">${escapeHtml(notesText)}</div>
-      ${linksHtml}
+      ${annotationLinksHtml}
     </div>
   ` : '';
 
@@ -755,6 +775,7 @@ function showPaperDetail(paper) {
     <div class="paper-detail-meta">
       ${paper.authors || ''} ${paper.year ? `(${paper.year})` : ''}
     </div>
+    ${linksSection}
     ${paper.abstract ? `
       <div class="paper-detail-section">
         <div class="paper-detail-section-title">Abstract</div>
