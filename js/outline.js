@@ -629,6 +629,7 @@ async function loadOutline(id) {
   if (outline) {
     currentOutline = outline;
     selectedBlockId = null;
+    localStorage.setItem('selected_outline_id', id);
     renderOutline();
   }
 }
@@ -658,6 +659,7 @@ async function createNewOutline(title) {
     allOutlines.push(outline);
     currentOutline = outline;
     selectedBlockId = null;
+    localStorage.setItem('selected_outline_id', outline.id);
     renderOutlineSelect();
     renderOutline();
     outlineSelect.value = outline.id;
@@ -672,6 +674,7 @@ async function deleteCurrentOutline() {
     allOutlines = allOutlines.filter(o => o.id !== currentOutline.id);
     currentOutline = null;
     selectedBlockId = null;
+    localStorage.removeItem('selected_outline_id');
     renderOutlineSelect();
     renderOutline();
   }
@@ -1028,10 +1031,17 @@ async function initApp() {
   await fetchIdeas();
   renderOutlineSelect();
 
+  // Load previously selected outline
+  const savedOutlineId = localStorage.getItem('selected_outline_id');
+  if (savedOutlineId && allOutlines.find(o => o.id === savedOutlineId)) {
+    await loadOutline(savedOutlineId);
+    outlineSelect.value = savedOutlineId;
+  }
+
   // Initialize event listeners
   initEventListeners();
 
-  // Render empty state
+  // Render outline (or empty state if none selected)
   renderOutline();
 
   console.log('Outline Builder initialized');
