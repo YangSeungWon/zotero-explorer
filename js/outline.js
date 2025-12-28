@@ -6,6 +6,7 @@
 let currentOutline = null;
 let allOutlines = [];
 let papers = [];
+let dataMeta = {};
 let selectedBlockId = null;
 let pendingPaper = null;
 let isSemanticSearch = true;
@@ -98,10 +99,33 @@ async function loadPapers() {
     const response = await fetch('/papers.json');
     const data = await response.json();
     papers = data.papers || data;
+    dataMeta = data.meta || {};
     return papers;
   } catch (e) {
     console.error('Failed to load papers:', e);
     return [];
+  }
+}
+
+function getZoteroUrl(zoteroKey) {
+  const libraryType = dataMeta.zotero_library_type || 'user';
+  const libraryId = dataMeta.zotero_library_id || '';
+
+  if (libraryType === 'group' && libraryId) {
+    return `zotero://select/groups/${libraryId}/items/${zoteroKey}`;
+  } else {
+    return `zotero://select/library/items/${zoteroKey}`;
+  }
+}
+
+function getZoteroPdfUrl(pdfKey) {
+  const libraryType = dataMeta.zotero_library_type || 'user';
+  const libraryId = dataMeta.zotero_library_id || '';
+
+  if (libraryType === 'group' && libraryId) {
+    return `zotero://open-pdf/groups/${libraryId}/items/${pdfKey}`;
+  } else {
+    return `zotero://open-pdf/library/items/${pdfKey}`;
   }
 }
 
@@ -731,10 +755,10 @@ function showPaperDetail(paper) {
   // Build external links (like main page)
   let externalLinks = '';
   if (paper.zotero_key) {
-    externalLinks += `<a href="zotero://select/library/items/${paper.zotero_key}" class="btn-external">Zotero <i data-lucide="arrow-up-right"></i></a>`;
+    externalLinks += `<a href="${getZoteroUrl(paper.zotero_key)}" class="btn-external">Zotero <i data-lucide="arrow-up-right"></i></a>`;
   }
   if (paper.pdf_key) {
-    externalLinks += `<a href="zotero://open-pdf/library/items/${paper.pdf_key}" class="btn-external">PDF <i data-lucide="arrow-up-right"></i></a>`;
+    externalLinks += `<a href="${getZoteroPdfUrl(paper.pdf_key)}" class="btn-external">PDF <i data-lucide="arrow-up-right"></i></a>`;
   }
   if (paper.doi) {
     externalLinks += `<a href="https://doi.org/${paper.doi}" target="_blank" class="btn-external">DOI <i data-lucide="arrow-up-right"></i></a>`;
