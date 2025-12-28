@@ -506,9 +506,28 @@ body {
   opacity: 0.5;
 }
 
-.block-card.drag-over {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-bg);
+.block-card.drag-over-top,
+.block-card.drag-over-bottom {
+  position: relative;
+}
+
+.block-card.drag-over-top::before,
+.block-card.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.block-card.drag-over-top::before {
+  top: -8px;
+}
+
+.block-card.drag-over-bottom::after {
+  bottom: -8px;
 }
 
 .block-card[draggable="true"] {

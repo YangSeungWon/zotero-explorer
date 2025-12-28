@@ -374,25 +374,36 @@ function renderOutline() {
     card.addEventListener('dragend', () => {
       draggedBlockId = null;
       card.classList.remove('dragging');
-      blocksList.querySelectorAll('.block-card').forEach(c => c.classList.remove('drag-over'));
+      blocksList.querySelectorAll('.block-card').forEach(c => {
+        c.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
     });
 
     card.addEventListener('dragover', (e) => {
       e.preventDefault();
       if (draggedBlockId && draggedBlockId !== blockId) {
-        card.classList.add('drag-over');
+        const rect = card.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const isTop = e.clientY < midY;
+
+        card.classList.remove('drag-over-top', 'drag-over-bottom');
+        card.classList.add(isTop ? 'drag-over-top' : 'drag-over-bottom');
       }
     });
 
-    card.addEventListener('dragleave', () => {
-      card.classList.remove('drag-over');
+    card.addEventListener('dragleave', (e) => {
+      // Only remove if leaving the card entirely
+      if (!card.contains(e.relatedTarget)) {
+        card.classList.remove('drag-over-top', 'drag-over-bottom');
+      }
     });
 
     card.addEventListener('drop', (e) => {
       e.preventDefault();
-      card.classList.remove('drag-over');
+      const isTop = card.classList.contains('drag-over-top');
+      card.classList.remove('drag-over-top', 'drag-over-bottom');
       if (draggedBlockId && draggedBlockId !== blockId) {
-        reorderBlock(draggedBlockId, blockId);
+        reorderBlock(draggedBlockId, blockId, isTop ? 'before' : 'after');
       }
     });
   });
@@ -721,17 +732,23 @@ function expandAllBlocks() {
   renderOutline();
 }
 
-function reorderBlock(draggedId, targetId) {
+function reorderBlock(draggedId, targetId, position = 'before') {
   if (!currentOutline?.blocks || draggedId === targetId) return;
 
   const blocks = currentOutline.blocks;
   const draggedIdx = blocks.findIndex(b => b.id === draggedId);
-  const targetIdx = blocks.findIndex(b => b.id === targetId);
+  let targetIdx = blocks.findIndex(b => b.id === targetId);
 
   if (draggedIdx === -1 || targetIdx === -1) return;
 
   const [dragged] = blocks.splice(draggedIdx, 1);
-  blocks.splice(targetIdx, 0, dragged);
+
+  // Adjust target index after removal
+  if (draggedIdx < targetIdx) targetIdx--;
+
+  // Insert before or after target
+  const insertIdx = position === 'after' ? targetIdx + 1 : targetIdx;
+  blocks.splice(insertIdx, 0, dragged);
 
   saveOutline();
   renderOutline();
