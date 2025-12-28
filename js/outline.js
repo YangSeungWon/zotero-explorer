@@ -171,8 +171,11 @@ function showImportIdeasModal() {
   });
 }
 
+let originalClaimValue = '';
+
 function openEditClaimModal(blockId, currentClaim, blockTitle) {
   editingClaimBlockId = blockId;
+  originalClaimValue = currentClaim || '';
 
   const modal = document.getElementById('editClaimModal');
   const titleEl = document.getElementById('editClaimTitle');
@@ -189,9 +192,21 @@ function openEditClaimModal(blockId, currentClaim, blockTitle) {
   }, 50);
 }
 
-function closeEditClaimModal() {
+function hasUnsavedClaimChanges() {
+  const input = document.getElementById('editClaimInput');
+  return input && input.value !== originalClaimValue;
+}
+
+function closeEditClaimModal(force = false) {
+  if (!force && hasUnsavedClaimChanges()) {
+    if (!confirm('변경 사항을 저장하지 않고 닫으시겠습니까?')) {
+      return false;
+    }
+  }
   document.getElementById('editClaimModal').style.display = 'none';
   editingClaimBlockId = null;
+  originalClaimValue = '';
+  return true;
 }
 
 function saveEditClaim() {
@@ -202,11 +217,12 @@ function saveEditClaim() {
 
   if (block) {
     block.claim = input.value;
+    originalClaimValue = input.value; // Mark as saved
     saveOutline();
     renderOutline();
   }
 
-  closeEditClaimModal();
+  closeEditClaimModal(true); // Force close without confirmation
 }
 
 function importIdeaAsBlock(ideaKey) {
@@ -1184,7 +1200,12 @@ function initEventListeners() {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) {
-        overlay.style.display = 'none';
+        // Special handling for edit claim modal
+        if (overlay.id === 'editClaimModal') {
+          closeEditClaimModal();
+        } else {
+          overlay.style.display = 'none';
+        }
       }
     });
   });
@@ -1193,7 +1214,12 @@ function initEventListeners() {
   document.addEventListener('keydown', (e) => {
     // Escape to close modals
     if (e.key === 'Escape') {
-      document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+      const editClaimModal = document.getElementById('editClaimModal');
+      if (editClaimModal && editClaimModal.style.display === 'flex') {
+        closeEditClaimModal();
+      } else {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+      }
     }
   });
 }
