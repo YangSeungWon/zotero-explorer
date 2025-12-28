@@ -1024,13 +1024,11 @@ async function performSearch() {
   if (isSemanticSearch) {
     results = await semanticSearch(query);
   } else {
-    // Basic text search
+    // Basic text search (same as main page)
     const q = query.toLowerCase();
     results = papers.filter(p => {
-      const title = (p.title || '').toLowerCase();
-      const authors = (p.authors || '').toLowerCase();
-      const abstract = (p.abstract || '').toLowerCase();
-      return title.includes(q) || authors.includes(q) || abstract.includes(q);
+      const searchText = `${p.title || ''} ${p.authors || ''} ${p.abstract || ''} ${p.notes || ''} ${p.tags || ''}`.toLowerCase();
+      return searchText.includes(q);
     }).slice(0, 20).map(p => ({ ...p }));
   }
 
