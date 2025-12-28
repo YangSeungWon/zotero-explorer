@@ -316,8 +316,9 @@ function renderOutline() {
       saveOutline();
     }, 500));
 
-    // Claim preview click - open modal (only if not collapsed)
-    card.querySelector('.block-claim-preview')?.addEventListener('click', () => {
+    // Edit claim button - open modal
+    card.querySelector('.block-claim-edit-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       openEditClaimModal(blockId, block.claim || '', block.title || 'Untitled');
     });
 
@@ -446,8 +447,13 @@ function renderBlock(block) {
         </button>
       </div>
       <div class="block-content">
-        <div class="block-claim-preview" data-placeholder="${placeholder}">
-          ${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}
+        <div class="block-claim-section">
+          <div class="block-claim-text">
+            ${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}
+          </div>
+          <button class="block-claim-edit-btn" title="Edit description">
+            <i data-lucide="pencil"></i>
+          </button>
         </div>
         <div class="block-papers">
           <div class="block-papers-header">
