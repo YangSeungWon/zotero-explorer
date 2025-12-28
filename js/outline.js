@@ -1041,6 +1041,12 @@ function renderMarkdown(str) {
   // First escape HTML
   let html = escapeHtml(str);
 
+  // Headings: # ## ### ####
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
   // Bold: **text** or __text__
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
@@ -1055,6 +1061,33 @@ function renderMarkdown(str) {
   // Links: [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
 
+  // Tables
+  const tableRegex = /(\|.+\|[\r\n]+\|[-:\| ]+\|[\r\n]+(?:\|.+\|[\r\n]*)+)/g;
+  html = html.replace(tableRegex, (match) => {
+    const rows = match.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return match;
+
+    const headerRow = rows[0];
+    const dataRows = rows.slice(2); // Skip header and separator
+
+    const parseRow = (row) => row.split('|').filter(c => c.trim()).map(c => c.trim());
+
+    const headers = parseRow(headerRow);
+    let tableHtml = '<table><thead><tr>';
+    headers.forEach(h => tableHtml += `<th>${h}</th>`);
+    tableHtml += '</tr></thead><tbody>';
+
+    dataRows.forEach(row => {
+      const cells = parseRow(row);
+      tableHtml += '<tr>';
+      cells.forEach(c => tableHtml += `<td>${c}</td>`);
+      tableHtml += '</tr>';
+    });
+
+    tableHtml += '</tbody></table>';
+    return tableHtml;
+  });
+
   // Bullet lists: lines starting with - or *
   html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
@@ -1062,9 +1095,13 @@ function renderMarkdown(str) {
   // Line breaks
   html = html.replace(/\n/g, '<br>');
 
-  // Clean up extra <br> inside lists
+  // Clean up extra <br> inside lists and headings
   html = html.replace(/<\/li><br>/g, '</li>');
   html = html.replace(/<br><li>/g, '<li>');
+  html = html.replace(/<\/h([1-4])><br>/g, '</h$1>');
+  html = html.replace(/<br><h([1-4])>/g, '<h$1>');
+  html = html.replace(/<\/table><br>/g, '</table>');
+  html = html.replace(/<br><table>/g, '<table>');
 
   return html;
 }
