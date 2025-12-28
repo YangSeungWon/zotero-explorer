@@ -421,6 +421,80 @@ function renderOutline() {
       }
     });
   });
+
+  // Handle drag over empty space at top/bottom of list
+  blocksList.addEventListener('dragover', (e) => {
+    if (!draggedBlockId) return;
+    e.preventDefault();
+
+    const cards = blocksList.querySelectorAll('.block-card');
+    if (cards.length === 0) return;
+
+    const firstCard = cards[0];
+    const lastCard = cards[cards.length - 1];
+    const firstRect = firstCard.getBoundingClientRect();
+    const lastRect = lastCard.getBoundingClientRect();
+
+    // Check if hovering above first card or below last card
+    const isAboveFirst = e.clientY < firstRect.top;
+    const isBelowLast = e.clientY > lastRect.bottom;
+
+    if (isAboveFirst || isBelowLast) {
+      // Clear all indicators first
+      cards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+
+      const blocks = currentOutline.blocks;
+      const draggedIdx = blocks.findIndex(b => b.id === draggedBlockId);
+
+      if (isAboveFirst && draggedIdx !== 0) {
+        // Show indicator at top of first block
+        firstCard.classList.add('drag-over-top');
+      } else if (isBelowLast && draggedIdx !== blocks.length - 1) {
+        // Show indicator at bottom of last block
+        lastCard.classList.add('drag-over-bottom');
+      }
+    }
+  });
+
+  blocksList.addEventListener('drop', (e) => {
+    if (!draggedBlockId) return;
+    e.preventDefault();
+
+    const cards = blocksList.querySelectorAll('.block-card');
+    if (cards.length === 0) return;
+
+    const firstCard = cards[0];
+    const lastCard = cards[cards.length - 1];
+    const firstRect = firstCard.getBoundingClientRect();
+    const lastRect = lastCard.getBoundingClientRect();
+
+    const isAboveFirst = e.clientY < firstRect.top;
+    const isBelowLast = e.clientY > lastRect.bottom;
+
+    // Clear indicators
+    cards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+
+    if (isAboveFirst) {
+      const firstBlockId = firstCard.dataset.blockId;
+      if (draggedBlockId !== firstBlockId) {
+        reorderBlock(draggedBlockId, firstBlockId, 'before');
+      }
+    } else if (isBelowLast) {
+      const lastBlockId = lastCard.dataset.blockId;
+      if (draggedBlockId !== lastBlockId) {
+        reorderBlock(draggedBlockId, lastBlockId, 'after');
+      }
+    }
+  });
+
+  blocksList.addEventListener('dragleave', (e) => {
+    // Clear indicators when leaving the list entirely
+    if (!blocksList.contains(e.relatedTarget)) {
+      blocksList.querySelectorAll('.block-card').forEach(c => {
+        c.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+    }
+  });
 }
 
 function getBlockTypeInfo(type) {
@@ -815,6 +889,11 @@ async function loadOutline(id) {
     currentOutline = outline;
     selectedBlockId = null;
     localStorage.setItem('selected_outline_id', id);
+    // Collapse all blocks by default
+    collapsedBlocks.clear();
+    if (outline.blocks) {
+      outline.blocks.forEach(b => collapsedBlocks.add(b.id));
+    }
     renderOutline();
   }
 }
@@ -1041,6 +1120,11 @@ function renderMarkdown(str) {
   // First escape HTML
   let html = escapeHtml(str);
 
+  // Fenced code blocks: ```code```
+  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+    return `<pre><code>${code.trim()}</code></pre>`;
+  });
+
   // Headings: # ## ### ####
   html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
@@ -1102,6 +1186,8 @@ function renderMarkdown(str) {
   html = html.replace(/<br><h([1-4])>/g, '<h$1>');
   html = html.replace(/<\/table><br>/g, '</table>');
   html = html.replace(/<br><table>/g, '<table>');
+  html = html.replace(/<\/pre><br>/g, '</pre>');
+  html = html.replace(/<br><pre>/g, '<pre>');
 
   return html;
 }
