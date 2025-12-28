@@ -458,6 +458,7 @@ body {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+  cursor: pointer;
 }
 
 .block-collapse-btn {
@@ -559,25 +560,45 @@ body {
   height: 16px;
 }
 
-.block-title-input {
+.block-title-text {
   flex: 1;
   padding: 6px 10px;
   font-size: 15px;
   font-weight: 500;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
   color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.block-title-input:hover {
-  background: var(--bg-tertiary);
+.block-title-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition-fast);
 }
 
-.block-title-input:focus {
-  outline: none;
-  border-color: var(--accent);
+.block-card:hover .block-title-edit-btn {
+  opacity: 1;
+}
+
+.block-title-edit-btn:hover {
   background: var(--bg-tertiary);
+  color: var(--accent);
+}
+
+.block-title-edit-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .block-delete-btn {

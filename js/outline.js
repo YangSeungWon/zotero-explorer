@@ -326,11 +326,16 @@ function renderOutline() {
       toggleBlockCollapse(blockId);
     });
 
-    // Title input
-    card.querySelector('.block-title-input').addEventListener('input', debounce((e) => {
-      block.title = e.target.value;
-      saveOutline();
-    }, 500));
+    // Title edit button
+    card.querySelector('.block-title-edit-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newTitle = prompt('Edit title:', block.title || '');
+      if (newTitle !== null) {
+        block.title = newTitle;
+        saveOutline();
+        renderOutline();
+      }
+    });
 
     // Edit claim button - open modal
     card.querySelector('.block-claim-edit-btn')?.addEventListener('click', (e) => {
@@ -339,28 +344,31 @@ function renderOutline() {
     });
 
     // Delete block
-    card.querySelector('.block-delete-btn').addEventListener('click', () => {
+    card.querySelector('.block-delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
       deleteBlock(blockId);
     });
 
     // Add paper button
-    card.querySelector('.block-add-paper-btn')?.addEventListener('click', () => {
+    card.querySelector('.block-add-paper-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       selectBlock(blockId);
       searchInput.focus();
     });
 
     // Remove linked paper buttons
     card.querySelectorAll('.linked-paper-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const paperKey = btn.dataset.paperKey;
         removePaperFromBlock(blockId, paperKey);
       });
     });
 
-    // Select block on click
-    card.addEventListener('click', (e) => {
-      if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('button')) {
-        selectBlock(blockId);
+    // Click on header to toggle collapse
+    card.querySelector('.block-card-header').addEventListener('click', (e) => {
+      if (!e.target.closest('button')) {
+        toggleBlockCollapse(blockId);
       }
     });
 
@@ -529,7 +537,10 @@ function renderBlock(block) {
           <div class="block-type-badge type-${typeInfo.color}">
             <i data-lucide="${typeInfo.icon}"></i>
           </div>
-          <input type="text" class="block-title-input" value="${escapeHtml(block.title || '')}" placeholder="Category name...">
+          <span class="block-title-text">${escapeHtml(block.title || 'Untitled')}</span>
+          <button class="block-title-edit-btn" title="Edit title">
+            <i data-lucide="pencil"></i>
+          </button>
           <button class="block-delete-btn" title="Delete">
             <i data-lucide="trash-2"></i>
           </button>
@@ -555,8 +566,11 @@ function renderBlock(block) {
         <div class="block-type-badge type-${typeInfo.color}">
           <i data-lucide="${typeInfo.icon}"></i>
         </div>
-        <input type="text" class="block-title-input" value="${escapeHtml(block.title || '')}" placeholder="Block title...">
+        <span class="block-title-text">${escapeHtml(block.title || 'Untitled')}</span>
         ${isCollapsed ? `<span class="block-collapsed-summary">${collapsedSummary}</span>` : ''}
+        <button class="block-title-edit-btn" title="Edit title">
+          <i data-lucide="pencil"></i>
+        </button>
         <button class="block-delete-btn" title="Delete">
           <i data-lucide="trash-2"></i>
         </button>
