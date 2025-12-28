@@ -720,6 +720,15 @@ body {
   white-space: pre;
 }
 
+.block-claim-text blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .block-claim-edit-btn {
   flex-shrink: 0;
   display: flex;

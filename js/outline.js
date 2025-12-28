@@ -1172,6 +1172,10 @@ function renderMarkdown(str) {
     return tableHtml;
   });
 
+  // Blockquotes: lines starting with >
+  html = html.replace(/^&gt;\s?(.*)$/gm, '<blockquote>$1</blockquote>');
+  html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+
   // Bullet lists: lines starting with - or *
   html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
@@ -1188,6 +1192,8 @@ function renderMarkdown(str) {
   html = html.replace(/<br><table>/g, '<table>');
   html = html.replace(/<\/pre><br>/g, '</pre>');
   html = html.replace(/<br><pre>/g, '<pre>');
+  html = html.replace(/<\/blockquote><br>/g, '</blockquote>');
+  html = html.replace(/<br><blockquote>/g, '<blockquote>');
 
   return html;
 }
