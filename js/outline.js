@@ -2,6 +2,17 @@
    Outline Builder JavaScript
    =========================================== */
 
+// escapeHtml - defined here as fallback (also in paper-item.js)
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // State
 let currentOutline = null;
 let allOutlines = [];
