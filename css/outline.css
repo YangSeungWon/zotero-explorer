@@ -455,9 +455,68 @@ body {
 
 .block-card-header {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 12px;
+}
+
+.block-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.block-collapse-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.block-collapse-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Collapsed state */
+.block-card.collapsed .block-card-header {
+  margin-bottom: 0;
+}
+
+.block-card.collapsed .block-content {
+  display: none;
+}
+
+.block-collapsed-summary {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+/* Drag states */
+.block-card.dragging {
+  opacity: 0.5;
+}
+
+.block-card.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.block-card[draggable="true"] {
+  cursor: grab;
+}
+
+.block-card[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .block-drag-handle {

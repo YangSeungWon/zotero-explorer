@@ -10,6 +10,8 @@ let selectedBlockId = null;
 let pendingPaper = null;
 let isSemanticSearch = true;
 let editingClaimBlockId = null;
+let collapsedBlocks = new Set();
+let draggedBlockId = null;
 
 // DOM Elements
 const outlineSelect = document.getElementById('outlineSelect');
@@ -302,14 +304,20 @@ function renderOutline() {
     const blockId = card.dataset.blockId;
     const block = currentOutline.blocks.find(b => b.id === blockId);
 
+    // Collapse button
+    card.querySelector('.block-collapse-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleBlockCollapse(blockId);
+    });
+
     // Title input
     card.querySelector('.block-title-input').addEventListener('input', debounce((e) => {
       block.title = e.target.value;
       saveOutline();
     }, 500));
 
-    // Claim preview click - open modal
-    card.querySelector('.block-claim-preview').addEventListener('click', () => {
+    // Claim preview click - open modal (only if not collapsed)
+    card.querySelector('.block-claim-preview')?.addEventListener('click', () => {
       openEditClaimModal(blockId, block.claim || '', block.title || 'Untitled');
     });
 
@@ -338,6 +346,38 @@ function renderOutline() {
         selectBlock(blockId);
       }
     });
+
+    // Drag and drop
+    card.addEventListener('dragstart', (e) => {
+      draggedBlockId = blockId;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    card.addEventListener('dragend', () => {
+      draggedBlockId = null;
+      card.classList.remove('dragging');
+      blocksList.querySelectorAll('.block-card').forEach(c => c.classList.remove('drag-over'));
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (draggedBlockId && draggedBlockId !== blockId) {
+        card.classList.add('drag-over');
+      }
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if (draggedBlockId && draggedBlockId !== blockId) {
+        reorderBlock(draggedBlockId, blockId);
+      }
+    });
   });
 }
 
@@ -355,6 +395,7 @@ function renderBlock(block) {
   const blockType = block.type || 'argument';
   const typeInfo = getBlockTypeInfo(blockType);
   const isCategory = blockType === 'literature-category';
+  const isCollapsed = collapsedBlocks.has(block.id);
 
   const linkedPapers = (block.papers || []).map(p => {
     const paper = papers.find(pp => pp.zotero_key === p.zotero_key || pp.id === p.paper_id);
@@ -364,8 +405,11 @@ function renderBlock(block) {
   // Category blocks: just title, no claim or papers
   if (isCategory) {
     return `
-      <div class="block-card block-category ${isActive ? 'active' : ''}" data-block-id="${block.id}" data-block-type="${blockType}">
+      <div class="block-card block-category ${isActive ? 'active' : ''} ${isCollapsed ? 'collapsed' : ''}" data-block-id="${block.id}" data-block-type="${blockType}" draggable="true">
         <div class="block-card-header">
+          <button class="block-collapse-btn" title="${isCollapsed ? 'Expand' : 'Collapse'}">
+            <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}"></i>
+          </button>
           <div class="block-type-badge type-${typeInfo.color}">
             <i data-lucide="${typeInfo.icon}"></i>
           </div>
@@ -383,28 +427,37 @@ function renderBlock(block) {
     ? 'What does this group of papers address?'
     : 'What does this block argue or claim?';
 
+  const paperCount = linkedPapers.length;
+  const collapsedSummary = `${paperCount} paper${paperCount !== 1 ? 's' : ''}`;
+
   return `
-    <div class="block-card block-${blockType} ${isActive ? 'active' : ''}" data-block-id="${block.id}" data-block-type="${blockType}">
+    <div class="block-card block-${blockType} ${isActive ? 'active' : ''} ${isCollapsed ? 'collapsed' : ''}" data-block-id="${block.id}" data-block-type="${blockType}" draggable="true">
       <div class="block-card-header">
+        <button class="block-collapse-btn" title="${isCollapsed ? 'Expand' : 'Collapse'}">
+          <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}"></i>
+        </button>
         <div class="block-type-badge type-${typeInfo.color}">
           <i data-lucide="${typeInfo.icon}"></i>
         </div>
         <input type="text" class="block-title-input" value="${escapeHtml(block.title || '')}" placeholder="Block title...">
+        ${isCollapsed ? `<span class="block-collapsed-summary">${collapsedSummary}</span>` : ''}
         <button class="block-delete-btn" title="Delete">
           <i data-lucide="trash-2"></i>
         </button>
       </div>
-      <div class="block-claim-preview" data-placeholder="${placeholder}">
-        ${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}
-      </div>
-      <div class="block-papers">
-        <div class="block-papers-header">
-          <span>${linkedPapers.length} paper${linkedPapers.length !== 1 ? 's' : ''} linked</span>
-          <button class="block-add-paper-btn">
-            <i data-lucide="plus"></i> Add paper
-          </button>
+      <div class="block-content">
+        <div class="block-claim-preview" data-placeholder="${placeholder}">
+          ${block.claim ? escapeHtml(block.claim) : `<span class="placeholder">${placeholder}</span>`}
         </div>
-        ${linkedPapers.map(p => renderLinkedPaper(p)).join('')}
+        <div class="block-papers">
+          <div class="block-papers-header">
+            <span>${linkedPapers.length} paper${linkedPapers.length !== 1 ? 's' : ''} linked</span>
+            <button class="block-add-paper-btn">
+              <i data-lucide="plus"></i> Add paper
+            </button>
+          </div>
+          ${linkedPapers.map(p => renderLinkedPaper(p)).join('')}
+        </div>
       </div>
     </div>
   `;
@@ -619,6 +672,42 @@ function deleteBlock(blockId) {
   if (selectedBlockId === blockId) {
     selectedBlockId = null;
   }
+  saveOutline();
+  renderOutline();
+}
+
+function toggleBlockCollapse(blockId) {
+  if (collapsedBlocks.has(blockId)) {
+    collapsedBlocks.delete(blockId);
+  } else {
+    collapsedBlocks.add(blockId);
+  }
+  renderOutline();
+}
+
+function collapseAllBlocks() {
+  if (!currentOutline?.blocks) return;
+  currentOutline.blocks.forEach(b => collapsedBlocks.add(b.id));
+  renderOutline();
+}
+
+function expandAllBlocks() {
+  collapsedBlocks.clear();
+  renderOutline();
+}
+
+function reorderBlock(draggedId, targetId) {
+  if (!currentOutline?.blocks || draggedId === targetId) return;
+
+  const blocks = currentOutline.blocks;
+  const draggedIdx = blocks.findIndex(b => b.id === draggedId);
+  const targetIdx = blocks.findIndex(b => b.id === targetId);
+
+  if (draggedIdx === -1 || targetIdx === -1) return;
+
+  const [dragged] = blocks.splice(draggedIdx, 1);
+  blocks.splice(targetIdx, 0, dragged);
+
   saveOutline();
   renderOutline();
 }
