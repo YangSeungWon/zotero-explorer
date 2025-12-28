@@ -1172,7 +1172,13 @@ function renderMarkdown(str) {
     const headerRow = rows[0];
     const dataRows = rows.slice(2); // Skip header and separator
 
-    const parseRow = (row) => row.split('|').filter(c => c.trim()).map(c => c.trim());
+    const parseRow = (row) => {
+      const cells = row.split('|');
+      // Remove first and last empty strings from split, but keep middle empty cells
+      if (cells.length > 0 && cells[0].trim() === '') cells.shift();
+      if (cells.length > 0 && cells[cells.length - 1].trim() === '') cells.pop();
+      return cells.map(c => c.trim());
+    };
 
     const headers = parseRow(headerRow);
     let tableHtml = '<table><thead><tr>';
