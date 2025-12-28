@@ -7,3 +7,4 @@ papers.json
 .env
 papers_filtered.json
 .claude/
+outlines.json
