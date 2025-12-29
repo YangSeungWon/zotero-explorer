@@ -33,6 +33,135 @@ function abbreviateAuthors(authors, maxAuthors = 1) {
 }
 
 /**
+ * Generate Zotero deep link URL
+ * @param {string} zoteroKey - Zotero item key
+ * @param {Object} meta - dataMeta object with library info (falls back to global dataMeta)
+ */
+function getZoteroUrl(zoteroKey, meta) {
+  // Fall back to global dataMeta if available
+  const m = meta || (typeof dataMeta !== 'undefined' ? dataMeta : {});
+  const libraryType = m.zotero_library_type || 'user';
+  const libraryId = m.zotero_library_id || '';
+
+  if (libraryType === 'group' && libraryId) {
+    return `zotero://select/groups/${libraryId}/items/${zoteroKey}`;
+  } else {
+    return `zotero://select/library/items/${zoteroKey}`;
+  }
+}
+
+/**
+ * Generate Zotero PDF deep link URL
+ * @param {string} pdfKey - Zotero PDF item key
+ * @param {Object} meta - dataMeta object with library info (falls back to global dataMeta)
+ */
+function getZoteroPdfUrl(pdfKey, meta) {
+  // Fall back to global dataMeta if available
+  const m = meta || (typeof dataMeta !== 'undefined' ? dataMeta : {});
+  const libraryType = m.zotero_library_type || 'user';
+  const libraryId = m.zotero_library_id || '';
+
+  if (libraryType === 'group' && libraryId) {
+    return `zotero://open-pdf/groups/${libraryId}/items/${pdfKey}`;
+  } else {
+    return `zotero://open-pdf/library/items/${pdfKey}`;
+  }
+}
+
+/**
+ * Render external links HTML for a paper (Zotero, PDF, DOI, Scholar)
+ * @param {Object} paper - Paper object
+ * @param {Object} meta - dataMeta object with library info
+ */
+function renderPaperLinksHtml(paper, meta = {}) {
+  let html = '';
+
+  if (paper.zotero_key) {
+    html += `<a href="${getZoteroUrl(paper.zotero_key, meta)}" class="btn-external">Zotero <i data-lucide="arrow-up-right"></i></a>`;
+  }
+  if (paper.pdf_key) {
+    html += `<a href="${getZoteroPdfUrl(paper.pdf_key, meta)}" class="btn-external">PDF <i data-lucide="arrow-up-right"></i></a>`;
+  }
+  if (paper.doi) {
+    html += `<a href="https://doi.org/${paper.doi}" target="_blank" class="btn-external">DOI <i data-lucide="arrow-up-right"></i></a>`;
+  }
+  if (paper.title) {
+    const scholarUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`;
+    html += `<a href="${scholarUrl}" target="_blank" class="btn-external">Scholar <i data-lucide="arrow-up-right"></i></a>`;
+  }
+
+  return html;
+}
+
+/**
+ * Render paper detail HTML (for detail panel)
+ * @param {Object} paper - Paper object
+ * @param {Object} options - Rendering options
+ * @param {Object} options.meta - dataMeta for Zotero links
+ * @param {Array} options.clusterColors - Cluster color array
+ * @param {boolean} options.showCopyButtons - Show Copy Citation/BibTeX buttons
+ * @param {string} options.notesHtml - Pre-rendered notes HTML (optional)
+ */
+function renderPaperDetailHtml(paper, options = {}) {
+  const {
+    meta = {},
+    clusterColors = DEFAULT_CLUSTER_COLORS,
+    showCopyButtons = false,
+    notesHtml = ''
+  } = options;
+
+  const clusterLabel = paper.cluster_label || `C${paper.cluster}`;
+  const clusterColor = clusterColors[paper.cluster % clusterColors.length];
+
+  // Meta line
+  const metaHtml = `
+    <div class="paper-detail-meta-line">
+      <span class="detail-year">${paper.year || '?'}</span>
+      <span class="detail-cluster" style="background: ${clusterColor};">${escapeHtml(clusterLabel)}</span>
+      <span class="detail-authors" title="${escapeHtml(paper.authors || '')}">${escapeHtml(abbreviateAuthors(paper.authors, 2))}</span>
+      <span class="detail-venue" title="${escapeHtml(paper.venue_full || paper.venue || '')}">${escapeHtml(paper.venue || '')}</span>
+    </div>
+    ${paper.citation_count ? `<div class="paper-detail-citations"><i data-lucide="quote"></i> ${paper.citation_count} citations</div>` : ''}
+  `;
+
+  // Links section
+  let linksHtml = '';
+  if (showCopyButtons) {
+    linksHtml += '<div class="links-row copy-row">';
+    linksHtml += `<button class="copy-link-btn btn-copy"><i data-lucide="clipboard"></i> Citation</button>`;
+    if (paper.doi) {
+      linksHtml += `<button class="copy-bibtex-btn btn-copy" data-doi="${paper.doi}"><i data-lucide="clipboard"></i> BibTeX</button>`;
+    }
+    linksHtml += '</div>';
+  }
+  linksHtml += `<div class="links-row">${renderPaperLinksHtml(paper, meta)}</div>`;
+
+  // Abstract
+  const abstractHtml = paper.abstract ? `
+    <div class="paper-detail-section">
+      <div class="paper-detail-section-title">Abstract</div>
+      <div class="paper-detail-abstract">${escapeHtml(paper.abstract)}</div>
+    </div>
+  ` : '';
+
+  // Notes (passed in pre-rendered, or render simple version)
+  const notesSection = notesHtml || (paper.notes ? `
+    <div class="paper-detail-section">
+      <div class="paper-detail-section-title">Notes</div>
+      <div class="paper-detail-notes">${escapeHtml(paper.notes)}</div>
+    </div>
+  ` : '');
+
+  return `
+    <div class="paper-detail-title">${escapeHtml(paper.title || 'Untitled')}</div>
+    <div class="paper-detail-meta">${metaHtml}</div>
+    <div class="paper-detail-links">${linksHtml}</div>
+    ${abstractHtml}
+    ${notesSection}
+  `;
+}
+
+/**
  * Render a paper item HTML
  * @param {Object} paper - Paper object
  * @param {Object} options - Rendering options

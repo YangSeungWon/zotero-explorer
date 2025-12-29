@@ -866,6 +866,12 @@ body {
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
   font-size: 13px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.linked-paper:hover {
+  background: var(--bg-secondary);
 }
 
 .linked-paper-icon {
@@ -1204,11 +1210,61 @@ body {
   margin-bottom: 12px;
 }
 
+.paper-detail-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.paper-detail-meta .detail-year {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.paper-detail-meta .detail-cluster {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: black;
+  white-space: nowrap;
+}
+
+.paper-detail-meta .detail-authors {
+  color: var(--text-secondary);
+}
+
+.paper-detail-meta .detail-venue {
+  color: var(--text-muted);
+}
+
+.paper-detail-citations {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.paper-detail-citations svg {
+  width: 12px;
+  height: 12px;
+}
+
 .paper-detail-links {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.paper-detail-links .links-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .paper-detail-links .btn-external {

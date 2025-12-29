@@ -118,27 +118,7 @@ async function loadPapers() {
   }
 }
 
-function getZoteroUrl(zoteroKey) {
-  const libraryType = dataMeta.zotero_library_type || 'user';
-  const libraryId = dataMeta.zotero_library_id || '';
-
-  if (libraryType === 'group' && libraryId) {
-    return `zotero://select/groups/${libraryId}/items/${zoteroKey}`;
-  } else {
-    return `zotero://select/library/items/${zoteroKey}`;
-  }
-}
-
-function getZoteroPdfUrl(pdfKey) {
-  const libraryType = dataMeta.zotero_library_type || 'user';
-  const libraryId = dataMeta.zotero_library_id || '';
-
-  if (libraryType === 'group' && libraryId) {
-    return `zotero://open-pdf/groups/${libraryId}/items/${pdfKey}`;
-  } else {
-    return `zotero://open-pdf/library/items/${pdfKey}`;
-  }
-}
+// getZoteroUrl, getZoteroPdfUrl, renderPaperLinksHtml are now in paper-item.js
 
 async function semanticSearch(query, topK = 20) {
   try {
@@ -386,6 +366,21 @@ function renderOutline() {
         e.stopPropagation();
         const paperKey = btn.dataset.paperKey;
         removePaperFromBlock(blockId, paperKey);
+      });
+    });
+
+    // Click on linked paper to show details
+    card.querySelectorAll('.linked-paper').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.linked-paper-remove')) return;
+        const linkedPaperDiv = e.currentTarget;
+        const paperKey = linkedPaperDiv.querySelector('.linked-paper-remove')?.dataset.paperKey;
+        if (paperKey) {
+          const paper = papers.find(p => p.zotero_key === paperKey || String(p.id) === paperKey);
+          if (paper) {
+            showPaperDetail(paper);
+          }
+        }
       });
     });
 
@@ -770,27 +765,7 @@ function showPaperDetail(paper) {
 
   detailSection.style.display = 'block';
 
-  // Build external links (like main page)
-  let externalLinks = '';
-  if (paper.zotero_key) {
-    externalLinks += `<a href="${getZoteroUrl(paper.zotero_key)}" class="btn-external">Zotero <i data-lucide="arrow-up-right"></i></a>`;
-  }
-  if (paper.pdf_key) {
-    externalLinks += `<a href="${getZoteroPdfUrl(paper.pdf_key)}" class="btn-external">PDF <i data-lucide="arrow-up-right"></i></a>`;
-  }
-  if (paper.doi) {
-    externalLinks += `<a href="https://doi.org/${paper.doi}" target="_blank" class="btn-external">DOI <i data-lucide="arrow-up-right"></i></a>`;
-  }
-  if (paper.title) {
-    const scholarUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`;
-    externalLinks += `<a href="${scholarUrl}" target="_blank" class="btn-external">Scholar <i data-lucide="arrow-up-right"></i></a>`;
-  }
-
-  const linksSection = externalLinks ? `
-    <div class="paper-detail-links">${externalLinks}</div>
-  ` : '';
-
-  // Parse notes for zotero annotation links
+  // Parse notes for zotero annotation links (outline-specific)
   const { text: notesText, links: zoteroLinks } = parseNoteWithZoteroLinks(paper.notes || '');
 
   const annotationLinksHtml = zoteroLinks.length > 0 ? `
@@ -812,20 +787,11 @@ function showPaperDetail(paper) {
     </div>
   ` : '';
 
-  paperDetail.innerHTML = `
-    <div class="paper-detail-title">${escapeHtml(paper.title || 'Untitled')}</div>
-    <div class="paper-detail-meta">
-      ${paper.authors || ''} ${paper.year ? `(${paper.year})` : ''}
-    </div>
-    ${linksSection}
-    ${paper.abstract ? `
-      <div class="paper-detail-section">
-        <div class="paper-detail-section-title">Abstract</div>
-        <div class="paper-detail-abstract">${escapeHtml(paper.abstract)}</div>
-      </div>
-    ` : ''}
-    ${notesHtml}
-  `;
+  // Use shared renderPaperDetailHtml from paper-item.js
+  paperDetail.innerHTML = renderPaperDetailHtml(paper, {
+    meta: dataMeta,
+    notesHtml: notesHtml
+  });
 
   // Re-initialize lucide icons for the new content
   if (typeof lucide !== 'undefined') {

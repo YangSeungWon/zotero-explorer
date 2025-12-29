@@ -45,21 +45,16 @@ function renderListView(papers) {
     }
   }
 
-  // Render list items
+  // Render list items using shared renderPaperItemHtml
   let html = '';
   for (const paper of sorted) {
-    const clusterLabel = clusterLabels[paper.cluster] || `Cluster ${paper.cluster}`;
-    const clusterColor = CLUSTER_COLORS[paper.cluster % CLUSTER_COLORS.length];
     const isSelected = selectedPaper?.id === paper.id;
     const isBookmarked = bookmarkedPapers.has(paper.id);
 
     // Get similarity score if available
-    let simScore = '';
+    let similarity = null;
     if (hasSimScores && semanticSearchResults) {
-      const similarity = semanticSearchResults.get(paper.id);
-      if (similarity !== undefined) {
-        simScore = `<span class="list-item-sim">${(similarity * 100).toFixed(1)}%</span>`;
-      }
+      similarity = semanticSearchResults.get(paper.id) || null;
     }
 
     // Internal citation stats
@@ -71,37 +66,18 @@ function renderListView(papers) {
       .filter(idea => idea.connected_papers?.includes(paper.zotero_key))
       .map(idea => idea.title);
 
-    html += `
-      <div class="list-item ${isSelected ? 'selected' : ''}" data-paper-id="${paper.id}" data-zotero-key="${paper.zotero_key}">
-        <div class="list-item-actions">
-          <button class="list-bookmark-btn ${isBookmarked ? 'active' : ''}" title="Toggle bookmark" data-paper-id="${paper.id}">
-            <i data-lucide="star" ${isBookmarked ? 'class="filled"' : ''}></i>
-          </button>
-          <div class="list-idea-dropdown">
-            <button class="list-idea-btn ${connectedIdeas.length > 0 ? 'has-ideas' : ''}" title="${connectedIdeas.length > 0 ? 'Connected: ' + connectedIdeas.join(', ') : 'Link to idea'}">
-              <i data-lucide="lightbulb"></i>
-              ${connectedIdeas.length > 0 ? `<span class="idea-count">${connectedIdeas.length}</span>` : ''}
-            </button>
-            <div class="dropdown-menu list-idea-menu"></div>
-          </div>
-        </div>
-        <div class="list-item-main">
-          <div class="list-item-title">${escapeHtml(paper.title)}</div>
-          <div class="list-item-meta-line">
-            ${simScore}
-            <span class="list-item-year">${paper.year || '?'}</span>
-            <span class="list-item-cluster" style="background: ${clusterColor}; color: black;">${clusterLabel}</span>
-            <span class="list-item-authors" title="${escapeHtml(paper.authors || '')}">${escapeHtml(abbreviateAuthors(paper.authors))}</span>
-            <span class="list-item-venue" title="${escapeHtml(paper.venue_full || paper.venue || '')}">${escapeHtml(paper.venue || '')}</span>
-          </div>
-        </div>
-        <div class="list-item-meta">
-          ${paper.citation_count ? `<span class="list-item-stat" title="Total citations (Semantic Scholar)"><i data-lucide="quote"></i> ${paper.citation_count}</span>` : ''}
-          ${intCited ? `<span class="list-item-stat internal-cited" title="Cited by ${intCited} papers in library"><i data-lucide="arrow-left"></i> ${intCited}</span>` : ''}
-          ${intRefs ? `<span class="list-item-stat internal-refs" title="References ${intRefs} papers in library"><i data-lucide="arrow-right"></i> ${intRefs}</span>` : ''}
-        </div>
-      </div>
-    `;
+    // Use shared renderPaperItemHtml from paper-item.js
+    html += renderPaperItemHtml(paper, {
+      showActions: true,
+      similarity: similarity,
+      intCited: intCited,
+      intRefs: intRefs,
+      clusterColors: CLUSTER_COLORS,
+      clusterLabels: clusterLabels,
+      isSelected: isSelected,
+      isBookmarked: isBookmarked,
+      connectedIdeas: connectedIdeas
+    });
   }
 
   if (html === '') {
@@ -337,13 +313,7 @@ function initListView() {
   });
 }
 
-// Helper
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+// escapeHtml and abbreviateAuthors are now in paper-item.js
 
 // Venue abbreviation map (order matters - more specific patterns first)
 const VENUE_ABBREVIATIONS = {
@@ -483,21 +453,6 @@ function abbreviateVenue(venue) {
   }
 
   return venue;
-}
-
-// Abbreviate author list
-function abbreviateAuthors(authors, maxAuthors = 1) {
-  if (!authors) return '';
-
-  // Split by common delimiters
-  const authorList = authors.split(/[,;]/).map(a => a.trim()).filter(a => a);
-
-  if (authorList.length <= maxAuthors) {
-    return authors;
-  }
-
-  // First author + et al.
-  return `${authorList[0]} et al.`;
 }
 
 // Initialize on load

@@ -39,33 +39,7 @@ function renderCurrentView() {
   }
 }
 
-// ============================================================
-// Zotero Deep Link Helper
-// ============================================================
-
-function getZoteroUrl(zoteroKey) {
-  // Uses dataMeta from state.js (global)
-  const libraryType = dataMeta.zotero_library_type || 'user';
-  const libraryId = dataMeta.zotero_library_id || '';
-
-  if (libraryType === 'group' && libraryId) {
-    return `zotero://select/groups/${libraryId}/items/${zoteroKey}`;
-  } else {
-    return `zotero://select/library/items/${zoteroKey}`;
-  }
-}
-
-function getZoteroPdfUrl(pdfKey) {
-  // Opens PDF directly in Zotero
-  const libraryType = dataMeta.zotero_library_type || 'user';
-  const libraryId = dataMeta.zotero_library_id || '';
-
-  if (libraryType === 'group' && libraryId) {
-    return `zotero://open-pdf/groups/${libraryId}/items/${pdfKey}`;
-  } else {
-    return `zotero://open-pdf/library/items/${pdfKey}`;
-  }
-}
+// getZoteroUrl and getZoteroPdfUrl are now in paper-item.js
 
 // ============================================================
 // URL / Permalink Helper (uses zotero_key for stable URLs)
