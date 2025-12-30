@@ -230,3 +230,119 @@ function createManualAnnotation(data = {}) {
     isManual: true
   };
 }
+
+/**
+ * Parse a single raw annotation text (from Zotero copy-paste)
+ * Format: "quote" ([Author, Year, p.XX](zotero://...)) ([pdf](zotero://...)) user note
+ *
+ * @param {string} rawText - Raw annotation text
+ * @returns {Object} Parsed annotation object
+ */
+function parseRawAnnotation(rawText) {
+  if (!rawText || typeof rawText !== 'string') {
+    return { quote: '', source: {}, pdf: null, myNote: '' };
+  }
+
+  // Pattern: "quote" ([source](zotero://...)) ([pdf](zotero://...))? rest is note
+  // Zotero uses curly quotes (U+201C, U+201D)
+  const fullPattern = /\u201C([^\u201D]+)\u201D\s*\(\[([^\]]+)\]\((zotero:\/\/[^)]+)\)\)\s*(?:\(\[pdf\]\((zotero:\/\/[^)]+)\)\))?\s*([\s\S]*)/;
+
+  const match = rawText.match(fullPattern);
+
+  if (match) {
+    const [, quote, sourceText, zoteroUrl, pdfUrl, userNote] = match;
+
+    // Parse PDF URL for page and annotation ID
+    let page = null;
+    let annotationId = null;
+    if (pdfUrl) {
+      const pageMatch = pdfUrl.match(/page=(\d+)/);
+      const annMatch = pdfUrl.match(/annotation=([A-Z0-9]+)/);
+      if (pageMatch) page = parseInt(pageMatch[1]);
+      if (annMatch) annotationId = annMatch[1];
+    }
+
+    // Extract Zotero key from URL
+    const zoteroKeyMatch = zoteroUrl.match(/items\/([A-Z0-9]+)/);
+    const zoteroKey = zoteroKeyMatch ? zoteroKeyMatch[1] : null;
+
+    return {
+      id: generateAnnotationId(),
+      quote: quote.trim(),
+      source: {
+        text: sourceText.trim(),
+        zoteroKey: zoteroKey,
+        zoteroUrl: zoteroUrl
+      },
+      pdf: pdfUrl ? {
+        url: pdfUrl,
+        page: page,
+        annotationId: annotationId
+      } : null,
+      myNote: userNote.trim(),
+      createdAt: Date.now()
+    };
+  }
+
+  // Fallback: try to extract just quoted text (curly quotes U+201C, U+201D)
+  const simpleQuoteMatch = rawText.match(/\u201C([^\u201D]+)\u201D/);
+  if (simpleQuoteMatch) {
+    const quote = simpleQuoteMatch[1];
+    const afterQuote = rawText.substring(rawText.indexOf(simpleQuoteMatch[0]) + simpleQuoteMatch[0].length);
+
+    // Try to find source link
+    let sourceText = '';
+    let zoteroUrl = null;
+    let zoteroKey = null;
+    const sourceMatch = afterQuote.match(/\(\[([^\]]+)\]\((zotero:\/\/[^)]+)\)\)/);
+    if (sourceMatch) {
+      sourceText = sourceMatch[1];
+      zoteroUrl = sourceMatch[2];
+      const keyMatch = zoteroUrl.match(/items\/([A-Z0-9]+)/);
+      if (keyMatch) zoteroKey = keyMatch[1];
+    }
+
+    // Try to find PDF link
+    let pdfUrl = null;
+    let page = null;
+    let annotationId = null;
+    const pdfMatch = afterQuote.match(/\(\[pdf\]\((zotero:\/\/[^)]+)\)\)/i);
+    if (pdfMatch) {
+      pdfUrl = pdfMatch[1];
+      const pageMatch = pdfUrl.match(/page=(\d+)/);
+      const annMatch = pdfUrl.match(/annotation=([A-Z0-9]+)/);
+      if (pageMatch) page = parseInt(pageMatch[1]);
+      if (annMatch) annotationId = annMatch[1];
+    }
+
+    // Everything after the links is the user note
+    let userNote = afterQuote;
+    if (sourceMatch) {
+      userNote = userNote.replace(sourceMatch[0], '');
+    }
+    if (pdfMatch) {
+      userNote = userNote.replace(pdfMatch[0], '');
+    }
+    userNote = userNote.trim();
+
+    return {
+      id: generateAnnotationId(),
+      quote: quote.trim(),
+      source: {
+        text: sourceText,
+        zoteroKey: zoteroKey,
+        zoteroUrl: zoteroUrl
+      },
+      pdf: pdfUrl ? {
+        url: pdfUrl,
+        page: page,
+        annotationId: annotationId
+      } : null,
+      myNote: userNote,
+      createdAt: Date.now()
+    };
+  }
+
+  // No quote found - return empty
+  return { quote: '', source: {}, pdf: null, myNote: '' };
+}

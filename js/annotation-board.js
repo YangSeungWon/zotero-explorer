@@ -561,39 +561,77 @@ function saveEditCard() {
   closeEditCardModal();
 }
 
+let parsedAddCardData = null;
+
 function openAddCardModal(columnId) {
   addingToColumnId = columnId;
+  parsedAddCardData = null;
 
-  document.getElementById('addCardQuote').value = '';
-  document.getElementById('addCardSource').value = '';
-  document.getElementById('addCardNote').value = '';
+  document.getElementById('addCardRaw').value = '';
+  document.getElementById('addCardPreview').innerHTML = '';
+  document.getElementById('addCardPreview').classList.remove('has-content');
 
   document.getElementById('addCardModal').style.display = 'flex';
+  document.getElementById('addCardRaw').focus();
 }
 
 function closeAddCardModal() {
   addingToColumnId = null;
+  parsedAddCardData = null;
   document.getElementById('addCardModal').style.display = 'none';
+}
+
+function updateAddCardPreview() {
+  const rawText = document.getElementById('addCardRaw').value.trim();
+  const preview = document.getElementById('addCardPreview');
+
+  if (!rawText) {
+    preview.classList.remove('has-content');
+    preview.innerHTML = '';
+    parsedAddCardData = null;
+    return;
+  }
+
+  // Parse the raw text
+  const parsed = parseRawAnnotation(rawText);
+  parsedAddCardData = parsed;
+
+  if (parsed.quote) {
+    preview.classList.add('has-content');
+    preview.innerHTML = `
+      <div class="preview-label">Preview</div>
+      <div class="preview-quote">${escapeHtml(parsed.quote)}</div>
+      ${parsed.source?.text ? `<div class="preview-source">${escapeHtml(parsed.source.text)}</div>` : ''}
+      <div class="preview-links">
+        ${parsed.source?.zoteroUrl ? '<span class="preview-link">Zotero</span>' : ''}
+        ${parsed.pdf?.url ? `<span class="preview-link">PDF${parsed.pdf.page ? ' p.' + parsed.pdf.page : ''}</span>` : ''}
+      </div>
+      ${parsed.myNote ? `<div class="preview-note">${escapeHtml(parsed.myNote)}</div>` : ''}
+    `;
+  } else {
+    preview.classList.remove('has-content');
+    preview.innerHTML = '';
+  }
 }
 
 function confirmAddCard() {
   if (!addingToColumnId) return;
 
-  const quote = document.getElementById('addCardQuote').value.trim();
-  const source = document.getElementById('addCardSource').value.trim();
-  const note = document.getElementById('addCardNote').value.trim();
-
-  if (!quote) {
-    alert('Please enter a quote');
+  const rawText = document.getElementById('addCardRaw').value.trim();
+  if (!rawText) {
+    alert('Please paste an annotation');
     return;
   }
 
-  addCard(addingToColumnId, {
-    quote: quote,
-    source: { text: source },
-    myNote: note,
-    isManual: true
-  });
+  // Use parsed data or parse again
+  const data = parsedAddCardData || parseRawAnnotation(rawText);
+
+  if (!data.quote) {
+    alert('Could not parse annotation. Make sure it contains a quoted text.');
+    return;
+  }
+
+  addCard(addingToColumnId, data);
 
   closeAddCardModal();
   renderBoard();
@@ -833,6 +871,11 @@ function setupEventListeners() {
   document.getElementById('closeAddCard').addEventListener('click', closeAddCardModal);
   document.getElementById('cancelAddCard').addEventListener('click', closeAddCardModal);
   document.getElementById('confirmAddCard').addEventListener('click', confirmAddCard);
+  document.getElementById('addCardRaw').addEventListener('input', updateAddCardPreview);
+  document.getElementById('addCardRaw').addEventListener('paste', () => {
+    // Delay to get pasted content
+    setTimeout(updateAddCardPreview, 0);
+  });
 
   // Export
   document.getElementById('exportBtn').addEventListener('click', exportBoard);

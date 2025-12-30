@@ -169,14 +169,9 @@
         </button>
       </div>
       <div class="edit-card-form">
-        <label>Quote</label>
-        <textarea id="addCardQuote" class="modal-textarea" placeholder="Original quote from the paper..."></textarea>
-
-        <label>Source</label>
-        <input type="text" id="addCardSource" class="modal-input" placeholder="Author et al., Year, p.XX">
-
-        <label>Your Note</label>
-        <textarea id="addCardNote" class="modal-textarea-large" placeholder="Your interpretation or analysis..."></textarea>
+        <label>Paste Zotero Annotation</label>
+        <textarea id="addCardRaw" class="modal-textarea-raw" placeholder='"quote text" ([Author, Year](zotero://...)) ([pdf](zotero://...)) your note...'></textarea>
+        <div id="addCardPreview" class="add-card-preview"></div>
       </div>
       <div class="modal-actions">
         <button id="cancelAddCard" class="btn-secondary">Cancel</button>

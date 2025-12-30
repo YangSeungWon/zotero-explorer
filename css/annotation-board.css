@@ -650,6 +650,86 @@
   color: var(--accent);
 }
 
+/* Add Card Raw Textarea */
+.modal-textarea-raw {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.modal-textarea-raw:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Add Card Preview */
+.add-card-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  display: none;
+}
+
+.add-card-preview.has-content {
+  display: block;
+}
+
+.add-card-preview .preview-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.add-card-preview .preview-quote {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-primary);
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 8px;
+}
+
+.add-card-preview .preview-source {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.add-card-preview .preview-links {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.add-card-preview .preview-link {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+}
+
+.add-card-preview .preview-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
 /* ===========================================
    Modals
    =========================================== */
