@@ -7,6 +7,7 @@ services:
       - ./index.html:/usr/share/nginx/html/index.html:ro
       - ./triage.html:/usr/share/nginx/html/triage.html:ro
       - ./outline.html:/usr/share/nginx/html/outline.html:ro
+      - ./annotation-board.html:/usr/share/nginx/html/annotation-board.html:ro
       - ./css:/usr/share/nginx/html/css:ro
       - ./js:/usr/share/nginx/html/js:ro
       - ./papers.json:/usr/share/nginx/html/papers.json:ro

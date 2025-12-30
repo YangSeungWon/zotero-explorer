@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Annotation Board - Zotero Explorer</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/annotation-board.css">
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+      <h2>Annotation Board</h2>
+      <p>Enter your API Key</p>
+      <form id="loginForm" autocomplete="off">
+        <input type="password" id="loginApiKey" placeholder="API Key" autocomplete="off" data-lpignore="true" data-form-type="other" required>
+        <button type="submit" id="loginBtn">Login</button>
+      </form>
+      <div id="loginError" class="login-error"></div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <div class="board-container">
+    <!-- Header -->
+    <header class="board-header">
+      <div class="header-left">
+        <a href="/" class="back-link"><i data-lucide="arrow-left"></i> Explorer</a>
+        <select id="boardSelect" class="board-select">
+          <option value="">Select board...</option>
+        </select>
+        <button id="newBoardBtn" class="btn-icon" title="New Board">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+      <div class="header-actions">
+        <button id="importAnnotationsBtn" class="btn-action" title="Import Annotations from Papers">
+          <i data-lucide="download"></i> Import
+        </button>
+        <button id="addColumnBtn" class="btn-action" title="Add Column">
+          <i data-lucide="columns"></i> Add Column
+        </button>
+        <button id="exportBtn" class="btn-icon" title="Export as Markdown">
+          <i data-lucide="file-text"></i>
+        </button>
+        <button id="deleteBoardBtn" class="btn-icon btn-danger" title="Delete Board">
+          <i data-lucide="trash-2"></i>
+        </button>
+        <button id="themeToggle" class="btn-icon" title="Toggle theme">
+          <i data-lucide="sun-moon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Board Title -->
+    <div class="board-title-section">
+      <input type="text" id="boardTitle" class="board-title-input" placeholder="Board Title...">
+    </div>
+
+    <!-- Main Board Area -->
+    <main class="board-main">
+      <div id="columnsContainer" class="columns-container">
+        <!-- Columns rendered here -->
+      </div>
+
+      <!-- Add Column Placeholder -->
+      <div class="add-column-placeholder" id="addColumnPlaceholder">
+        <button class="add-column-btn">
+          <i data-lucide="plus"></i>
+          <span>Add Column</span>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- New Board Modal -->
+  <div class="modal-overlay" id="newBoardModal" style="display: none;">
+    <div class="modal">
+      <h3>New Board</h3>
+      <input type="text" id="newBoardTitle" class="modal-input" placeholder="Board title...">
+      <div class="modal-actions">
+        <button id="cancelNewBoard" class="btn-secondary">Cancel</button>
+        <button id="createNewBoard" class="btn-primary">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Annotations Modal -->
+  <div class="modal-overlay" id="importModal" style="display: none;">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <h3>Import Annotations</h3>
+        <button id="closeImportModal" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="import-search">
+        <input type="text" id="importSearchInput" class="modal-input" placeholder="Search papers...">
+      </div>
+      <div id="importPapersList" class="import-papers-list">
+        <!-- Papers with annotations listed here -->
+      </div>
+      <div class="modal-actions">
+        <button id="cancelImport" class="btn-secondary">Cancel</button>
+        <button id="confirmImport" class="btn-primary">Import Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Card Modal -->
+  <div class="modal-overlay" id="editCardModal" style="display: none;">
+    <div class="modal modal-card">
+      <div class="modal-header">
+        <h3>Edit Annotation</h3>
+        <button id="closeEditCard" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="edit-card-form">
+        <label>Quote</label>
+        <textarea id="editCardQuote" class="modal-textarea" placeholder="Original quote from the paper..."></textarea>
+
+        <label>Source</label>
+        <input type="text" id="editCardSource" class="modal-input" placeholder="Author et al., Year, p.XX">
+
+        <label>Your Note</label>
+        <textarea id="editCardNote" class="modal-textarea-large" placeholder="Your interpretation or analysis..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button id="cancelEditCard" class="btn-secondary">Cancel</button>
+        <button id="saveEditCard" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="exportModal" style="display: none;">
+    <div class="modal modal-export">
+      <div class="modal-header">
+        <h3>Export Board</h3>
+        <button id="closeExportModal" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <textarea id="exportContent" class="export-content" readonly></textarea>
+      <div class="modal-actions">
+        <button id="copyExport" class="btn-primary">
+          <i data-lucide="copy"></i> Copy to Clipboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Card Modal -->
+  <div class="modal-overlay" id="addCardModal" style="display: none;">
+    <div class="modal modal-card">
+      <div class="modal-header">
+        <h3>Add Annotation</h3>
+        <button id="closeAddCard" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="edit-card-form">
+        <label>Quote</label>
+        <textarea id="addCardQuote" class="modal-textarea" placeholder="Original quote from the paper..."></textarea>
+
+        <label>Source</label>
+        <input type="text" id="addCardSource" class="modal-input" placeholder="Author et al., Year, p.XX">
+
+        <label>Your Note</label>
+        <textarea id="addCardNote" class="modal-textarea-large" placeholder="Your interpretation or analysis..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button id="cancelAddCard" class="btn-secondary">Cancel</button>
+        <button id="confirmAddCard" class="btn-primary">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/theme.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/paper-item.js"></script>
+  <script src="js/annotation-parser.js"></script>
+  <script src="js/annotation-board.js"></script>
+</body>
+</html>
