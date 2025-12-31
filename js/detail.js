@@ -759,6 +759,11 @@ function showDetail(item) {
   const savedWidth = localStorage.getItem('detailPanelWidth');
   if (savedWidth) panel.style.width = savedWidth;
 
+  // Switch to paper tab
+  if (typeof switchDetailTab === 'function') {
+    switchDetailTab('paper');
+  }
+
   // Scroll to top
   const paperSection = document.getElementById('paperDetailSection');
   if (paperSection) paperSection.scrollTop = 0;
@@ -855,6 +860,11 @@ function findSimilarPapers(target, papers, n = 5) {
 }
 
 function showMobileDetail(item) {
+  // Switch to paper tab
+  if (typeof switchDetailTab === 'function') {
+    switchDetailTab('paper');
+  }
+
   selectedPaper = item;
   connectedPapers = new Set();
   document.body.classList.add('paper-selected');

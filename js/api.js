@@ -101,6 +101,41 @@ async function syncClusterTags(prefix, clusterLabels) {
 }
 
 // ============================================================
+// Semantic Search
+// ============================================================
+
+/**
+ * Perform semantic search
+ * @param {string} query - Search query
+ * @param {number} topK - Number of results (default: 20)
+ * @returns {Promise<Map<number, number>>} Map of paper ID to similarity score
+ */
+async function semanticSearchApi(query, topK = 20) {
+  try {
+    const response = await fetch(`/api/semantic-search?q=${encodeURIComponent(query)}&top_k=${topK}`);
+    const data = await response.json();
+
+    if (data.error) {
+      console.warn('Semantic search error:', data.error);
+      return new Map();
+    }
+
+    if (data.results && Array.isArray(data.results)) {
+      const resultMap = new Map();
+      data.results.forEach(r => {
+        resultMap.set(r.id, r.similarity);
+      });
+      return resultMap;
+    }
+
+    return new Map();
+  } catch (e) {
+    console.error('Semantic search failed:', e);
+    return new Map();
+  }
+}
+
+// ============================================================
 // Helper Functions
 // ============================================================
 

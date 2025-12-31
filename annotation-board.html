@@ -6,7 +6,11 @@
   <title>Annotation Board - Zotero Explorer</title>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/buttons.css">
+  <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/list.css">
+  <link rel="stylesheet" href="css/detail.css">
   <link rel="stylesheet" href="css/annotation-board.css">
 </head>
 <body>
@@ -42,6 +46,9 @@
         </button>
       </div>
       <div class="header-actions">
+        <button id="migrateOutlinesBtn" class="btn-action" title="Migrate from Outlines">
+          <i data-lucide="folder-input"></i> Migrate
+        </button>
         <button id="importAnnotationsBtn" class="btn-action" title="Import Annotations from Papers">
           <i data-lucide="download"></i> Import
         </button>
@@ -79,6 +86,36 @@
         </button>
       </div>
     </main>
+
+    <!-- Paper Detail Panel -->
+    <div class="board-detail-panel" id="boardDetailPanel">
+      <div class="board-detail-header">
+        <input type="text" id="boardSearchInput" class="board-search-input" placeholder="Search papers...">
+        <button id="boardSemanticToggle" class="semantic-toggle" title="AI Search">
+          <i data-lucide="brain"></i>
+        </button>
+        <button class="btn-icon" id="closeBoardDetail" title="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="board-search-results" id="boardSearchResults">
+        <!-- Search results here -->
+      </div>
+      <div class="board-paper-detail" id="boardPaperDetail">
+        <div class="detail-title-row">
+          <h2 id="boardDetailTitle">Select a paper</h2>
+        </div>
+        <div class="meta" id="boardDetailMeta"></div>
+        <div class="links" id="boardDetailLinks"></div>
+        <div class="abstract" id="boardDetailAbstract"></div>
+        <div id="boardDetailNotes"></div>
+      </div>
+    </div>
+
+    <!-- Toggle button for detail panel -->
+    <button class="board-detail-toggle" id="boardDetailToggle" title="Toggle paper search">
+      <i data-lucide="search"></i>
+    </button>
   </div>
 
   <!-- New Board Modal -->
@@ -180,9 +217,30 @@
     </div>
   </div>
 
+  <!-- Migrate Outlines Modal -->
+  <div class="modal-overlay" id="migrateModal" style="display: none;">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <h3>Migrate from Outlines</h3>
+        <button id="closeMigrateModal" class="btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="migrateOutlinesList" class="import-papers-list">
+        <!-- Outlines listed here -->
+      </div>
+      <div class="modal-actions">
+        <button id="cancelMigrate" class="btn-secondary">Cancel</button>
+        <button id="confirmMigrate" class="btn-primary">Migrate Selected</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/theme.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/paper-item.js"></script>
+  <script src="js/paper-search.js"></script>
   <script src="js/annotation-parser.js"></script>
   <script src="js/annotation-board.js"></script>
 </body>

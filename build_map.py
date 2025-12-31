@@ -751,6 +751,14 @@ def main():
     df = df.reset_index(drop=True)  # 항상 인덱스 리셋
     if len(df) < before_dedup:
         print(f"  Removed {before_dedup - len(df)} duplicates")
+
+    # 스탠드얼론 노트 제외 (title 없는 note 타입)
+    standalone_notes = (df["Item Type"] == "note") & (df["Title"].isna() | (df["Title"].str.strip() == ""))
+    if standalone_notes.sum() > 0:
+        print(f"  Excluded {standalone_notes.sum()} standalone notes")
+        df = df[~standalone_notes]
+        df = df.reset_index(drop=True)
+
     print(f"  Total: {len(df)} items")
 
     # 노트 있는 것만 필터링 (기본값)

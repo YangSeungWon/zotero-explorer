@@ -18,9 +18,9 @@ function parseAnnotationsFromNote(noteText, paper = {}) {
 
   const annotations = [];
 
-  // Pattern to match annotation blocks
+  // Pattern to match annotation blocks (curly quotes U+201C, U+201D)
   // Groups: 1=quote, 2=citation text, 3=citation zotero url, 4=pdf url (optional), 5=user note
-  const annotationPattern = /"([^"]+)"\s*\(\[([^\]]+)\]\((zotero:\/\/[^)]+)\)\)\s*(?:\(\[pdf\]\((zotero:\/\/[^)]+)\)\))?\s*([^"]*?)(?="|$)/g;
+  const annotationPattern = /\u201C([^\u201D]+)\u201D\s*\(\[([^\]]+)\]\((zotero:\/\/[^)]+)\)\)\s*(?:\(\[pdf\]\((zotero:\/\/[^)]+)\)\))?\s*([\s\S]*?)(?=\u201C|$)/g;
 
   let match;
   while ((match = annotationPattern.exec(noteText)) !== null) {

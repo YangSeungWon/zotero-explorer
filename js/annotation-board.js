@@ -367,14 +367,29 @@ function renderCard(card) {
     : card.quote;
 
   const sourceText = card.source?.text || '';
+  const zoteroKey = card.source?.zoteroKey;
   const hasZotero = !!card.source?.zoteroUrl;
   const hasPdf = !!card.pdf?.url;
+
+  // Find paper title from papers array
+  let paperTitle = card.paperTitle || '';
+  if (!paperTitle && zoteroKey) {
+    const paper = papers.find(p => p.zotero_key === zoteroKey);
+    if (paper) paperTitle = paper.title;
+  }
+
+  // Explorer link
+  const explorerLink = zoteroKey ? `https://z.ysw.kr/?paper=${zoteroKey}` : null;
 
   return `
     <div class="annotation-card" draggable="true" data-card-id="${card.id}">
       <div class="card-quote">${escapeHtml(quotePreview)}</div>
-      <div class="card-source">${escapeHtml(sourceText)}</div>
+      <div class="card-source">
+        ${escapeHtml(sourceText)}
+        ${paperTitle ? `<div class="card-paper-title">${escapeHtml(paperTitle)}</div>` : ''}
+      </div>
       <div class="card-links">
+        ${explorerLink ? `<a href="${explorerLink}" target="_blank" class="card-link" title="Open in Explorer"><i data-lucide="compass"></i></a>` : ''}
         ${hasZotero ? `<a href="${card.source.zoteroUrl}" class="card-link" title="Open in Zotero"><i data-lucide="book-open"></i></a>` : ''}
         ${hasPdf ? `<a href="${card.pdf.url}" class="card-link" title="Open PDF${card.pdf.page ? ' (p.' + card.pdf.page + ')' : ''}"><i data-lucide="file-text"></i></a>` : ''}
       </div>
@@ -418,6 +433,41 @@ function setupDragAndDrop() {
       const cardEl = btn.closest('.annotation-card');
       if (confirm('Delete this annotation?')) {
         deleteCard(cardEl.dataset.cardId);
+      }
+    });
+  });
+
+  // Card click to show paper detail
+  document.querySelectorAll('.annotation-card').forEach(cardEl => {
+    cardEl.addEventListener('click', (e) => {
+      // Ignore if clicking on buttons or links
+      if (e.target.closest('button') || e.target.closest('a')) return;
+
+      const cardId = cardEl.dataset.cardId;
+      const card = currentBoard?.cards[cardId];
+      if (!card) return;
+
+      // Find paper by zotero_key or paperId
+      const zoteroKey = card.source?.zoteroKey;
+      let paper = null;
+
+      if (zoteroKey) {
+        paper = papers.find(p => p.zotero_key === zoteroKey);
+      }
+      if (!paper && card.paperId) {
+        paper = papers.find(p => p.id === card.paperId);
+      }
+
+      if (paper) {
+        // Remove previous selection
+        document.querySelectorAll('.annotation-card.selected').forEach(el => {
+          el.classList.remove('selected');
+        });
+        // Mark this card as selected
+        cardEl.classList.add('selected');
+
+        showPaperDetail(paper.id);
+        openDetailPanel();
       }
     });
   });
@@ -808,6 +858,141 @@ function copyExport() {
   }, 2000);
 }
 
+// ========== Migrate from Outlines ==========
+
+let outlinesList = [];
+
+async function fetchOutlines() {
+  try {
+    const response = await fetch('/api/outlines', {
+      headers: { 'X-API-Key': getApiKey() }
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.outlines || data || [];
+  } catch (e) {
+    console.error('Failed to fetch outlines:', e);
+    return [];
+  }
+}
+
+async function openMigrateModal() {
+  const container = document.getElementById('migrateOutlinesList');
+  container.innerHTML = '<div class="import-empty">Loading outlines...</div>';
+  document.getElementById('migrateModal').style.display = 'flex';
+
+  outlinesList = await fetchOutlines();
+
+  if (outlinesList.length === 0) {
+    container.innerHTML = '<div class="import-empty">No outlines found</div>';
+    return;
+  }
+
+  container.innerHTML = outlinesList.map(outline => {
+    const blockCount = outline.blocks?.length || 0;
+    const paperCount = outline.blocks?.reduce((sum, b) => sum + (b.papers?.length || 0), 0) || 0;
+    return `
+      <div class="import-paper-item" data-outline-id="${outline.id}">
+        <input type="checkbox" class="import-checkbox migrate-checkbox" data-outline-id="${outline.id}">
+        <div class="import-paper-info">
+          <div class="import-paper-title">${escapeHtml(outline.title || 'Untitled')}</div>
+          <div class="import-paper-meta">
+            ${blockCount} blocks · ${paperCount} papers
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function closeMigrateModal() {
+  document.getElementById('migrateModal').style.display = 'none';
+}
+
+async function migrateSelectedOutlines() {
+  const checkboxes = document.querySelectorAll('.migrate-checkbox:checked');
+  const outlineIds = [...checkboxes].map(cb => cb.dataset.outlineId);
+
+  if (outlineIds.length === 0) {
+    alert('Please select at least one outline');
+    return;
+  }
+
+  let totalCards = 0;
+
+  for (const outlineId of outlineIds) {
+    const outline = outlinesList.find(o => o.id === outlineId);
+    if (!outline) continue;
+
+    // Create a new board for this outline
+    const board = {
+      id: 'board_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 5),
+      title: outline.title || 'Migrated Outline',
+      columns: [{ id: 'col_inbox', title: '📥 Inbox', cardIds: [] }],
+      cards: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    // Create columns from blocks
+    const blockColumns = {};
+    for (const block of (outline.blocks || [])) {
+      const colId = 'col_' + block.id;
+      const colTitle = block.claim || block.heading || block.type || 'Untitled';
+
+      board.columns.push({
+        id: colId,
+        title: colTitle,
+        cardIds: []
+      });
+      blockColumns[block.id] = colId;
+
+      // Convert linked papers with notes to cards
+      for (const linkedPaper of (block.papers || [])) {
+        if (!linkedPaper.note) continue;
+
+        // Parse single annotation from the note
+        const parsed = parseRawAnnotation(linkedPaper.note);
+
+        if (parsed.quote) {
+          const cardId = generateAnnotationId();
+          board.cards[cardId] = {
+            id: cardId,
+            quote: parsed.quote,
+            source: parsed.source || { text: '', zoteroKey: linkedPaper.zotero_key },
+            pdf: parsed.pdf || null,
+            myNote: parsed.myNote || '',
+            paperId: linkedPaper.paper_id,
+            createdAt: Date.now()
+          };
+          board.columns.find(c => c.id === colId).cardIds.push(cardId);
+          totalCards++;
+        }
+      }
+    }
+
+    // Remove empty columns (except Inbox)
+    board.columns = board.columns.filter(col =>
+      col.id === 'col_inbox' || col.cardIds.length > 0
+    );
+
+    boards.push(board);
+  }
+
+  saveBoards();
+  updateBoardSelect();
+  closeMigrateModal();
+
+  if (totalCards > 0) {
+    alert(`Migrated ${outlineIds.length} outline(s) with ${totalCards} cards`);
+    // Select the first migrated board
+    const firstMigratedId = boards[boards.length - outlineIds.length]?.id;
+    if (firstMigratedId) selectBoard(firstMigratedId);
+  } else {
+    alert('No annotations found in selected outlines');
+  }
+}
+
 // ========== Event Listeners ==========
 
 function setupEventListeners() {
@@ -882,6 +1067,12 @@ function setupEventListeners() {
   document.getElementById('closeExportModal').addEventListener('click', closeExportModal);
   document.getElementById('copyExport').addEventListener('click', copyExport);
 
+  // Migrate from Outlines
+  document.getElementById('migrateOutlinesBtn').addEventListener('click', openMigrateModal);
+  document.getElementById('closeMigrateModal').addEventListener('click', closeMigrateModal);
+  document.getElementById('cancelMigrate').addEventListener('click', closeMigrateModal);
+  document.getElementById('confirmMigrate').addEventListener('click', migrateSelectedOutlines);
+
   // Close modals on overlay click
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
@@ -897,6 +1088,9 @@ function setupEventListeners() {
       document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
     }
   });
+
+  // Setup detail panel
+  initPaperDetailPanel();
 }
 
 // ========== Auth Helpers ==========
@@ -927,4 +1121,67 @@ function showLoading() {
 
 function hideLoading() {
   document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ========== Paper Detail Panel (using shared component) ==========
+
+let paperSearch = null;
+let paperDetailPanel = null;
+
+function initPaperDetailPanel() {
+  // Create detail panel instance
+  paperDetailPanel = createPaperDetailPanel({
+    panelEl: document.getElementById('boardDetailPanel'),
+    titleEl: document.getElementById('boardDetailTitle'),
+    metaEl: document.getElementById('boardDetailMeta'),
+    linksEl: document.getElementById('boardDetailLinks'),
+    abstractEl: document.getElementById('boardDetailAbstract'),
+    notesEl: document.getElementById('boardDetailNotes'),
+    getPapers: () => papers,
+    getMeta: () => dataMeta
+  });
+
+  // Create search instance with semantic search toggle
+  paperSearch = createPaperSearch({
+    inputEl: document.getElementById('boardSearchInput'),
+    resultsEl: document.getElementById('boardSearchResults'),
+    toggleEl: document.getElementById('boardSemanticToggle'),
+    getPapers: () => papers,
+    onSelect: (paper) => {
+      paperDetailPanel.show(paper);
+    },
+    onDetail: (paper) => {
+      paperDetailPanel.show(paper);
+    },
+    options: {
+      semanticSearchFn: (query) => semanticSearchApi(query, 15),
+      maxResults: 15
+    }
+  });
+
+  // Toggle button
+  document.getElementById('boardDetailToggle')?.addEventListener('click', () => {
+    const isOpen = paperDetailPanel.toggle();
+    if (isOpen) {
+      document.getElementById('boardSearchInput').focus();
+    }
+  });
+
+  // Close button
+  document.getElementById('closeBoardDetail')?.addEventListener('click', () => {
+    paperDetailPanel.close();
+  });
+}
+
+function openDetailPanel() {
+  paperDetailPanel?.open();
+  document.getElementById('boardSearchInput')?.focus();
+}
+
+function closeDetailPanel() {
+  paperDetailPanel?.close();
+}
+
+function showPaperDetail(paperId) {
+  paperDetailPanel?.show(paperId);
 }
