@@ -117,6 +117,115 @@
   height: 14px;
 }
 
+/* Column Navigation Dropdown */
+.column-nav-wrapper {
+  position: relative;
+}
+
+.column-nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  max-width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  z-index: 200;
+  display: none;
+}
+
+.column-nav-dropdown.open {
+  display: block;
+}
+
+.column-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+
+.column-nav-item:last-child {
+  border-bottom: none;
+}
+
+.column-nav-item:hover {
+  background: var(--bg-secondary);
+}
+
+.column-nav-item.active {
+  background: var(--accent-bg);
+}
+
+.column-nav-item.dragging {
+  opacity: 0.5;
+  background: var(--bg-secondary);
+}
+
+.column-nav-item.drag-over {
+  border-top: 2px solid var(--accent);
+  padding-top: 8px;
+}
+
+.column-nav-item.no-drag {
+  cursor: default;
+}
+
+.column-nav-drag {
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: grab;
+  padding: 2px 4px;
+  user-select: none;
+  opacity: 0.5;
+  width: 16px;
+  text-align: center;
+}
+
+.column-nav-item:hover .column-nav-drag {
+  opacity: 1;
+}
+
+.column-nav-item.no-drag .column-nav-drag {
+  cursor: default;
+}
+
+.column-nav-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.column-nav-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.column-nav-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 /* Board Title */
 .board-title-section {
   padding: 12px 20px;
@@ -173,6 +282,12 @@
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.board-column.highlight {
+  box-shadow: 0 0 0 3px var(--accent), 0 8px 24px var(--shadow-color);
+  transform: scale(1.02);
 }
 
 .column-header {

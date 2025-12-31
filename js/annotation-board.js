@@ -140,6 +140,153 @@ function updateBoardSelect() {
   });
 }
 
+// ========== Column Navigation ==========
+
+let draggedNavItem = null;
+
+function renderColumnNav() {
+  const dropdown = document.getElementById('columnNavDropdown');
+  if (!dropdown || !currentBoard) {
+    if (dropdown) dropdown.innerHTML = '<div class="column-nav-empty">No board selected</div>';
+    return;
+  }
+
+  if (currentBoard.columns.length === 0) {
+    dropdown.innerHTML = '<div class="column-nav-empty">No columns</div>';
+    return;
+  }
+
+  dropdown.innerHTML = currentBoard.columns.map((col, idx) => {
+    const cardCount = col.cardIds.length;
+    const isInbox = col.id === 'col_inbox';
+    return `
+      <div class="column-nav-item ${isInbox ? 'no-drag' : ''}"
+           data-column-id="${col.id}"
+           data-column-idx="${idx}"
+           draggable="${isInbox ? 'false' : 'true'}">
+        <span class="column-nav-drag">${isInbox ? '' : '⋮⋮'}</span>
+        <span class="column-nav-title">${escapeHtml(col.title)}</span>
+        <span class="column-nav-count">${cardCount}</span>
+      </div>
+    `;
+  }).join('');
+
+  // Bind events
+  dropdown.querySelectorAll('.column-nav-item').forEach(item => {
+    // Click to scroll
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.column-nav-drag')) return; // Ignore drag handle clicks
+      const columnId = item.dataset.columnId;
+      scrollToColumn(columnId);
+      closeColumnNav();
+    });
+
+    // Drag events (skip inbox)
+    if (!item.classList.contains('no-drag')) {
+      item.addEventListener('dragstart', handleNavDragStart);
+      item.addEventListener('dragend', handleNavDragEnd);
+      item.addEventListener('dragover', handleNavDragOver);
+      item.addEventListener('drop', handleNavDrop);
+    }
+  });
+}
+
+function handleNavDragStart(e) {
+  draggedNavItem = e.target.closest('.column-nav-item');
+  draggedNavItem.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleNavDragEnd(e) {
+  if (draggedNavItem) {
+    draggedNavItem.classList.remove('dragging');
+    draggedNavItem = null;
+  }
+  document.querySelectorAll('.column-nav-item').forEach(el => {
+    el.classList.remove('drag-over');
+  });
+}
+
+function handleNavDragOver(e) {
+  e.preventDefault();
+  const item = e.target.closest('.column-nav-item');
+  if (!item || item === draggedNavItem || item.classList.contains('no-drag')) return;
+
+  // Remove previous indicators
+  document.querySelectorAll('.column-nav-item').forEach(el => {
+    el.classList.remove('drag-over');
+  });
+  item.classList.add('drag-over');
+}
+
+function handleNavDrop(e) {
+  e.preventDefault();
+  const targetItem = e.target.closest('.column-nav-item');
+  if (!targetItem || !draggedNavItem || targetItem === draggedNavItem) return;
+  if (targetItem.classList.contains('no-drag')) return;
+
+  const fromIdx = parseInt(draggedNavItem.dataset.columnIdx);
+  const toIdx = parseInt(targetItem.dataset.columnIdx);
+
+  // Reorder columns
+  reorderColumn(fromIdx, toIdx);
+}
+
+function reorderColumn(fromIdx, toIdx) {
+  if (!currentBoard || fromIdx === toIdx) return;
+
+  // Don't move inbox (index 0)
+  if (fromIdx === 0 || toIdx === 0) return;
+
+  const columns = currentBoard.columns;
+  const [removed] = columns.splice(fromIdx, 1);
+  columns.splice(toIdx, 0, removed);
+
+  currentBoard.updatedAt = Date.now();
+  saveBoards();
+  renderColumnNav();
+  renderBoard();
+}
+
+function scrollToColumn(columnId) {
+  const columnEl = document.querySelector(`.board-column[data-column-id="${columnId}"]`);
+  if (columnEl) {
+    columnEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    // Highlight briefly
+    columnEl.classList.add('highlight');
+    setTimeout(() => columnEl.classList.remove('highlight'), 1000);
+  }
+}
+
+function toggleColumnNav() {
+  const dropdown = document.getElementById('columnNavDropdown');
+  const isOpen = dropdown.classList.toggle('open');
+  if (isOpen) {
+    renderColumnNav();
+  }
+}
+
+function closeColumnNav() {
+  document.getElementById('columnNavDropdown')?.classList.remove('open');
+}
+
+function setupColumnNav() {
+  const btn = document.getElementById('columnNavBtn');
+  const dropdown = document.getElementById('columnNavDropdown');
+
+  btn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleColumnNav();
+  });
+
+  // Close when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.column-nav-wrapper')) {
+      closeColumnNav();
+    }
+  });
+}
+
 // ========== Column Operations ==========
 
 function addColumn(title = 'New Column') {
@@ -1091,6 +1238,9 @@ function setupEventListeners() {
 
   // Setup detail panel
   initPaperDetailPanel();
+
+  // Setup column navigation
+  setupColumnNav();
 }
 
 // ========== Auth Helpers ==========
