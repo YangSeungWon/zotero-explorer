@@ -66,6 +66,32 @@ body {
   height: 16px;
 }
 
+.triage-filter {
+  display: flex;
+  align-items: center;
+}
+
+.cluster-select {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.cluster-select:hover {
+  border-color: var(--accent);
+}
+
+.cluster-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .triage-progress {
   display: flex;
   align-items: center;
@@ -793,6 +819,16 @@ body {
 
   .triage-nav h1 {
     font-size: 16px;
+  }
+
+  .triage-filter {
+    width: 100%;
+  }
+
+  .cluster-select {
+    width: 100%;
+    max-width: none;
+    padding: 10px 12px;
   }
 
   .triage-progress {

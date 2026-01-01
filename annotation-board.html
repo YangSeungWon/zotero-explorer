@@ -81,19 +81,35 @@
     </div>
 
     <!-- Main Board Area -->
-    <main class="board-main">
-      <div id="columnsContainer" class="columns-container">
-        <!-- Columns rendered here -->
-      </div>
+    <div class="board-layout">
+      <!-- Column Sidebar -->
+      <aside class="column-sidebar" id="columnSidebar">
+        <div class="sidebar-header">
+          <span>Columns</span>
+          <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse">
+            <i data-lucide="chevron-left"></i>
+          </button>
+        </div>
+        <div class="sidebar-list" id="sidebarColumnList">
+          <!-- Column list rendered here -->
+        </div>
+      </aside>
 
-      <!-- Add Column Placeholder -->
-      <div class="add-column-placeholder" id="addColumnPlaceholder">
-        <button class="add-column-btn">
-          <i data-lucide="plus"></i>
-          <span>Add Column</span>
-        </button>
-      </div>
-    </main>
+      <!-- Main Board -->
+      <main class="board-main">
+        <div id="columnsContainer" class="columns-container">
+          <!-- Columns rendered here -->
+        </div>
+
+        <!-- Add Column Placeholder -->
+        <div class="add-column-placeholder" id="addColumnPlaceholder">
+          <button class="add-column-btn">
+            <i data-lucide="plus"></i>
+            <span>Add Column</span>
+          </button>
+        </div>
+      </main>
+    </div>
 
     <!-- Paper Detail Panel -->
     <div class="board-detail-panel" id="boardDetailPanel">

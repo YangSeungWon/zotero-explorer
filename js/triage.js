@@ -6,8 +6,10 @@ const API_BASE = '/api';
 
 // State
 let papers = [];
+let allTriagePapers = []; // Unfiltered papers for cluster filter
 let currentIndex = 0;
 let apiKey = '';
+let selectedCluster = '';
 
 // Session Stats State
 let sessionCount = 0;
@@ -298,7 +300,7 @@ async function loadPapers() {
     const allPapers = data.papers || data;
 
     // Filter: has notes but no status-* tag (status-summarized, status-read, status-skimmed, etc.)
-    papers = allPapers.filter(p => {
+    allTriagePapers = allPapers.filter(p => {
       if (!p.has_notes) return false;
       const tags = (p.tags || '').toLowerCase();
       // Exclude papers with any status- tag
@@ -307,20 +309,69 @@ async function loadPapers() {
     });
 
     // Sort by year desc (newest first)
-    papers.sort((a, b) => (b.year || 0) - (a.year || 0));
+    allTriagePapers.sort((a, b) => (b.year || 0) - (a.year || 0));
 
-    currentIndex = 0;
-    updateProgress();
+    // Populate cluster filter
+    populateClusterFilter(allTriagePapers);
 
-    if (papers.length === 0) {
-      showEmpty();
-    } else {
-      showPaper(currentIndex);
-    }
+    // Apply current filter
+    applyClusterFilter();
 
   } catch (e) {
     console.error('Failed to load papers:', e);
     showToast('Failed to load papers', 'error');
+  }
+}
+
+function populateClusterFilter(paperList) {
+  const clusterSelect = document.getElementById('clusterFilter');
+  if (!clusterSelect) return;
+
+  // Get unique clusters with labels
+  const clusterMap = new Map();
+  paperList.forEach(p => {
+    if (p.cluster !== undefined && p.cluster !== null) {
+      const label = p.cluster_label || `Cluster ${p.cluster}`;
+      if (!clusterMap.has(p.cluster)) {
+        clusterMap.set(p.cluster, { label, count: 0 });
+      }
+      clusterMap.get(p.cluster).count++;
+    }
+  });
+
+  // Sort by cluster number
+  const clusters = Array.from(clusterMap.entries()).sort((a, b) => a[0] - b[0]);
+
+  // Build options
+  clusterSelect.innerHTML = `<option value="">All clusters (${paperList.length})</option>`;
+  clusters.forEach(([clusterId, { label, count }]) => {
+    const opt = document.createElement('option');
+    opt.value = clusterId;
+    opt.textContent = `${label} (${count})`;
+    clusterSelect.appendChild(opt);
+  });
+
+  // Restore selection
+  if (selectedCluster) {
+    clusterSelect.value = selectedCluster;
+  }
+}
+
+function applyClusterFilter() {
+  if (selectedCluster === '' || selectedCluster === null) {
+    papers = [...allTriagePapers];
+  } else {
+    const clusterId = parseInt(selectedCluster);
+    papers = allTriagePapers.filter(p => p.cluster === clusterId);
+  }
+
+  currentIndex = 0;
+  updateProgress();
+
+  if (papers.length === 0) {
+    showEmpty();
+  } else {
+    showPaper(currentIndex);
   }
 }
 
@@ -866,6 +917,12 @@ document.querySelectorAll('.btn-impact').forEach(btn => {
 
 // Skip button
 document.getElementById('skipBtn').addEventListener('click', skip);
+
+// Cluster filter
+document.getElementById('clusterFilter')?.addEventListener('change', (e) => {
+  selectedCluster = e.target.value;
+  applyClusterFilter();
+});
 
 // Goal modal
 document.getElementById('goalEditBtn').addEventListener('click', showGoalModal);

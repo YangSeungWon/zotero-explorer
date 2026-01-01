@@ -126,6 +126,9 @@ function selectBoard(boardId) {
   document.getElementById('boardTitle').value = currentBoard.title;
   localStorage.setItem('lastBoardId', boardId);
 
+  // Reset hidden columns when switching boards
+  hiddenColumns.clear();
+
   renderBoard();
 }
 
@@ -138,6 +141,162 @@ function updateBoardSelect() {
     opt.textContent = b.title;
     select.appendChild(opt);
   });
+}
+
+// ========== Column Sidebar ==========
+
+let sidebarCollapsed = false;
+let draggedSidebarItem = null;
+let hiddenColumns = new Set(); // Track hidden column IDs
+
+function renderSidebarColumns() {
+  const list = document.getElementById('sidebarColumnList');
+  if (!list || !currentBoard) {
+    if (list) list.innerHTML = '<div class="sidebar-empty">No board selected</div>';
+    return;
+  }
+
+  if (currentBoard.columns.length === 0) {
+    list.innerHTML = '<div class="sidebar-empty">No columns</div>';
+    return;
+  }
+
+  list.innerHTML = currentBoard.columns.map((col, idx) => {
+    const cardCount = col.cardIds.length;
+    const isInbox = col.id === 'col_inbox';
+    const isHidden = hiddenColumns.has(col.id);
+    return `
+      <div class="sidebar-column-item ${isInbox ? 'no-drag' : ''} ${isHidden ? 'hidden-col' : ''}"
+           data-column-id="${col.id}"
+           data-column-idx="${idx}"
+           draggable="${isInbox ? 'false' : 'true'}">
+        <span class="sidebar-drag-handle">${isInbox ? '' : '⋮⋮'}</span>
+        <span class="sidebar-column-title">${escapeHtml(col.title)}</span>
+        <span class="sidebar-column-count">${cardCount}</span>
+        <button class="sidebar-visibility-btn" title="${isHidden ? 'Show' : 'Hide'}">
+          <i data-lucide="${isHidden ? 'eye-off' : 'eye'}"></i>
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  // Bind events
+  list.querySelectorAll('.sidebar-column-item').forEach(item => {
+    const columnId = item.dataset.columnId;
+
+    // Click to scroll
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.sidebar-drag-handle') || e.target.closest('.sidebar-visibility-btn')) return;
+      scrollToColumn(columnId);
+
+      // Update active state
+      list.querySelectorAll('.sidebar-column-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+    });
+
+    // Visibility toggle
+    const visBtn = item.querySelector('.sidebar-visibility-btn');
+    if (visBtn) {
+      visBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleColumnVisibility(columnId);
+      });
+    }
+
+    // Drag events (skip inbox)
+    if (!item.classList.contains('no-drag')) {
+      item.addEventListener('dragstart', handleSidebarDragStart);
+      item.addEventListener('dragend', handleSidebarDragEnd);
+      item.addEventListener('dragover', handleSidebarDragOver);
+      item.addEventListener('drop', handleSidebarDrop);
+    }
+  });
+
+  // Re-init icons
+  lucide.createIcons();
+}
+
+function toggleColumnVisibility(columnId) {
+  if (hiddenColumns.has(columnId)) {
+    hiddenColumns.delete(columnId);
+  } else {
+    hiddenColumns.add(columnId);
+  }
+  applyColumnVisibility();
+  renderSidebarColumns();
+}
+
+function applyColumnVisibility() {
+  document.querySelectorAll('.board-column').forEach(col => {
+    const columnId = col.dataset.columnId;
+    if (hiddenColumns.has(columnId)) {
+      col.style.display = 'none';
+    } else {
+      col.style.display = '';
+    }
+  });
+}
+
+function handleSidebarDragStart(e) {
+  draggedSidebarItem = e.target.closest('.sidebar-column-item');
+  draggedSidebarItem.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleSidebarDragEnd(e) {
+  if (draggedSidebarItem) {
+    draggedSidebarItem.classList.remove('dragging');
+    draggedSidebarItem = null;
+  }
+  document.querySelectorAll('.sidebar-column-item').forEach(el => {
+    el.classList.remove('drag-over');
+  });
+}
+
+function handleSidebarDragOver(e) {
+  e.preventDefault();
+  const item = e.target.closest('.sidebar-column-item');
+  if (!item || item === draggedSidebarItem || item.classList.contains('no-drag')) return;
+
+  // Remove previous indicators
+  document.querySelectorAll('.sidebar-column-item').forEach(el => {
+    el.classList.remove('drag-over');
+  });
+  item.classList.add('drag-over');
+}
+
+function handleSidebarDrop(e) {
+  e.preventDefault();
+  const targetItem = e.target.closest('.sidebar-column-item');
+  if (!targetItem || !draggedSidebarItem || targetItem === draggedSidebarItem) return;
+  if (targetItem.classList.contains('no-drag')) return;
+
+  const fromIdx = parseInt(draggedSidebarItem.dataset.columnIdx);
+  const toIdx = parseInt(targetItem.dataset.columnIdx);
+
+  // Reorder columns
+  reorderColumn(fromIdx, toIdx);
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('columnSidebar');
+  sidebarCollapsed = !sidebarCollapsed;
+  sidebar.classList.toggle('collapsed', sidebarCollapsed);
+
+  // Save preference
+  localStorage.setItem('sidebarCollapsed', sidebarCollapsed ? '1' : '');
+}
+
+function initSidebar() {
+  // Restore collapsed state
+  sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === '1';
+  const sidebar = document.getElementById('columnSidebar');
+  if (sidebar && sidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+  }
+
+  // Collapse button
+  document.getElementById('sidebarCollapseBtn')?.addEventListener('click', toggleSidebar);
 }
 
 // ========== Column Navigation ==========
@@ -245,6 +404,7 @@ function reorderColumn(fromIdx, toIdx) {
   currentBoard.updatedAt = Date.now();
   saveBoards();
   renderColumnNav();
+  renderSidebarColumns();
   renderBoard();
 }
 
@@ -421,6 +581,7 @@ function moveCard(cardId, fromColumnId, toColumnId, newIndex) {
 function renderBoard() {
   if (!currentBoard) {
     renderEmptyState();
+    renderSidebarColumns();
     return;
   }
 
@@ -433,6 +594,8 @@ function renderBoard() {
 
   lucide.createIcons();
   setupDragAndDrop();
+  renderSidebarColumns();
+  applyColumnVisibility();
 }
 
 function renderEmptyState() {
@@ -1241,6 +1404,9 @@ function setupEventListeners() {
 
   // Setup column navigation
   setupColumnNav();
+
+  // Setup sidebar
+  initSidebar();
 }
 
 // ========== Auth Helpers ==========
