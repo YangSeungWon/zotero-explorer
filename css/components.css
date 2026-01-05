@@ -148,6 +148,10 @@ input[type="checkbox"] {
 .copy-bibtex-btn.btn-copy {
   border-color: #22c55e !important;
 }
+.copy-bibtex-btn.btn-misc {
+  border-color: #f59e0b !important;
+  color: #f59e0b;
+}
 
 /* App links */
 .zotero-link {

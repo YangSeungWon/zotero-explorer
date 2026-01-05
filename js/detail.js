@@ -336,8 +336,11 @@ function renderLinksHtml(item, includeCopyLink = true) {
   if (includeCopyLink) {
     html += `<button class="copy-link-btn btn-copy"><i data-lucide="clipboard"></i> Citation</button>`;
   }
+  // BibTeX button: DOI → fetch from DOI.org, URL → generate @misc
   if (item.doi) {
-    html += `<button class="copy-bibtex-btn btn-copy" data-doi="${item.doi}" title="Copy BibTeX from DOI.org"><i data-lucide="clipboard"></i> BibTeX</button>`;
+    html += `<button class="copy-bibtex-btn btn-copy" title="Copy BibTeX from DOI.org"><i data-lucide="clipboard"></i> BibTeX</button>`;
+  } else if (item.url) {
+    html += `<button class="copy-bibtex-btn btn-copy btn-misc" title="Generate @misc BibTeX (no DOI)"><i data-lucide="clipboard"></i> @misc</button>`;
   }
   html += '</div>';
   // Second row: Links (all external)
@@ -374,7 +377,32 @@ function generateCitationKey(paper) {
   return `${firstAuthor}${year}_${meaningful.join('_')}`;
 }
 
-// Fetch BibTeX from DOI.org and copy to clipboard
+// Generate @misc BibTeX for items without DOI (webpages, software, etc.)
+function generateMiscBibTeX(paper) {
+  const key = generateCitationKey(paper) || 'misc_' + Date.now();
+  const today = new Date().toISOString().split('T')[0];
+
+  let bibtex = `@misc{${key},\n`;
+  if (paper.title) bibtex += `  title = {${paper.title}},\n`;
+  if (paper.authors) {
+    // Convert "Last, First; Last2, First2" to "Last, First and Last2, First2"
+    const authors = paper.authors.split(';').map(a => a.trim()).join(' and ');
+    bibtex += `  author = {${authors}},\n`;
+  }
+  if (paper.year) bibtex += `  year = {${paper.year}},\n`;
+  if (paper.url) {
+    bibtex += `  url = {${paper.url}},\n`;
+    bibtex += `  urldate = {${today}},\n`;
+  }
+  if (paper.publication) bibtex += `  howpublished = {${paper.publication}},\n`;
+
+  // Remove trailing comma and newline, close brace
+  bibtex = bibtex.replace(/,\n$/, '\n') + '}';
+
+  return bibtex;
+}
+
+// Fetch BibTeX from DOI.org or generate @misc
 async function copyBibTeX(paper, btn) {
   const originalHtml = btn.innerHTML;
   btn.innerHTML = '<i data-lucide="loader"></i> ...';
@@ -382,18 +410,31 @@ async function copyBibTeX(paper, btn) {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
   try {
-    const response = await fetch(`https://doi.org/${paper.doi}`, {
-      headers: { 'Accept': 'application/x-bibtex' }
-    });
+    let bibtex;
 
-    if (!response.ok) throw new Error('Failed to fetch');
+    if (paper.doi) {
+      // Fetch from DOI.org
+      const response = await fetch(`https://doi.org/${paper.doi}`, {
+        headers: { 'Accept': 'application/x-bibtex' }
+      });
 
-    let bibtex = await response.text();
+      if (!response.ok) throw new Error('Failed to fetch');
 
-    // Replace citation key with our generated one
-    const newKey = generateCitationKey(paper);
-    if (newKey) {
-      bibtex = bibtex.replace(/@(\w+)\{[^,]+,/, `@$1{${newKey},`);
+      bibtex = await response.text();
+
+      // Replace citation key with our generated one
+      const newKey = generateCitationKey(paper);
+      if (newKey) {
+        bibtex = bibtex.replace(/@(\w+)\{[^,]+,/, `@$1{${newKey},`);
+      }
+
+      // Fix HTML entities for LaTeX
+      bibtex = bibtex.replace(/&amp;/g, '\\&');
+    } else if (paper.url) {
+      // Generate @misc for URL-based items
+      bibtex = generateMiscBibTeX(paper);
+    } else {
+      throw new Error('No DOI or URL');
     }
 
     await navigator.clipboard.writeText(bibtex);
