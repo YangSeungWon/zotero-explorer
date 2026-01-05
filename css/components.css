@@ -142,6 +142,9 @@ input[type="checkbox"] {
   width: 14px;
   height: 14px;
 }
+.copy-export-btn.btn-copy {
+  border-color: #8b5cf6 !important;
+}
 .copy-link-btn.btn-copy {
   border-color: var(--accent) !important;
 }

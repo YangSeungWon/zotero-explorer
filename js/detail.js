@@ -92,6 +92,35 @@ function copyPaperCitation(item) {
   });
 }
 
+// Copy paper as Markdown export format
+function copyPaperExport(item, btn) {
+  let text = `## ${item.title}\n`;
+  text += `- **Year**: ${item.year || 'N/A'}\n`;
+  text += `- **Authors**: ${item.authors || 'N/A'}\n`;
+  text += `- **Venue**: ${item.venue || 'N/A'}\n`;
+  if (item.cluster !== undefined) {
+    const label = item.cluster_label || clusterLabels?.[item.cluster] || '';
+    text += `- **Cluster**: ${item.cluster}${label ? ` (${label})` : ''}\n`;
+  }
+  if (item.citation_count) text += `- **Citations**: ${item.citation_count}\n`;
+  if (item.doi) text += `- **DOI**: ${item.doi}\n`;
+  if (item.tags && item.tags !== 'nan') text += `- **Tags**: ${item.tags}\n`;
+  if (item.abstract) text += `\n**Abstract**:\n${item.abstract}\n`;
+  if (item.notes) text += `\n**Notes**:\n${item.notes}\n`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="check"></i> Copied!';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }, 1500);
+    }
+  });
+}
+
 // ============================================================
 // Tag Editor
 // ============================================================
@@ -333,6 +362,7 @@ function renderLinksHtml(item, includeCopyLink = true) {
   let html = '';
   // First row: Copy buttons (with clipboard icon)
   html += '<div class="links-row copy-row">';
+  html += `<button class="copy-export-btn btn-copy" title="Copy paper as Markdown"><i data-lucide="clipboard"></i> Export</button>`;
   if (includeCopyLink) {
     html += `<button class="copy-link-btn btn-copy"><i data-lucide="clipboard"></i> Citation</button>`;
   }
@@ -491,6 +521,14 @@ async function copyBibTeX(paper, btn) {
 // Setup copy citation button click handler
 function setupCopyCitationButton(item, containerId = 'detailLinks') {
   const container = document.getElementById(containerId);
+
+  // Export button
+  const exportBtn = container?.querySelector('.copy-export-btn');
+  if (exportBtn) {
+    const newBtn = exportBtn.cloneNode(true);
+    exportBtn.parentNode.replaceChild(newBtn, exportBtn);
+    newBtn.addEventListener('click', () => copyPaperExport(item, newBtn));
+  }
 
   // Copy Citation button
   const citationBtn = container?.querySelector('.copy-link-btn');
