@@ -360,6 +360,11 @@ function renderLinksHtml(item, includeCopyLink = true) {
 // Generate citation key in Google Scholar style: authoryearword1word2word3
 const SKIP_WORDS = new Set(['a', 'an', 'the', 'of', 'for', 'to', 'in', 'on', 'with', 'from', 'by', 'at', 'as', 'and', 'or', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'how', 'what', 'when', 'where', 'why', 'who', 'which', 'can', 'could', 'do', 'does', 'did', 'will', 'would', 'should', 'may', 'might', 'must', 'toward', 'towards', 'into', 'onto', 'upon', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among', 'under', 'over']);
 
+// Remove diacritics (ó→o, é→e, ñ→n, etc.)
+function removeDiacritics(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function generateCitationKey(paper) {
   const authors = paper.authors || '';
   const year = paper.year || '';
@@ -367,19 +372,44 @@ function generateCitationKey(paper) {
 
   if (!authors || !year || !title) return null;
 
-  // Get first author's last name (lowercase)
-  const firstAuthor = authors.split(';')[0].split(',')[0].trim().toLowerCase().replace(/[^a-z]/g, '');
+  // Get first author's last name (lowercase, remove diacritics)
+  const firstAuthor = removeDiacritics(authors.split(';')[0].split(',')[0].trim().toLowerCase()).replace(/[^a-z]/g, '');
 
   // Get first 3 meaningful words from title
-  const words = title.toLowerCase().match(/[a-z]+/g) || [];
+  const normalizedTitle = removeDiacritics(title.toLowerCase());
+  const words = normalizedTitle.match(/[a-z]+/g) || [];
   const meaningful = words.filter(w => !SKIP_WORDS.has(w)).slice(0, 3);
 
   return `${firstAuthor}${year}_${meaningful.join('_')}`;
 }
 
+// Generate readable citation key for @misc (title-based)
+function generateMiscCitationKey(paper) {
+  const title = paper.title || '';
+  const authors = paper.authors || '';
+
+  // Get first author or organization name (lowercase, remove diacritics)
+  let authorPart = '';
+  if (authors) {
+    authorPart = removeDiacritics(authors.split(';')[0].split(',')[0].trim().toLowerCase()).replace(/[^a-z]/g, '');
+  }
+
+  // Get meaningful words from title (up to 5)
+  const normalizedTitle = removeDiacritics(title.toLowerCase());
+  const words = normalizedTitle.match(/[a-z]+/g) || [];
+  const meaningful = words.filter(w => !SKIP_WORDS.has(w)).slice(0, 5);
+
+  if (authorPart && meaningful.length > 0) {
+    return `${authorPart}_${meaningful.join('_')}`;
+  } else if (meaningful.length > 0) {
+    return meaningful.join('_');
+  }
+  return 'misc_' + Date.now();
+}
+
 // Generate @misc BibTeX for items without DOI (webpages, software, etc.)
 function generateMiscBibTeX(paper) {
-  const key = generateCitationKey(paper) || 'misc_' + Date.now();
+  const key = generateMiscCitationKey(paper);
   const today = new Date().toISOString().split('T')[0];
 
   let bibtex = `@misc{${key},\n`;
