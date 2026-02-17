@@ -1360,6 +1360,58 @@
 }
 
 /* ===========================================
+   Board Loading Overlay
+   =========================================== */
+
+.board-loading {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.board-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.board-loading-blocks {
+  display: flex;
+  gap: 12px;
+}
+
+.board-loading-block {
+  width: 40px;
+  height: 28px;
+  border-radius: 4px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-secondary);
+  animation: blockPulse 1.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.15s);
+  opacity: 0.3;
+}
+
+.board-loading-block:nth-child(1) { border-left-color: var(--cat-structure); }
+.board-loading-block:nth-child(2) { border-left-color: var(--cat-evidence); }
+.board-loading-block:nth-child(3) { border-left-color: var(--cat-theory); }
+
+@keyframes blockPulse {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-6px); }
+}
+
+.board-loading-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* ===========================================
    Edit Block Modal — Paste Section
    =========================================== */
 
