@@ -23,7 +23,7 @@ let saveTimeout = null;
 const SAVE_DELAY = 1500;
 const MIN_ZOOM = 0.15;
 const MAX_ZOOM = 1.5;
-const BLOCK_WIDTH = 280;
+const BLOCK_WIDTH = 460;
 
 // ========== Initialization ==========
 
