@@ -300,7 +300,8 @@ function initPanZoom() {
     const mouseY = e.clientY - rect.top;
 
     const delta = e.deltaY > 0 ? -0.04 : 0.04;
-    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport.zoom + delta));
+    const minZoom = getFitZoom();
+    const newZoom = Math.max(minZoom, Math.min(MAX_ZOOM, viewport.zoom + delta));
 
     if (newZoom !== viewport.zoom) {
       // Zoom towards mouse position
@@ -328,7 +329,7 @@ function applyViewportTransform() {
   const vp = document.getElementById('canvasViewport');
   vp.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`;
   // Counter-scale text so it stays readable at any zoom
-  const compensate = Math.min(1 / viewport.zoom, 3);
+  const compensate = Math.min(1 / viewport.zoom, 2);
   vp.style.setProperty('--zc', compensate);
   vp.classList.toggle('zoom-mid', viewport.zoom < 0.55);
   updateZoomDisplay();
@@ -345,13 +346,36 @@ function zoomTo(newZoom) {
   const cx = rect.width / 2;
   const cy = rect.height / 2;
 
-  newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+  newZoom = Math.max(getFitZoom(), Math.min(MAX_ZOOM, newZoom));
   const ratio = newZoom / viewport.zoom;
   viewport.x = cx - ratio * (cx - viewport.x);
   viewport.y = cy - ratio * (cy - viewport.y);
   viewport.zoom = newZoom;
   applyViewportTransform();
   scheduleSave();
+}
+
+function getFitZoom() {
+  if (!currentBoard) return MIN_ZOOM;
+  const blocks = Object.values(currentBoard.blocks || {});
+  if (blocks.length === 0) return 1;
+
+  const container = document.getElementById('canvasContainer');
+  const rect = container.getBoundingClientRect();
+  const padding = 80;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  blocks.forEach(b => {
+    minX = Math.min(minX, b.x);
+    minY = Math.min(minY, b.y);
+    maxX = Math.max(maxX, b.x + BLOCK_WIDTH);
+    maxY = Math.max(maxY, b.y + 160);
+  });
+
+  const contentW = maxX - minX + padding * 2;
+  const contentH = maxY - minY + padding * 2;
+
+  return Math.max(MIN_ZOOM, Math.min(rect.width / contentW, rect.height / contentH, MAX_ZOOM));
 }
 
 function fitView() {
@@ -378,13 +402,7 @@ function fitView() {
   const contentW = maxX - minX + padding * 2;
   const contentH = maxY - minY + padding * 2;
 
-  const zoom = Math.min(
-    rect.width / contentW,
-    rect.height / contentH,
-    1.5
-  );
-
-  viewport.zoom = Math.max(MIN_ZOOM, zoom);
+  viewport.zoom = getFitZoom();
   viewport.x = (rect.width - contentW * viewport.zoom) / 2 - minX * viewport.zoom + padding * viewport.zoom;
   viewport.y = (rect.height - contentH * viewport.zoom) / 2 - minY * viewport.zoom + padding * viewport.zoom;
 

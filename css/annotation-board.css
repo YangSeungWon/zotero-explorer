@@ -205,7 +205,7 @@
 
 .flow-block {
   position: absolute;
-  width: 340px;
+  width: 460px;
   background: var(--bg-primary);
   border: calc(1px * var(--zc, 1)) solid var(--border-color);
   border-left: calc(5px * var(--zc, 1)) solid var(--accent);
@@ -353,6 +353,12 @@
 .canvas-viewport.zoom-mid .flow-block-note,
 .canvas-viewport.zoom-mid .flow-block-links {
   display: none;
+}
+.canvas-viewport.zoom-mid .flow-block-paper-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 
@@ -518,6 +524,36 @@
   min-width: 40px;
   text-align: center;
   user-select: none;
+}
+
+/* Category Legend */
+.category-legend {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  gap: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  z-index: 50;
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 /* ===========================================
