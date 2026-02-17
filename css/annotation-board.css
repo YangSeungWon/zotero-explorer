@@ -1327,9 +1327,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--accent);
+  border-left: 3px solid var(--accent);
   border-radius: var(--radius-sm);
   margin-bottom: 10px;
 }
@@ -1379,18 +1380,55 @@
 }
 
 /* Paper link — search state */
+.paper-link-search {
+  margin-bottom: 10px;
+}
+
+.paper-link-search-wrap {
+  position: relative;
+}
+
+.paper-link-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
 .paper-link-search-input {
-  margin-bottom: 0 !important;
+  width: 100%;
+  padding: 9px 12px 9px 32px;
+  font-size: 13px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.paper-link-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.paper-link-search-input::placeholder {
+  color: var(--text-muted);
 }
 
 .paper-link-results {
-  max-height: 150px;
+  max-height: 180px;
   overflow-y: auto;
   border: 1px solid var(--border-color);
   border-top: none;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   background: var(--bg-primary);
   display: none;
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .paper-link-results.has-results {
@@ -1398,7 +1436,10 @@
 }
 
 .paper-link-result {
-  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
   cursor: pointer;
   transition: background var(--transition-fast);
   border-bottom: 1px solid var(--border-subtle);
@@ -1409,7 +1450,12 @@
 }
 
 .paper-link-result:hover {
-  background: var(--bg-secondary);
+  background: var(--accent-bg, color-mix(in srgb, var(--accent) 8%, transparent));
+}
+
+.paper-link-result-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .paper-link-result-title {
@@ -1419,12 +1465,30 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .paper-link-result-meta {
   font-size: 10px;
   color: var(--text-muted);
   margin-top: 2px;
+}
+
+.paper-link-result-action {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.paper-link-result:hover .paper-link-result-action {
+  opacity: 1;
+  color: var(--accent);
 }
 
 /* Reference links (Zotero / PDF) */

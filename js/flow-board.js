@@ -952,8 +952,10 @@ function openEditBlockModal(blockId) {
   document.getElementById('editCardNote').value = block.myNote || '';
 
   // Ref links
-  document.getElementById('editCardZoteroUrl').value = block.source?.zoteroUrl || '';
-  document.getElementById('editCardPdfUrl').value = block.pdf?.url || '';
+  const zoteroUrlEl = document.getElementById('editCardZoteroUrl');
+  const pdfUrlEl = document.getElementById('editCardPdfUrl');
+  if (zoteroUrlEl) zoteroUrlEl.value = block.source?.zoteroUrl || '';
+  if (pdfUrlEl) pdfUrlEl.value = block.pdf?.url || '';
   updateRefLinkButton('editCardZoteroOpen', block.source?.zoteroUrl);
   updateRefLinkButton('editCardPdfOpen', block.pdf?.url);
 
@@ -961,9 +963,13 @@ function openEditBlockModal(blockId) {
   updatePaperLinkDisplay(block.paperId, block.paperTitle);
 
   // Clear search
-  document.getElementById('editCardPaperSearchInput').value = '';
-  document.getElementById('editCardPaperResults').innerHTML = '';
-  document.getElementById('editCardPaperResults').classList.remove('has-results');
+  const searchInput = document.getElementById('editCardPaperSearchInput');
+  const searchResults = document.getElementById('editCardPaperResults');
+  if (searchInput) searchInput.value = '';
+  if (searchResults) {
+    searchResults.innerHTML = '';
+    searchResults.classList.remove('has-results');
+  }
 
   document.getElementById('editCardModal').style.display = 'flex';
   lucide.createIcons();
@@ -987,7 +993,7 @@ function saveEditBlock() {
   block.quote = document.getElementById('editCardQuote').value.trim();
 
   // Source fields
-  const zoteroUrl = document.getElementById('editCardZoteroUrl').value.trim();
+  const zoteroUrl = (document.getElementById('editCardZoteroUrl')?.value || '').trim();
   const zoteroKeyMatch = zoteroUrl.match(/items\/([A-Z0-9]+)/i);
   block.source = {
     ...block.source,
@@ -997,7 +1003,7 @@ function saveEditBlock() {
   };
 
   // PDF fields
-  const pdfUrl = document.getElementById('editCardPdfUrl').value.trim();
+  const pdfUrl = (document.getElementById('editCardPdfUrl')?.value || '').trim();
   const pageMatch = pdfUrl.match(/page=(\d+)/);
   if (pdfUrl) {
     block.pdf = {
@@ -1524,9 +1530,11 @@ function updatePaperLinkDisplay(paperId, paperTitle) {
 
   const linkedEl = document.getElementById('editCardPaperLinked');
   const searchEl = document.getElementById('editCardPaperSearch');
+  if (!linkedEl || !searchEl) return;
 
   if (paperId && paperTitle) {
-    document.getElementById('editCardPaperTitle').textContent = paperTitle;
+    const titleEl = document.getElementById('editCardPaperTitle');
+    if (titleEl) titleEl.textContent = paperTitle;
     linkedEl.style.display = 'flex';
     searchEl.style.display = 'none';
   } else {
@@ -1552,17 +1560,21 @@ function onEditCardPaperSearch(e) {
   }).slice(0, 5);
 
   if (matches.length === 0) {
-    resultsEl.innerHTML = '<div class="paper-link-result-meta" style="padding:8px 10px;">No papers found</div>';
+    resultsEl.innerHTML = '<div class="paper-link-result" style="cursor:default;opacity:0.6;"><div class="paper-link-result-info"><div class="paper-link-result-meta">No papers found</div></div></div>';
     resultsEl.classList.add('has-results');
     return;
   }
 
   resultsEl.innerHTML = matches.map(p => `
     <div class="paper-link-result" data-paper-id="${p.id}">
-      <div class="paper-link-result-title">${escapeHtml(p.title)}</div>
-      <div class="paper-link-result-meta">${escapeHtml(abbreviateAuthors(p.authors))} · ${p.year || '?'}</div>
+      <div class="paper-link-result-info">
+        <div class="paper-link-result-title">${escapeHtml(p.title)}</div>
+        <div class="paper-link-result-meta">${escapeHtml(abbreviateAuthors(p.authors))} · ${p.year || '?'}</div>
+      </div>
+      <div class="paper-link-result-action"><i data-lucide="arrow-right"></i></div>
     </div>
   `).join('');
+  lucide.createIcons();
   resultsEl.classList.add('has-results');
 
   // Click handler for each result
@@ -1576,20 +1588,21 @@ function onEditCardPaperSearch(e) {
 
       // Auto-fill source text if empty
       const sourceInput = document.getElementById('editCardSource');
-      if (!sourceInput.value.trim()) {
+      if (sourceInput && !sourceInput.value.trim()) {
         sourceInput.value = abbreviateAuthors(paper.authors) + (paper.year ? ', ' + paper.year : '');
       }
 
       // Auto-fill zotero URL if empty
       const zoteroInput = document.getElementById('editCardZoteroUrl');
-      if (!zoteroInput.value.trim() && paper.zotero_key) {
+      if (zoteroInput && !zoteroInput.value.trim() && paper.zotero_key) {
         const url = getZoteroUrl(paper.zotero_key);
         zoteroInput.value = url;
         updateRefLinkButton('editCardZoteroOpen', url);
       }
 
       // Clear search
-      document.getElementById('editCardPaperSearchInput').value = '';
+      const searchInputEl = document.getElementById('editCardPaperSearchInput');
+      if (searchInputEl) searchInputEl.value = '';
       resultsEl.innerHTML = '';
       resultsEl.classList.remove('has-results');
 
