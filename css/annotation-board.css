@@ -629,6 +629,19 @@
   max-width: 500px;
 }
 
+.modal.modal-card-wide {
+  max-width: 580px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal.modal-card-wide .edit-card-form {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
 .modal.modal-export {
   max-width: 700px;
   max-height: 80vh;
@@ -1283,6 +1296,215 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ===========================================
+   Edit Block Modal — Source Section
+   =========================================== */
+
+.edit-card-source-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.edit-card-source-section > label {
+  margin-bottom: 10px;
+}
+
+.edit-card-source-section .modal-input {
+  margin-bottom: 10px;
+}
+
+.edit-card-source-section .modal-input:last-child {
+  margin-bottom: 0;
+}
+
+/* Paper link — connected state */
+.paper-link-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+
+.paper-link-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.paper-link-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.paper-link-unlink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.paper-link-unlink:hover {
+  background: var(--red-500);
+  color: white;
+  border-color: var(--red-500);
+}
+
+.paper-link-unlink svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Paper link — search state */
+.paper-link-search-input {
+  margin-bottom: 0 !important;
+}
+
+.paper-link-results {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--bg-primary);
+  display: none;
+}
+
+.paper-link-results.has-results {
+  display: block;
+}
+
+.paper-link-result {
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.paper-link-result:last-child {
+  border-bottom: none;
+}
+
+.paper-link-result:hover {
+  background: var(--bg-secondary);
+}
+
+.paper-link-result-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.paper-link-result-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Reference links (Zotero / PDF) */
+.edit-card-ref-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ref-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ref-link-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+.ref-link-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ref-link-input {
+  flex: 1;
+  min-width: 0;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 12px !important;
+  padding: 6px 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.ref-link-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.ref-link-open:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.ref-link-open svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Category row — inline at bottom */
+.edit-card-category-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.edit-card-category-row label {
+  margin-bottom: 0 !important;
+  white-space: nowrap;
+}
+
+.edit-card-category-row .modal-input {
+  margin-bottom: 0;
+  flex: 1;
 }
 
 /* ===========================================

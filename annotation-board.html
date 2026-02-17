@@ -164,7 +164,7 @@
 
   <!-- Edit Block Modal -->
   <div class="modal-overlay" id="editCardModal" style="display: none;">
-    <div class="modal modal-card">
+    <div class="modal modal-card-wide">
       <div class="modal-header">
         <h3>Edit Block</h3>
         <button id="closeEditCard" class="btn-close">
@@ -172,24 +172,63 @@
         </button>
       </div>
       <div class="edit-card-form">
-        <label>Category</label>
-        <select id="editCardCategory" class="modal-input">
-          <option value="">None</option>
-          <option value="structure">Structure</option>
-          <option value="evidence">Evidence</option>
-          <option value="theory">Theory</option>
-          <option value="pathway">Pathway</option>
-          <option value="risk">Risk</option>
-        </select>
-
         <label>Quote</label>
         <textarea id="editCardQuote" class="modal-textarea" placeholder="Original quote from the paper..."></textarea>
 
-        <label>Source</label>
-        <input type="text" id="editCardSource" class="modal-input" placeholder="Author et al., Year, p.XX">
+        <div class="edit-card-source-section">
+          <label>Source</label>
+          <!-- Paper link: connected state -->
+          <div id="editCardPaperLinked" class="paper-link-display" style="display:none;">
+            <i data-lucide="book-open" class="paper-link-icon"></i>
+            <span id="editCardPaperTitle" class="paper-link-title"></span>
+            <button type="button" id="editCardUnlinkPaper" class="paper-link-unlink" title="Unlink paper">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <!-- Paper link: search state -->
+          <div id="editCardPaperSearch" class="paper-link-search" style="display:none;">
+            <input type="text" id="editCardPaperSearchInput" class="modal-input paper-link-search-input" placeholder="Search paper to link...">
+            <div id="editCardPaperResults" class="paper-link-results"></div>
+          </div>
+
+          <input type="text" id="editCardSource" class="modal-input" placeholder="Author et al., Year, p.XX">
+
+          <div class="edit-card-ref-links">
+            <div class="ref-link-row">
+              <span class="ref-link-label">Zotero</span>
+              <div class="ref-link-input-wrap">
+                <input type="text" id="editCardZoteroUrl" class="modal-input ref-link-input" placeholder="zotero://select/...">
+                <a id="editCardZoteroOpen" class="ref-link-open" href="#" target="_blank" title="Open in Zotero" style="display:none;">
+                  <i data-lucide="external-link"></i>
+                </a>
+              </div>
+            </div>
+            <div class="ref-link-row">
+              <span class="ref-link-label">PDF</span>
+              <div class="ref-link-input-wrap">
+                <input type="text" id="editCardPdfUrl" class="modal-input ref-link-input" placeholder="zotero://open-pdf/...">
+                <a id="editCardPdfOpen" class="ref-link-open" href="#" target="_blank" title="Open PDF" style="display:none;">
+                  <i data-lucide="external-link"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <label>Your Note</label>
         <textarea id="editCardNote" class="modal-textarea-large" placeholder="Your interpretation or analysis..."></textarea>
+
+        <div class="edit-card-category-row">
+          <label>Category</label>
+          <select id="editCardCategory" class="modal-input">
+            <option value="">None</option>
+            <option value="structure">Structure</option>
+            <option value="evidence">Evidence</option>
+            <option value="theory">Theory</option>
+            <option value="pathway">Pathway</option>
+            <option value="risk">Risk</option>
+          </select>
+        </div>
       </div>
       <div class="modal-actions">
         <button id="cancelEditCard" class="btn-secondary">Cancel</button>

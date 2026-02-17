@@ -10,6 +10,8 @@ let allBoards = [];
 let currentBoard = null;
 let selectedBlockId = null;
 let editingBlockId = null;
+let editingPaperId = null;
+let editingPaperTitle = null;
 let selectedEdgeId = null;
 let drawingEdge = null;      // { fromBlockId, tempLine }
 let isDraggingBlock = null;  // { blockId, element, offsetX, offsetY }
@@ -877,6 +879,19 @@ function setupEventListeners() {
   document.getElementById('cancelEditCard')?.addEventListener('click', closeEditBlockModal);
   document.getElementById('saveEditCard')?.addEventListener('click', saveEditBlock);
 
+  // Edit block modal — paper search & ref links
+  document.getElementById('editCardPaperSearchInput')?.addEventListener('input', onEditCardPaperSearch);
+  document.getElementById('editCardUnlinkPaper')?.addEventListener('click', () => {
+    updatePaperLinkDisplay(null, null);
+    lucide.createIcons();
+  });
+  document.getElementById('editCardZoteroUrl')?.addEventListener('input', (e) => {
+    updateRefLinkButton('editCardZoteroOpen', e.target.value);
+  });
+  document.getElementById('editCardPdfUrl')?.addEventListener('input', (e) => {
+    updateRefLinkButton('editCardPdfOpen', e.target.value);
+  });
+
   // Add block modal
   document.getElementById('closeAddCard')?.addEventListener('click', closeAddBlockModal);
   document.getElementById('cancelAddCard')?.addEventListener('click', closeAddBlockModal);
@@ -935,11 +950,29 @@ function openEditBlockModal(blockId) {
   document.getElementById('editCardQuote').value = block.quote || '';
   document.getElementById('editCardSource').value = block.source?.text || '';
   document.getElementById('editCardNote').value = block.myNote || '';
+
+  // Ref links
+  document.getElementById('editCardZoteroUrl').value = block.source?.zoteroUrl || '';
+  document.getElementById('editCardPdfUrl').value = block.pdf?.url || '';
+  updateRefLinkButton('editCardZoteroOpen', block.source?.zoteroUrl);
+  updateRefLinkButton('editCardPdfOpen', block.pdf?.url);
+
+  // Paper link
+  updatePaperLinkDisplay(block.paperId, block.paperTitle);
+
+  // Clear search
+  document.getElementById('editCardPaperSearchInput').value = '';
+  document.getElementById('editCardPaperResults').innerHTML = '';
+  document.getElementById('editCardPaperResults').classList.remove('has-results');
+
   document.getElementById('editCardModal').style.display = 'flex';
+  lucide.createIcons();
 }
 
 function closeEditBlockModal() {
   editingBlockId = null;
+  editingPaperId = null;
+  editingPaperTitle = null;
   document.getElementById('editCardModal').style.display = 'none';
 }
 
@@ -952,10 +985,34 @@ function saveEditBlock() {
   block.category = document.getElementById('editCardCategory').value || null;
   block.color = null; // category takes precedence
   block.quote = document.getElementById('editCardQuote').value.trim();
+
+  // Source fields
+  const zoteroUrl = document.getElementById('editCardZoteroUrl').value.trim();
+  const zoteroKeyMatch = zoteroUrl.match(/items\/([A-Z0-9]+)/i);
   block.source = {
     ...block.source,
-    text: document.getElementById('editCardSource').value.trim()
+    text: document.getElementById('editCardSource').value.trim(),
+    zoteroUrl: zoteroUrl || undefined,
+    zoteroKey: zoteroKeyMatch ? zoteroKeyMatch[1] : (block.source?.zoteroKey || undefined)
   };
+
+  // PDF fields
+  const pdfUrl = document.getElementById('editCardPdfUrl').value.trim();
+  const pageMatch = pdfUrl.match(/page=(\d+)/);
+  if (pdfUrl) {
+    block.pdf = {
+      ...(block.pdf || {}),
+      url: pdfUrl,
+      page: pageMatch ? parseInt(pageMatch[1]) : (block.pdf?.page || null)
+    };
+  } else {
+    block.pdf = null;
+  }
+
+  // Paper link
+  block.paperId = editingPaperId;
+  block.paperTitle = editingPaperTitle;
+
   block.myNote = document.getElementById('editCardNote').value.trim();
 
   // Re-render this block
@@ -1457,6 +1514,99 @@ function closeDetailPanel() {
 
 function showPaperDetail(paperId) {
   paperDetailPanel?.show(paperId);
+}
+
+// ========== Edit Modal Helpers ==========
+
+function updatePaperLinkDisplay(paperId, paperTitle) {
+  editingPaperId = paperId;
+  editingPaperTitle = paperTitle;
+
+  const linkedEl = document.getElementById('editCardPaperLinked');
+  const searchEl = document.getElementById('editCardPaperSearch');
+
+  if (paperId && paperTitle) {
+    document.getElementById('editCardPaperTitle').textContent = paperTitle;
+    linkedEl.style.display = 'flex';
+    searchEl.style.display = 'none';
+  } else {
+    linkedEl.style.display = 'none';
+    searchEl.style.display = 'block';
+  }
+}
+
+function onEditCardPaperSearch(e) {
+  const query = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('editCardPaperResults');
+
+  if (!query || query.length < 2) {
+    resultsEl.innerHTML = '';
+    resultsEl.classList.remove('has-results');
+    return;
+  }
+
+  const matches = papers.filter(p => {
+    const title = (p.title || '').toLowerCase();
+    const authors = (p.authors || '').toLowerCase();
+    return title.includes(query) || authors.includes(query);
+  }).slice(0, 5);
+
+  if (matches.length === 0) {
+    resultsEl.innerHTML = '<div class="paper-link-result-meta" style="padding:8px 10px;">No papers found</div>';
+    resultsEl.classList.add('has-results');
+    return;
+  }
+
+  resultsEl.innerHTML = matches.map(p => `
+    <div class="paper-link-result" data-paper-id="${p.id}">
+      <div class="paper-link-result-title">${escapeHtml(p.title)}</div>
+      <div class="paper-link-result-meta">${escapeHtml(abbreviateAuthors(p.authors))} · ${p.year || '?'}</div>
+    </div>
+  `).join('');
+  resultsEl.classList.add('has-results');
+
+  // Click handler for each result
+  resultsEl.querySelectorAll('.paper-link-result').forEach(el => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.paperId;
+      const paper = papers.find(pp => String(pp.id) === pid);
+      if (!paper) return;
+
+      updatePaperLinkDisplay(paper.id, paper.title);
+
+      // Auto-fill source text if empty
+      const sourceInput = document.getElementById('editCardSource');
+      if (!sourceInput.value.trim()) {
+        sourceInput.value = abbreviateAuthors(paper.authors) + (paper.year ? ', ' + paper.year : '');
+      }
+
+      // Auto-fill zotero URL if empty
+      const zoteroInput = document.getElementById('editCardZoteroUrl');
+      if (!zoteroInput.value.trim() && paper.zotero_key) {
+        const url = getZoteroUrl(paper.zotero_key);
+        zoteroInput.value = url;
+        updateRefLinkButton('editCardZoteroOpen', url);
+      }
+
+      // Clear search
+      document.getElementById('editCardPaperSearchInput').value = '';
+      resultsEl.innerHTML = '';
+      resultsEl.classList.remove('has-results');
+
+      lucide.createIcons();
+    });
+  });
+}
+
+function updateRefLinkButton(buttonId, url) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) return;
+  if (url && url.trim()) {
+    btn.href = url.trim();
+    btn.style.display = 'flex';
+  } else {
+    btn.style.display = 'none';
+  }
 }
 
 // ========== Utilities ==========
