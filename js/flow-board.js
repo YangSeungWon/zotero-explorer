@@ -1065,9 +1065,36 @@ function updateAddBlockPreview() {
   }
 
   const parsed = parseRawAnnotation(rawText);
+
+  // Auto-match reference paper title to papers array
+  if (parsed.referencePaperTitle) {
+    const refTitle = parsed.referencePaperTitle.toLowerCase();
+    const match = papers.find(p => {
+      const pt = (p.title || '').toLowerCase();
+      return pt === refTitle || pt.includes(refTitle) || refTitle.includes(pt);
+    });
+    if (match) {
+      parsed.paperId = match.id;
+      parsed.paperTitle = match.title;
+    }
+  }
+
   parsedAddBlockData = parsed;
 
   if (parsed.quote) {
+    // Build paper match HTML
+    let paperMatchHtml = '';
+    if (parsed.referencePaperTitle) {
+      const matched = parsed.paperId != null;
+      paperMatchHtml = `
+        <div class="preview-paper-match ${matched ? 'matched' : ''}">
+          <span class="preview-paper-icon">${matched ? '<i data-lucide="check-circle-2"></i>' : '<i data-lucide="circle-help"></i>'}</span>
+          <span class="preview-paper-title">${escapeHtml(parsed.referencePaperTitle)}</span>
+          ${matched ? '<span class="preview-paper-badge">Linked</span>' : '<span class="preview-paper-badge unmatched">Not found</span>'}
+        </div>
+      `;
+    }
+
     preview.classList.add('has-content');
     preview.innerHTML = `
       <div class="preview-label">Preview</div>
@@ -1078,7 +1105,9 @@ function updateAddBlockPreview() {
         ${parsed.pdf?.url ? `<span class="preview-link">PDF${parsed.pdf.page ? ' p.' + parsed.pdf.page : ''}</span>` : ''}
       </div>
       ${parsed.myNote ? `<div class="preview-note">${escapeHtml(parsed.myNote)}</div>` : ''}
+      ${paperMatchHtml}
     `;
+    lucide.createIcons();
   } else {
     preview.classList.remove('has-content');
     preview.innerHTML = '';
