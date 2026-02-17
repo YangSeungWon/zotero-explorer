@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Annotation Board - Zotero Explorer</title>
+  <title>Flow Board - Zotero Explorer</title>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/buttons.css">
@@ -17,7 +17,7 @@
   <!-- Login Overlay -->
   <div id="loginOverlay" class="login-overlay">
     <div class="login-box">
-      <h2>Annotation Board</h2>
+      <h2>Flow Board</h2>
       <p>Enter your API Key</p>
       <form id="loginForm" autocomplete="off">
         <input type="password" id="loginApiKey" placeholder="API Key" autocomplete="off" data-lpignore="true" data-form-type="other" required>
@@ -46,22 +46,11 @@
         </button>
       </div>
       <div class="header-actions">
-        <div class="column-nav-wrapper">
-          <button id="columnNavBtn" class="btn-action" title="Column Navigation">
-            <i data-lucide="list"></i> Columns
-          </button>
-          <div id="columnNavDropdown" class="column-nav-dropdown">
-            <!-- Column list rendered here -->
-          </div>
-        </div>
-        <button id="migrateOutlinesBtn" class="btn-action" title="Migrate from Outlines">
-          <i data-lucide="folder-input"></i> Migrate
+        <button id="addBlockBtn" class="btn-action" title="Add Block">
+          <i data-lucide="plus-square"></i> Add Block
         </button>
         <button id="importAnnotationsBtn" class="btn-action" title="Import Annotations from Papers">
           <i data-lucide="download"></i> Import
-        </button>
-        <button id="addColumnBtn" class="btn-action" title="Add Column">
-          <i data-lucide="columns"></i> Add Column
         </button>
         <button id="exportBtn" class="btn-icon" title="Export as Markdown">
           <i data-lucide="file-text"></i>
@@ -80,35 +69,25 @@
       <input type="text" id="boardTitle" class="board-title-input" placeholder="Board Title...">
     </div>
 
-    <!-- Main Board Area -->
-    <div class="board-layout">
-      <!-- Column Sidebar -->
-      <aside class="column-sidebar" id="columnSidebar">
-        <div class="sidebar-header">
-          <span>Columns</span>
-          <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse">
-            <i data-lucide="chevron-left"></i>
-          </button>
-        </div>
-        <div class="sidebar-list" id="sidebarColumnList">
-          <!-- Column list rendered here -->
-        </div>
-      </aside>
-
-      <!-- Main Board -->
-      <main class="board-main">
-        <div id="columnsContainer" class="columns-container">
-          <!-- Columns rendered here -->
-        </div>
-
-        <!-- Add Column Placeholder -->
-        <div class="add-column-placeholder" id="addColumnPlaceholder">
-          <button class="add-column-btn">
-            <i data-lucide="plus"></i>
-            <span>Add Column</span>
-          </button>
-        </div>
-      </main>
+    <!-- Canvas Area -->
+    <div class="canvas-area" id="canvasContainer">
+      <div id="canvasViewport" class="canvas-viewport">
+        <div id="blockLayer" class="block-layer"></div>
+        <svg id="svgLayer" class="svg-layer" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                    refX="10" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" />
+            </marker>
+          </defs>
+        </svg>
+      </div>
+      <div class="zoom-controls">
+        <button id="zoomInBtn">+</button>
+        <span id="zoomLevel">100%</span>
+        <button id="zoomOutBtn">-</button>
+        <button id="fitViewBtn">Fit</button>
+      </div>
     </div>
 
     <!-- Paper Detail Panel -->
@@ -176,11 +155,11 @@
     </div>
   </div>
 
-  <!-- Edit Card Modal -->
+  <!-- Edit Block Modal -->
   <div class="modal-overlay" id="editCardModal" style="display: none;">
     <div class="modal modal-card">
       <div class="modal-header">
-        <h3>Edit Annotation</h3>
+        <h3>Edit Block</h3>
         <button id="closeEditCard" class="btn-close">
           <i data-lucide="x"></i>
         </button>
@@ -220,42 +199,23 @@
     </div>
   </div>
 
-  <!-- Add Card Modal -->
+  <!-- Add Block Modal -->
   <div class="modal-overlay" id="addCardModal" style="display: none;">
     <div class="modal modal-card">
       <div class="modal-header">
-        <h3>Add Annotation</h3>
+        <h3>Add Block</h3>
         <button id="closeAddCard" class="btn-close">
           <i data-lucide="x"></i>
         </button>
       </div>
       <div class="edit-card-form">
         <label>Paste Zotero Annotation</label>
-        <textarea id="addCardRaw" class="modal-textarea-raw" placeholder='"quote text" ([Author, Year](zotero://...)) ([pdf](zotero://...)) your note...'></textarea>
+        <textarea id="addCardRaw" class="modal-textarea-raw" placeholder="&ldquo;quote text&rdquo; ([Author, Year](zotero://...)) ([pdf](zotero://...)) your note...""></textarea>
         <div id="addCardPreview" class="add-card-preview"></div>
       </div>
       <div class="modal-actions">
         <button id="cancelAddCard" class="btn-secondary">Cancel</button>
         <button id="confirmAddCard" class="btn-primary">Add</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Migrate Outlines Modal -->
-  <div class="modal-overlay" id="migrateModal" style="display: none;">
-    <div class="modal modal-large">
-      <div class="modal-header">
-        <h3>Migrate from Outlines</h3>
-        <button id="closeMigrateModal" class="btn-close">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <div id="migrateOutlinesList" class="import-papers-list">
-        <!-- Outlines listed here -->
-      </div>
-      <div class="modal-actions">
-        <button id="cancelMigrate" class="btn-secondary">Cancel</button>
-        <button id="confirmMigrate" class="btn-primary">Migrate Selected</button>
       </div>
     </div>
   </div>
@@ -266,6 +226,6 @@
   <script src="js/paper-item.js"></script>
   <script src="js/paper-search.js"></script>
   <script src="js/annotation-parser.js"></script>
-  <script src="js/annotation-board.js"></script>
+  <script src="js/flow-board.js"></script>
 </body>
 </html>

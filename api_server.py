@@ -1425,6 +1425,135 @@ def delete_outline(outline_id):
 
 
 # ============================================================
+# Boards API Endpoints (Flow Board)
+# ============================================================
+
+BOARDS_FILE = Path(__file__).parent / "boards.json"
+
+
+def load_boards():
+    """Load boards from JSON file"""
+    if not BOARDS_FILE.exists():
+        return {"boards": []}
+    with open(BOARDS_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def save_boards(data):
+    """Save boards to JSON file"""
+    with open(BOARDS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+@app.route('/api/boards', methods=['GET'])
+def get_boards():
+    """Get all boards (metadata only)"""
+    try:
+        data = load_boards()
+        summaries = []
+        for b in data.get("boards", []):
+            summaries.append({
+                "id": b["id"],
+                "title": b.get("title", "Untitled"),
+                "blockCount": len(b.get("blocks", {})),
+                "edgeCount": len(b.get("edges", [])),
+                "updatedAt": b.get("updated", b.get("created", ""))
+            })
+        return jsonify({"success": True, "boards": summaries})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/boards/<board_id>', methods=['GET'])
+def get_board(board_id):
+    """Get a single board by ID"""
+    try:
+        data = load_boards()
+        board = next((b for b in data.get("boards", []) if b["id"] == board_id), None)
+        if board:
+            return jsonify({"success": True, "board": board})
+        else:
+            return jsonify({"success": False, "error": "Board not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/boards', methods=['POST'])
+def create_board():
+    """Create a new board"""
+    try:
+        import uuid
+        req_data = request.json or {}
+
+        new_board = {
+            "id": str(uuid.uuid4()),
+            "title": req_data.get("title", "Untitled"),
+            "blocks": req_data.get("blocks", {}),
+            "edges": req_data.get("edges", []),
+            "viewport": req_data.get("viewport", {"x": 0, "y": 0, "zoom": 1}),
+            "created": datetime.now().isoformat(),
+            "updated": datetime.now().isoformat()
+        }
+
+        data = load_boards()
+        data["boards"].append(new_board)
+        save_boards(data)
+
+        return jsonify({"success": True, "board": new_board})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/boards/<board_id>', methods=['PUT'])
+def update_board(board_id):
+    """Update an existing board"""
+    try:
+        req_data = request.json
+        data = load_boards()
+
+        board_idx = next((i for i, b in enumerate(data["boards"]) if b["id"] == board_id), None)
+        if board_idx is None:
+            return jsonify({"success": False, "error": "Board not found"}), 404
+
+        board = data["boards"][board_idx]
+
+        if "title" in req_data:
+            board["title"] = req_data["title"]
+        if "blocks" in req_data:
+            board["blocks"] = req_data["blocks"]
+        if "edges" in req_data:
+            board["edges"] = req_data["edges"]
+        if "viewport" in req_data:
+            board["viewport"] = req_data["viewport"]
+
+        board["updated"] = datetime.now().isoformat()
+
+        data["boards"][board_idx] = board
+        save_boards(data)
+
+        return jsonify({"success": True, "board": board})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/boards/<board_id>', methods=['DELETE'])
+def delete_board(board_id):
+    """Delete a board"""
+    try:
+        data = load_boards()
+        original_len = len(data["boards"])
+        data["boards"] = [b for b in data["boards"] if b["id"] != board_id]
+
+        if len(data["boards"]) == original_len:
+            return jsonify({"success": False, "error": "Board not found"}), 404
+
+        save_boards(data)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
 # Helper Functions
 # ============================================================
 
