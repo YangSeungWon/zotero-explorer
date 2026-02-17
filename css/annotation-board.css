@@ -1568,7 +1568,9 @@
 }
 
 .paper-link-search-input {
+  display: block;
   width: 100%;
+  box-sizing: border-box;
   padding: 9px 12px 9px 32px;
   font-size: 13px;
   background: var(--bg-primary);
