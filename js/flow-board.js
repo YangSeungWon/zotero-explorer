@@ -879,6 +879,17 @@ function setupEventListeners() {
   document.getElementById('cancelEditCard')?.addEventListener('click', closeEditBlockModal);
   document.getElementById('saveEditCard')?.addEventListener('click', saveEditBlock);
 
+  // Edit block modal — paste annotation toggle
+  document.getElementById('editCardPasteToggle')?.addEventListener('click', () => {
+    const section = document.querySelector('.edit-card-paste-section');
+    const body = document.getElementById('editCardPasteBody');
+    if (!section || !body) return;
+    const isOpen = section.classList.toggle('open');
+    body.style.display = isOpen ? 'block' : 'none';
+    if (isOpen) document.getElementById('editCardPasteRaw')?.focus();
+  });
+  document.getElementById('editCardPasteRaw')?.addEventListener('input', onEditCardPasteAnnotation);
+
   // Edit block modal — paper search & ref links
   document.getElementById('editCardPaperSearchInput')?.addEventListener('input', onEditCardPaperSearch);
   document.getElementById('editCardUnlinkPaper')?.addEventListener('click', () => {
@@ -970,6 +981,14 @@ function openEditBlockModal(blockId) {
     searchResults.innerHTML = '';
     searchResults.classList.remove('has-results');
   }
+
+  // Reset paste section
+  const pasteSection = document.querySelector('.edit-card-paste-section');
+  const pasteBody = document.getElementById('editCardPasteBody');
+  const pasteRaw = document.getElementById('editCardPasteRaw');
+  if (pasteSection) pasteSection.classList.remove('open');
+  if (pasteBody) pasteBody.style.display = 'none';
+  if (pasteRaw) pasteRaw.value = '';
 
   document.getElementById('editCardModal').style.display = 'flex';
   lucide.createIcons();
@@ -1552,6 +1571,58 @@ function showPaperDetail(paperId) {
 }
 
 // ========== Edit Modal Helpers ==========
+
+function onEditCardPasteAnnotation(e) {
+  const rawText = e.target.value.trim();
+  if (!rawText) return;
+
+  const parsed = parseRawAnnotation(rawText);
+  if (!parsed.quote) return;
+
+  // Fill all fields from parsed data
+  const quoteEl = document.getElementById('editCardQuote');
+  const sourceEl = document.getElementById('editCardSource');
+  const noteEl = document.getElementById('editCardNote');
+  const zoteroUrlEl = document.getElementById('editCardZoteroUrl');
+  const pdfUrlEl = document.getElementById('editCardPdfUrl');
+
+  if (quoteEl) quoteEl.value = parsed.quote;
+  if (sourceEl) sourceEl.value = parsed.source?.text || '';
+  if (noteEl) noteEl.value = parsed.myNote || '';
+  if (zoteroUrlEl) {
+    zoteroUrlEl.value = parsed.source?.zoteroUrl || '';
+    updateRefLinkButton('editCardZoteroOpen', parsed.source?.zoteroUrl);
+  }
+  if (pdfUrlEl) {
+    pdfUrlEl.value = parsed.pdf?.url || '';
+    updateRefLinkButton('editCardPdfOpen', parsed.pdf?.url);
+  }
+
+  // Auto-match reference paper
+  if (parsed.referencePaperTitle) {
+    const refTitle = parsed.referencePaperTitle.toLowerCase();
+    const match = papers.find(p => {
+      const pt = (p.title || '').toLowerCase();
+      return pt === refTitle || pt.includes(refTitle) || refTitle.includes(pt);
+    });
+    if (match) {
+      updatePaperLinkDisplay(match.id, match.title);
+    } else {
+      updatePaperLinkDisplay(null, null);
+    }
+  }
+
+  // Collapse paste section after filling
+  const section = document.querySelector('.edit-card-paste-section');
+  const body = document.getElementById('editCardPasteBody');
+  if (section && body) {
+    section.classList.remove('open');
+    body.style.display = 'none';
+  }
+  e.target.value = '';
+
+  lucide.createIcons();
+}
 
 function updatePaperLinkDisplay(paperId, paperTitle) {
   editingPaperId = paperId;

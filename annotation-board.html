@@ -172,6 +172,17 @@
         </button>
       </div>
       <div class="edit-card-form">
+        <div class="edit-card-paste-section">
+          <div class="edit-card-paste-header" id="editCardPasteToggle">
+            <i data-lucide="clipboard-paste"></i>
+            <span>Paste Annotation</span>
+            <i data-lucide="chevron-down" class="edit-card-paste-chevron"></i>
+          </div>
+          <div class="edit-card-paste-body" id="editCardPasteBody" style="display:none;">
+            <textarea id="editCardPasteRaw" class="modal-textarea" placeholder="Paste Zotero annotation here to auto-fill all fields..."></textarea>
+          </div>
+        </div>
+
         <label>Quote</label>
         <textarea id="editCardQuote" class="modal-textarea" placeholder="Original quote from the paper..."></textarea>
 

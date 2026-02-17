@@ -1360,6 +1360,61 @@
 }
 
 /* ===========================================
+   Edit Block Modal — Paste Section
+   =========================================== */
+
+.edit-card-paste-section {
+  margin-bottom: 16px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+.edit-card-paste-section:hover {
+  border-color: var(--text-muted);
+}
+
+.edit-card-paste-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.edit-card-paste-header:hover {
+  color: var(--text-primary);
+}
+
+.edit-card-paste-header svg {
+  width: 14px;
+  height: 14px;
+}
+
+.edit-card-paste-chevron {
+  margin-left: auto;
+  transition: transform var(--transition-fast);
+}
+
+.edit-card-paste-section.open .edit-card-paste-chevron {
+  transform: rotate(180deg);
+}
+
+.edit-card-paste-body {
+  padding: 0 12px 12px;
+}
+
+.edit-card-paste-body .modal-textarea {
+  margin-bottom: 0;
+  min-height: 60px;
+  font-size: 12px;
+}
+
+/* ===========================================
    Edit Block Modal — Source Section
    =========================================== */
 
