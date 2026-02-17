@@ -1139,42 +1139,101 @@ function exportBoard() {
 
   // Topological sort via BFS from root blocks
   const ordered = topologicalSort(blocks, edges);
+  if (ordered.length === 0) return;
 
-  let markdown = `# ${currentBoard.title}\n\n`;
-  markdown += `_Exported: ${new Date().toLocaleString()}_\n\n---\n\n`;
+  // Build index map: blockId → display number
+  const idxMap = {};
+  ordered.forEach((b, i) => { idxMap[b.id] = i + 1; });
 
-  ordered.forEach((block, i) => {
-    markdown += `> "${block.quote}"\n`;
-    if (block.source?.text) {
-      markdown += `> — ${block.source.text}`;
-      if (block.source.zoteroUrl) {
-        markdown += ` [Zotero](${block.source.zoteroUrl})`;
-      }
-      markdown += '\n';
+  // Build incoming edges map
+  const incomingMap = {};
+  edges.forEach(e => {
+    if (blocks[e.from] && blocks[e.to]) {
+      if (!incomingMap[e.to]) incomingMap[e.to] = [];
+      incomingMap[e.to].push(e.from);
     }
-    if (block.pdf?.url) {
-      markdown += `> [PDF${block.pdf.page ? ' p.' + block.pdf.page : ''}](${block.pdf.url})\n`;
-    }
-    markdown += '\n';
-
-    if (block.myNote) {
-      markdown += `${block.myNote}\n\n`;
-    }
-
-    // Show connections
-    const outEdges = edges.filter(e => e.from === block.id);
-    if (outEdges.length > 0) {
-      const targets = outEdges.map(e => {
-        const target = blocks[e.to];
-        return target ? `"${(target.quote || '').substring(0, 40)}..."` : '?';
-      });
-      markdown += `**Leads to:** ${targets.join(', ')}\n\n`;
-    }
-
-    markdown += '---\n\n';
   });
 
-  document.getElementById('exportContent').value = markdown;
+  let md = `# ${currentBoard.title}\n\n`;
+  md += `> ${ordered.length} blocks · ${edges.length} connections · Exported ${new Date().toLocaleString()}\n\n`;
+
+  // ── Flow Map ──
+  if (edges.length > 0) {
+    md += `## Flow Map\n\n`;
+    md += '```\n';
+    ordered.forEach((block, i) => {
+      const num = i + 1;
+      const label = (block.source?.text || block.paperTitle || '').substring(0, 30) || `Block ${num}`;
+      const outEdges = edges.filter(e => e.from === block.id);
+      if (outEdges.length > 0) {
+        const targets = outEdges.map(e => {
+          const tNum = idxMap[e.to];
+          const target = blocks[e.to];
+          const tLabel = (target?.source?.text || target?.paperTitle || '').substring(0, 30) || `Block ${tNum}`;
+          return `[${tNum}] ${tLabel}`;
+        });
+        targets.forEach(t => {
+          md += `[${num}] ${label}  →  ${t}\n`;
+        });
+      }
+    });
+    md += '```\n\n';
+  }
+
+  // ── Blocks ──
+  md += `## Blocks\n\n`;
+
+  ordered.forEach((block, i) => {
+    const num = i + 1;
+
+    // Header with number and paper title
+    md += `### [${num}]`;
+    if (block.paperTitle) {
+      md += ` ${block.paperTitle}`;
+    }
+    md += '\n\n';
+
+    // Quote
+    if (block.quote) {
+      md += `> \u201C${block.quote}\u201D\n`;
+    }
+
+    // Source line
+    if (block.source?.text) {
+      md += `> \u2014 ${block.source.text}`;
+      if (block.pdf?.page) md += `, p.${block.pdf.page}`;
+      md += '\n';
+    }
+    md += '\n';
+
+    // Links
+    const links = [];
+    if (block.source?.zoteroUrl) links.push(`[Zotero](${block.source.zoteroUrl})`);
+    if (block.pdf?.url) links.push(`[PDF${block.pdf.page ? ' p.' + block.pdf.page : ''}](${block.pdf.url})`);
+    if (links.length > 0) {
+      md += links.join(' · ') + '\n\n';
+    }
+
+    // My note
+    if (block.myNote) {
+      md += `**Note:** ${block.myNote}\n\n`;
+    }
+
+    // Connections
+    const incoming = (incomingMap[block.id] || []).map(id => `[${idxMap[id]}]`);
+    const outgoing = edges.filter(e => e.from === block.id).map(e => `[${idxMap[e.to]}]`);
+
+    if (incoming.length > 0 || outgoing.length > 0) {
+      const parts = [];
+      if (incoming.length > 0) parts.push(`${incoming.join(', ')} → **[${num}]**`);
+      if (outgoing.length > 0) parts.push(`**[${num}]** → ${outgoing.join(', ')}`);
+      md += parts.join(' · ') + '\n\n';
+    }
+
+    md += '---\n\n';
+  });
+
+  document.getElementById('exportContent').value = md;
   document.getElementById('exportModal').style.display = 'flex';
 }
 
