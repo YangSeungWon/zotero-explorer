@@ -19,8 +19,8 @@ let panStart = { x: 0, y: 0 };
 let panStartViewport = { x: 0, y: 0 };
 let saveTimeout = null;
 const SAVE_DELAY = 1500;
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 3;
+const MIN_ZOOM = 0.15;
+const MAX_ZOOM = 1.5;
 const BLOCK_WIDTH = 280;
 
 // ========== Initialization ==========
@@ -299,7 +299,7 @@ function initPanZoom() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const delta = e.deltaY > 0 ? -0.04 : 0.04;
     const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport.zoom + delta));
 
     if (newZoom !== viewport.zoom) {
@@ -327,9 +327,10 @@ function initPanZoom() {
 function applyViewportTransform() {
   const vp = document.getElementById('canvasViewport');
   vp.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`;
-  // Zoom-dependent detail level
-  vp.classList.toggle('zoom-far', viewport.zoom < 0.5);
-  vp.classList.toggle('zoom-mid', viewport.zoom >= 0.5 && viewport.zoom < 0.8);
+  // Counter-scale text so it stays readable at any zoom
+  const compensate = Math.min(1 / viewport.zoom, 3);
+  vp.style.setProperty('--zc', compensate);
+  vp.classList.toggle('zoom-mid', viewport.zoom < 0.55);
   updateZoomDisplay();
 }
 
@@ -423,11 +424,12 @@ function createBlockElement(block) {
 
   const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
   const isUnlinked = sourceText && !block.paperId;
+  const headerLabel = sourceText || paperTitle || (block.myNote || '').split('\n')[0] || 'No source';
 
   el.innerHTML = `
     <div class="flow-block-header">
       ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to Zotero"><i data-lucide="link-2-off"></i></span>' : ''}
-      <span class="flow-block-paper-title" title="${escapeHtml(paperTitle)}">${escapeHtml(sourceText || paperTitle || 'No source')}</span>
+      <span class="flow-block-paper-title" title="${escapeHtml(paperTitle || headerLabel)}">${escapeHtml(headerLabel)}</span>
       <div class="flow-block-actions">
         <button class="flow-block-action edit" title="Edit"><i data-lucide="pencil"></i></button>
         <button class="flow-block-action delete" title="Delete"><i data-lucide="trash-2"></i></button>

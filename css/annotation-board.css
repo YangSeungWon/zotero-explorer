@@ -207,8 +207,8 @@
   position: absolute;
   width: 340px;
   background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-left: 5px solid var(--accent);
+  border: calc(1px * var(--zc, 1)) solid var(--border-color);
+  border-left: calc(5px * var(--zc, 1)) solid var(--accent);
   border-radius: var(--radius-md);
   cursor: grab;
   user-select: none;
@@ -245,11 +245,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: calc(10px * var(--zc, 1)) calc(14px * var(--zc, 1));
   border-bottom: 1px solid var(--border-color);
-  font-size: 13px;
+  font-size: calc(13px * var(--zc, 1));
   color: var(--text-muted);
-  min-height: 38px;
+  min-height: calc(38px * var(--zc, 1));
 }
 
 .flow-block-unlinked {
@@ -257,12 +257,12 @@
   align-items: center;
   color: var(--orange-400);
   flex-shrink: 0;
-  margin-right: 5px;
+  margin-right: calc(5px * var(--zc, 1));
   opacity: 0.7;
 }
 .flow-block-unlinked svg {
-  width: 13px;
-  height: 13px;
+  width: calc(13px * var(--zc, 1));
+  height: calc(13px * var(--zc, 1));
 }
 
 .flow-block-paper-title {
@@ -291,8 +291,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: calc(26px * var(--zc, 1));
+  height: calc(26px * var(--zc, 1));
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -311,21 +311,21 @@
 }
 
 .flow-block-action svg {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--zc, 1));
+  height: calc(14px * var(--zc, 1));
 }
 
 .flow-block-quote {
-  padding: 12px 14px;
-  font-size: 13.5px;
+  padding: calc(12px * var(--zc, 1)) calc(14px * var(--zc, 1));
+  font-size: calc(13.5px * var(--zc, 1));
   font-style: italic;
   color: var(--text-primary);
   line-height: 1.55;
   background: var(--bg-secondary);
-  margin: 10px;
-  border-left: 3px solid var(--text-muted);
+  margin: calc(10px * var(--zc, 1));
+  border-left: calc(3px * var(--zc, 1)) solid var(--text-muted);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  max-height: 100px;
+  max-height: calc(100px * var(--zc, 1));
   overflow: hidden;
   position: relative;
 }
@@ -336,38 +336,25 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 20px;
+  height: calc(20px * var(--zc, 1));
   background: linear-gradient(transparent, var(--bg-secondary));
 }
 
 .flow-block-note {
-  padding: 8px 14px 12px;
-  font-size: 12.5px;
+  padding: calc(8px * var(--zc, 1)) calc(14px * var(--zc, 1)) calc(12px * var(--zc, 1));
+  font-size: calc(12.5px * var(--zc, 1));
   color: var(--text-secondary);
   line-height: 1.55;
-  max-height: 56px;
+  max-height: calc(56px * var(--zc, 1));
   overflow: hidden;
 }
 
-/* Zoom-dependent detail levels */
-.canvas-viewport.zoom-far .flow-block-quote {
-  max-height: 42px;
-}
-.canvas-viewport.zoom-far .flow-block-note,
-.canvas-viewport.zoom-far .flow-block-links {
-  display: none;
-}
-.canvas-viewport.zoom-far .flow-block-header {
-  padding: 8px 12px;
-  min-height: 30px;
-}
-
-.canvas-viewport.zoom-mid .flow-block-note {
-  max-height: 38px;
-}
+/* Zoom-mid: header + quote only */
+.canvas-viewport.zoom-mid .flow-block-note,
 .canvas-viewport.zoom-mid .flow-block-links {
   display: none;
 }
+
 
 .flow-block-note:empty {
   display: none;
@@ -412,11 +399,11 @@
 
 .connector {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--zc, 1));
+  height: calc(12px * var(--zc, 1));
   border-radius: 50%;
   background: var(--bg-tertiary);
-  border: 2px solid var(--accent);
+  border: calc(2px * var(--zc, 1)) solid var(--accent);
   top: 50%;
   transform: translateY(-50%);
   cursor: crosshair;
@@ -435,11 +422,11 @@
 }
 
 .connector-out {
-  right: -7px;
+  right: calc(-7px * var(--zc, 1));
 }
 
 .connector-in {
-  left: -7px;
+  left: calc(-7px * var(--zc, 1));
 }
 
 /* ===========================================
@@ -449,7 +436,7 @@
 .flow-edge {
   fill: none;
   stroke: var(--text-muted);
-  stroke-width: 2;
+  stroke-width: calc(2 * var(--zc, 1));
   pointer-events: stroke;
   cursor: pointer;
   transition: stroke 0.15s ease;
