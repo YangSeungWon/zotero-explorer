@@ -194,6 +194,7 @@
 
         <div class="edit-card-source-section">
           <label>Source</label>
+
           <!-- Paper link: connected state -->
           <div id="editCardPaperLinked" class="paper-link-display" style="display:none;">
             <i data-lucide="book-open" class="paper-link-icon"></i>
@@ -211,9 +212,13 @@
             <div id="editCardPaperResults" class="paper-link-results"></div>
           </div>
 
-          <input type="text" id="editCardSource" class="modal-input" placeholder="Author et al., Year, p.XX">
-
           <div class="edit-card-ref-links">
+            <div class="ref-link-row">
+              <span class="ref-link-label">Citation</span>
+              <div class="ref-link-input-wrap">
+                <input type="text" id="editCardSource" class="modal-input ref-link-input ref-link-input-citation" placeholder="Author et al., Year, p.XX">
+              </div>
+            </div>
             <div class="ref-link-row">
               <span class="ref-link-label">Zotero</span>
               <div class="ref-link-input-wrap">

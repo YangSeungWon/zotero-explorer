@@ -1659,11 +1659,13 @@
   color: var(--accent);
 }
 
-/* Reference links (Zotero / PDF) */
+/* Reference links (Citation / Zotero / PDF) */
 .edit-card-ref-links {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
 }
 
 .ref-link-row {
@@ -1675,7 +1677,7 @@
 .ref-link-label {
   font-size: 11px;
   color: var(--text-muted);
-  min-width: 44px;
+  min-width: 52px;
   flex-shrink: 0;
 }
 
@@ -1694,6 +1696,12 @@
   font-size: 12px !important;
   padding: 6px 8px !important;
   margin-bottom: 0 !important;
+}
+
+.ref-link-input-citation {
+  font-family: inherit;
+  font-size: 13px !important;
+  padding: 7px 10px !important;
 }
 
 .ref-link-open {
