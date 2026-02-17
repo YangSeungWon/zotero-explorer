@@ -327,6 +327,9 @@ function initPanZoom() {
 function applyViewportTransform() {
   const vp = document.getElementById('canvasViewport');
   vp.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`;
+  // Zoom-dependent detail level
+  vp.classList.toggle('zoom-far', viewport.zoom < 0.5);
+  vp.classList.toggle('zoom-mid', viewport.zoom >= 0.5 && viewport.zoom < 0.8);
   updateZoomDisplay();
 }
 
@@ -397,7 +400,9 @@ function createBlockElement(block) {
   el.style.left = block.x + 'px';
   el.style.top = block.y + 'px';
 
-  if (block.color) {
+  if (block.category) {
+    el.dataset.category = block.category;
+  } else if (block.color) {
     el.style.borderLeftColor = block.color;
   }
 
@@ -417,9 +422,11 @@ function createBlockElement(block) {
   }
 
   const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
+  const isUnlinked = sourceText && !block.paperId;
 
   el.innerHTML = `
     <div class="flow-block-header">
+      ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to Zotero"><i data-lucide="link-2-off"></i></span>' : ''}
       <span class="flow-block-paper-title" title="${escapeHtml(paperTitle)}">${escapeHtml(sourceText || paperTitle || 'No source')}</span>
       <div class="flow-block-actions">
         <button class="flow-block-action edit" title="Edit"><i data-lucide="pencil"></i></button>
@@ -904,6 +911,7 @@ function openEditBlockModal(blockId) {
   if (!block) return;
 
   editingBlockId = blockId;
+  document.getElementById('editCardCategory').value = block.category || '';
   document.getElementById('editCardQuote').value = block.quote || '';
   document.getElementById('editCardSource').value = block.source?.text || '';
   document.getElementById('editCardNote').value = block.myNote || '';
@@ -921,6 +929,8 @@ function saveEditBlock() {
   const block = currentBoard.blocks[editingBlockId];
   if (!block) return;
 
+  block.category = document.getElementById('editCardCategory').value || null;
+  block.color = null; // category takes precedence
   block.quote = document.getElementById('editCardQuote').value.trim();
   block.source = {
     ...block.source,
