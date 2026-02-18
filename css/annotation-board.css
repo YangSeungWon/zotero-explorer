@@ -4,6 +4,7 @@
 
 /* Block Category Colors — muted tones */
 :root {
+  --cat-claim:     #5B9BD5;
   --cat-structure: #6B8FAD;
   --cat-evidence:  #B8956B;
   --cat-theory:    #8E82B0;
@@ -214,6 +215,7 @@
   user-select: none;
   transition: box-shadow 0.15s ease;
 }
+.flow-block[data-category="claim"]     { border-left-color: var(--cat-claim); }
 .flow-block[data-category="structure"] { border-left-color: var(--cat-structure); }
 .flow-block[data-category="evidence"]  { border-left-color: var(--cat-evidence); }
 .flow-block[data-category="theory"]    { border-left-color: var(--cat-theory); }
