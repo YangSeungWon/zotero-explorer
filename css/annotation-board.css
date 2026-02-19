@@ -364,8 +364,8 @@
   overflow: hidden;
 }
 
-/* Zoom-mid: header + quote only */
-.canvas-viewport.zoom-mid .flow-block-note,
+/* Zoom-mid: header + note only */
+.canvas-viewport.zoom-mid .flow-block-quote,
 .canvas-viewport.zoom-mid .flow-block-links {
   display: none;
 }
