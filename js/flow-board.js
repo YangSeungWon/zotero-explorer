@@ -10,8 +10,6 @@ let allBoards = [];
 let currentBoard = null;
 let selectedBlockId = null;
 let editingBlockId = null;
-let editingPaperId = null;
-let editingPaperTitle = null;
 let selectedEdgeId = null;
 let drawingEdge = null;      // { fromBlockId, tempLine }
 let isDraggingBlock = null;  // { blockId, element, offsetX, offsetY }
@@ -178,9 +176,15 @@ async function selectBoard(id) {
   if (!currentBoard.edges) currentBoard.edges = [];
   if (!currentBoard.blocks) currentBoard.blocks = {};
 
+  // Migrate old single-annotation blocks to multi-annotation format
+  const didMigrate = migrateBoard(currentBoard);
+
   document.getElementById('boardSelect').value = id;
   document.getElementById('boardTitle').value = currentBoard.title || '';
   localStorage.setItem('lastBoardId', id);
+
+  // Save migrated data
+  if (didMigrate) scheduleSave();
 
   // Restore viewport
   if (currentBoard.viewport) {
@@ -217,9 +221,14 @@ function renderBoard() {
     lucide.createIcons();
   }
 
+  // Compute block numbers via topological sort
+  const ordered = topologicalSort(blocks, currentBoard.edges || []);
+  const blockNumMap = {};
+  ordered.forEach((b, i) => { blockNumMap[b.id] = i + 1; });
+
   // Render blocks
   Object.values(blocks).forEach(block => {
-    const el = createBlockElement(block);
+    const el = createBlockElement(block, blockNumMap[block.id]);
     blockLayer.appendChild(el);
   });
 
@@ -414,7 +423,7 @@ function fitView() {
 
 // ========== Block Rendering ==========
 
-function createBlockElement(block) {
+function createBlockElement(block, blockNum) {
   const el = document.createElement('div');
   el.className = 'flow-block';
   el.dataset.blockId = block.id;
@@ -427,43 +436,67 @@ function createBlockElement(block) {
     el.style.borderLeftColor = block.color;
   }
 
-  const quotePreview = (block.quote || '').length > 120
-    ? block.quote.substring(0, 120) + '...'
-    : (block.quote || '');
+  const annotations = block.annotations || [];
+  const annCount = annotations.length;
 
-  const sourceText = block.source?.text || '';
-  const zoteroKey = block.source?.zoteroKey;
-  const hasZotero = !!block.source?.zoteroUrl;
-  const hasPdf = !!block.pdf?.url;
-
-  let paperTitle = block.paperTitle || '';
-  if (!paperTitle && zoteroKey) {
-    const paper = papers.find(p => p.zotero_key === zoteroKey);
-    if (paper) paperTitle = paper.title;
+  // Derive header label from first annotation or note
+  let headerLabel = '';
+  let headerTitle = '';
+  if (annCount > 0) {
+    const first = annotations[0];
+    headerLabel = first.source?.text || first.paperTitle || '';
+    headerTitle = first.paperTitle || headerLabel;
+    if (annCount > 1) {
+      headerLabel += ` +${annCount - 1}`;
+    }
+  }
+  if (!headerLabel) {
+    headerLabel = (block.myNote || '').split('\n')[0] || 'Empty block';
+    headerTitle = headerLabel;
   }
 
-  const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
-  const isUnlinked = sourceText && !block.paperId;
-  const isPaperOnly = block.paperId && !block.source?.zoteroUrl;
-  const headerLabel = sourceText || paperTitle || (block.myNote || '').split('\n')[0] || 'No source';
+  // Build annotations list HTML
+  let annotationsHtml = '';
+  annotations.forEach((ann, i) => {
+    const quotePreview = (ann.quote || '').length > 100
+      ? ann.quote.substring(0, 100) + '...'
+      : (ann.quote || '');
+    const srcText = ann.source?.text || '';
+    const hasZotero = !!ann.source?.zoteroUrl;
+    const hasPdf = !!ann.pdf?.url;
+    const zoteroKey = ann.source?.zoteroKey;
+    const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
+    const isUnlinked = srcText && !ann.paperId;
+    const isPaperOnly = ann.paperId && !ann.source?.zoteroUrl;
+
+    annotationsHtml += `
+      <div class="flow-block-ann" data-ann-index="${i}">
+        <div class="flow-block-ann-quote">${escapeHtml(quotePreview)}</div>
+        <div class="flow-block-ann-meta">
+          ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to paper"><i data-lucide="link-2-off"></i></span>' : ''}
+          ${isPaperOnly ? '<span class="flow-block-paper-only" title="Paper linked, no annotation"><i data-lucide="bookmark-minus"></i></span>' : ''}
+          <span class="flow-block-ann-source">${escapeHtml(srcText)}</span>
+          <span class="flow-block-ann-links">
+            ${explorerLink ? `<a href="${explorerLink}" target="_blank" class="flow-block-link" title="Explorer"><i data-lucide="compass"></i></a>` : ''}
+            ${hasZotero ? `<a href="${ann.source.zoteroUrl}" class="flow-block-link" title="Zotero"><i data-lucide="book-open"></i></a>` : ''}
+            ${hasPdf ? `<a href="${ann.pdf.url}" class="flow-block-link" title="PDF${ann.pdf.page ? ' p.' + ann.pdf.page : ''}"><i data-lucide="file-text"></i></a>` : ''}
+          </span>
+        </div>
+      </div>
+    `;
+  });
 
   el.innerHTML = `
     <div class="flow-block-header">
-      ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to paper"><i data-lucide="link-2-off"></i></span>' : ''}
-      ${isPaperOnly ? '<span class="flow-block-paper-only" title="Paper linked, no annotation"><i data-lucide="bookmark-minus"></i></span>' : ''}
-      <span class="flow-block-paper-title" title="${escapeHtml(paperTitle || headerLabel)}">${escapeHtml(headerLabel)}</span>
+      ${blockNum ? `<span class="flow-block-num">${blockNum}</span>` : ''}
+      <span class="flow-block-paper-title" title="${escapeHtml(headerTitle)}">${escapeHtml(headerLabel)}</span>
       <div class="flow-block-actions">
         <button class="flow-block-action edit" title="Edit"><i data-lucide="pencil"></i></button>
         <button class="flow-block-action delete" title="Delete"><i data-lucide="trash-2"></i></button>
       </div>
     </div>
-    <div class="flow-block-quote">${escapeHtml(quotePreview)}</div>
+    ${annCount > 0 ? `<div class="flow-block-annotations">${annotationsHtml}</div>` : ''}
     ${block.myNote ? `<div class="flow-block-note">${escapeHtml(block.myNote)}</div>` : ''}
-    <div class="flow-block-links">
-      ${explorerLink ? `<a href="${explorerLink}" target="_blank" class="flow-block-link" title="Explorer"><i data-lucide="compass"></i></a>` : ''}
-      ${hasZotero ? `<a href="${block.source.zoteroUrl}" class="flow-block-link" title="Zotero"><i data-lucide="book-open"></i></a>` : ''}
-      ${hasPdf ? `<a href="${block.pdf.url}" class="flow-block-link" title="PDF${block.pdf.page ? ' p.' + block.pdf.page : ''}"><i data-lucide="file-text"></i></a>` : ''}
-    </div>
     <div class="connector connector-in" data-block-id="${block.id}" data-side="in"></div>
     <div class="connector connector-out" data-block-id="${block.id}" data-side="out"></div>
   `;
@@ -497,15 +530,19 @@ function createBlockElement(block) {
     el.classList.add('dragging');
   });
 
-  // Click to show paper detail
+  // Click to show paper detail (use first annotation's paper)
   el.addEventListener('click', (e) => {
     if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.connector')) return;
     if (isDraggingBlock?.moved) return;
 
-    const zk = block.source?.zoteroKey;
+    const anns = block.annotations || [];
     let paper = null;
-    if (zk) paper = papers.find(p => p.zotero_key === zk);
-    if (!paper && block.paperId) paper = papers.find(p => p.id === block.paperId);
+    for (const ann of anns) {
+      const zk = ann.source?.zoteroKey;
+      if (zk) paper = papers.find(p => p.zotero_key === zk);
+      if (!paper && ann.paperId) paper = papers.find(p => p.id === ann.paperId);
+      if (paper) break;
+    }
     if (paper) {
       showPaperDetail(paper.id);
       openDetailPanel();
@@ -722,28 +759,90 @@ function getBlockAtPoint(clientX, clientY) {
   return null;
 }
 
+// ========== Block Data Migration ==========
+
+/**
+ * Migrate a single-annotation block to multi-annotation format.
+ * Old: { quote, source, pdf, paperId, paperTitle, myNote }
+ * New: { annotations: [{ quote, source, pdf, paperId, paperTitle }], myNote }
+ */
+function migrateBlockToMultiAnnotation(block) {
+  if (block.annotations) return block; // already migrated
+
+  const ann = {
+    id: generateAnnotationId(),
+    quote: block.quote || '',
+    source: block.source || {},
+    pdf: block.pdf || null,
+    paperId: block.paperId || null,
+    paperTitle: block.paperTitle || null
+  };
+
+  // Only add annotation if it has some content
+  const hasContent = ann.quote || ann.source?.text || ann.pdf?.url || ann.paperId;
+  block.annotations = hasContent ? [ann] : [];
+
+  // myNote stays at block level (already there)
+  block.myNote = block.myNote || '';
+
+  // Clean up old fields
+  delete block.quote;
+  delete block.source;
+  delete block.pdf;
+  delete block.paperId;
+  delete block.paperTitle;
+
+  return block;
+}
+
+/**
+ * Migrate all blocks in a board to multi-annotation format.
+ */
+function migrateBoard(board) {
+  if (!board?.blocks) return;
+  const blocks = board.blocks;
+  let migrated = false;
+  Object.values(blocks).forEach(block => {
+    if (!block.annotations) {
+      migrateBlockToMultiAnnotation(block);
+      migrated = true;
+    }
+  });
+  return migrated;
+}
+
 // ========== Block/Edge CRUD ==========
 
 function createBlock(annotationData, x, y) {
   if (!currentBoard) return;
 
+  // Build annotation from parsed data
+  const ann = {
+    id: generateAnnotationId(),
+    quote: annotationData.quote || '',
+    source: annotationData.source || {},
+    pdf: annotationData.pdf || null,
+    paperId: annotationData.paperId || null,
+    paperTitle: annotationData.paperTitle || null
+  };
+
+  const hasContent = ann.quote || ann.source?.text || ann.pdf?.url || ann.paperId;
+
   const block = {
     id: annotationData.id || generateAnnotationId(),
     x: x,
     y: y,
-    quote: annotationData.quote || '',
-    source: annotationData.source || {},
-    pdf: annotationData.pdf || null,
+    annotations: hasContent ? [ann] : [],
     myNote: annotationData.myNote || '',
-    paperId: annotationData.paperId || null,
-    paperTitle: annotationData.paperTitle || null,
+    category: annotationData.category || null,
     color: annotationData.color || null,
     createdAt: annotationData.createdAt || Date.now()
   };
 
   currentBoard.blocks[block.id] = block;
 
-  const el = createBlockElement(block);
+  const blockNum = Object.keys(currentBoard.blocks).length;
+  const el = createBlockElement(block, blockNum);
   document.getElementById('blockLayer').appendChild(el);
   lucide.createIcons();
 
@@ -892,18 +991,8 @@ function setupEventListeners() {
   });
   document.getElementById('editCardPasteRaw')?.addEventListener('input', onEditCardPasteAnnotation);
 
-  // Edit block modal — paper search & ref links
-  document.getElementById('editCardPaperSearchInput')?.addEventListener('input', onEditCardPaperSearch);
-  document.getElementById('editCardUnlinkPaper')?.addEventListener('click', () => {
-    updatePaperLinkDisplay(null, null);
-    lucide.createIcons();
-  });
-  document.getElementById('editCardZoteroUrl')?.addEventListener('input', (e) => {
-    updateRefLinkButton('editCardZoteroOpen', e.target.value);
-  });
-  document.getElementById('editCardPdfUrl')?.addEventListener('input', (e) => {
-    updateRefLinkButton('editCardPdfOpen', e.target.value);
-  });
+  // Edit block modal — add empty annotation
+  document.getElementById('editAnnAddBtn')?.addEventListener('click', addEmptyAnnotation);
 
   // Add block modal
   document.getElementById('closeAddCard')?.addEventListener('click', closeAddBlockModal);
@@ -959,30 +1048,19 @@ function openEditBlockModal(blockId) {
   if (!block) return;
 
   editingBlockId = blockId;
+
+  // Deep-copy annotations for editing
+  editingAnnotations = (block.annotations || []).map(ann => ({
+    id: ann.id || generateAnnotationId(),
+    quote: ann.quote || '',
+    source: { ...(ann.source || {}) },
+    pdf: ann.pdf ? { ...ann.pdf } : null,
+    paperId: ann.paperId || null,
+    paperTitle: ann.paperTitle || null
+  }));
+
   document.getElementById('editCardCategory').value = block.category || '';
-  document.getElementById('editCardQuote').value = block.quote || '';
-  document.getElementById('editCardSource').value = block.source?.text || '';
   document.getElementById('editCardNote').value = block.myNote || '';
-
-  // Ref links
-  const zoteroUrlEl = document.getElementById('editCardZoteroUrl');
-  const pdfUrlEl = document.getElementById('editCardPdfUrl');
-  if (zoteroUrlEl) zoteroUrlEl.value = block.source?.zoteroUrl || '';
-  if (pdfUrlEl) pdfUrlEl.value = block.pdf?.url || '';
-  updateRefLinkButton('editCardZoteroOpen', block.source?.zoteroUrl);
-  updateRefLinkButton('editCardPdfOpen', block.pdf?.url);
-
-  // Paper link
-  updatePaperLinkDisplay(block.paperId, block.paperTitle);
-
-  // Clear search
-  const searchInput = document.getElementById('editCardPaperSearchInput');
-  const searchResults = document.getElementById('editCardPaperResults');
-  if (searchInput) searchInput.value = '';
-  if (searchResults) {
-    searchResults.innerHTML = '';
-    searchResults.classList.remove('has-results');
-  }
 
   // Reset paste section
   const pasteSection = document.querySelector('.edit-card-paste-section');
@@ -992,14 +1070,16 @@ function openEditBlockModal(blockId) {
   if (pasteBody) pasteBody.style.display = 'none';
   if (pasteRaw) pasteRaw.value = '';
 
+  // Render annotation list
+  renderEditAnnotationList();
+
   document.getElementById('editCardModal').style.display = 'flex';
   lucide.createIcons();
 }
 
 function closeEditBlockModal() {
   editingBlockId = null;
-  editingPaperId = null;
-  editingPaperTitle = null;
+  editingAnnotations = [];
   document.getElementById('editCardModal').style.display = 'none';
 }
 
@@ -1009,43 +1089,26 @@ function saveEditBlock() {
   const block = currentBoard.blocks[editingBlockId];
   if (!block) return;
 
+  // Sync any expanded annotation item fields to data
+  syncAllAnnItemsToData();
+
+  // Filter out completely empty annotations
+  block.annotations = editingAnnotations.filter(ann =>
+    ann.quote || ann.source?.text || ann.pdf?.url || ann.paperId
+  );
+
   block.category = document.getElementById('editCardCategory').value || null;
-  block.color = null; // category takes precedence
-  block.quote = document.getElementById('editCardQuote').value.trim();
-
-  // Source fields
-  const zoteroUrl = (document.getElementById('editCardZoteroUrl')?.value || '').trim();
-  const zoteroKeyMatch = zoteroUrl.match(/items\/([A-Z0-9]+)/i);
-  block.source = {
-    ...block.source,
-    text: document.getElementById('editCardSource').value.trim(),
-    zoteroUrl: zoteroUrl || undefined,
-    zoteroKey: zoteroKeyMatch ? zoteroKeyMatch[1] : (block.source?.zoteroKey || undefined)
-  };
-
-  // PDF fields
-  const pdfUrl = (document.getElementById('editCardPdfUrl')?.value || '').trim();
-  const pageMatch = pdfUrl.match(/page=(\d+)/);
-  if (pdfUrl) {
-    block.pdf = {
-      ...(block.pdf || {}),
-      url: pdfUrl,
-      page: pageMatch ? parseInt(pageMatch[1]) : (block.pdf?.page || null)
-    };
-  } else {
-    block.pdf = null;
-  }
-
-  // Paper link
-  block.paperId = editingPaperId;
-  block.paperTitle = editingPaperTitle;
-
+  block.color = null;
   block.myNote = document.getElementById('editCardNote').value.trim();
 
-  // Re-render this block
+  // Re-render this block (recompute number)
+  const ordered = topologicalSort(currentBoard.blocks, currentBoard.edges || []);
+  const numMap = {};
+  ordered.forEach((b, i) => { numMap[b.id] = i + 1; });
+
   const oldEl = document.querySelector(`.flow-block[data-block-id="${editingBlockId}"]`);
   if (oldEl) {
-    const newEl = createBlockElement(block);
+    const newEl = createBlockElement(block, numMap[block.id]);
     oldEl.replaceWith(newEl);
     lucide.createIcons();
   }
@@ -1245,9 +1308,9 @@ function importSelectedAnnotations() {
     const annotations = parseAnnotationsFromNote(noteText, paper);
 
     annotations.forEach(ann => {
-      // Check duplicate
-      const exists = existingBlocks.some(
-        b => b.quote === ann.quote && b.paperId === ann.paperId
+      // Check duplicate: look inside annotations[] of existing blocks
+      const exists = existingBlocks.some(b =>
+        (b.annotations || []).some(a => a.quote === ann.quote && a.paperId === ann.paperId)
       );
       if (!exists) {
         const col = idx % cols;
@@ -1306,13 +1369,15 @@ function exportBoard() {
     md += '```\n';
     ordered.forEach((block, i) => {
       const num = i + 1;
-      const label = (block.source?.text || block.paperTitle || '').substring(0, 30) || `Block ${num}`;
+      const anns = block.annotations || [];
+      const label = (anns[0]?.source?.text || anns[0]?.paperTitle || '').substring(0, 30) || `Block ${num}`;
       const outEdges = edges.filter(e => e.from === block.id);
       if (outEdges.length > 0) {
         const targets = outEdges.map(e => {
           const tNum = idxMap[e.to];
           const target = blocks[e.to];
-          const tLabel = (target?.source?.text || target?.paperTitle || '').substring(0, 30) || `Block ${tNum}`;
+          const tAnns = target?.annotations || [];
+          const tLabel = (tAnns[0]?.source?.text || tAnns[0]?.paperTitle || '').substring(0, 30) || `Block ${tNum}`;
           return `[${tNum}] ${tLabel}`;
         });
         targets.forEach(t => {
@@ -1328,36 +1393,43 @@ function exportBoard() {
 
   ordered.forEach((block, i) => {
     const num = i + 1;
+    const annotations = block.annotations || [];
 
-    // Header with number and paper title
+    // Header with number and first paper title or category
     md += `### [${num}]`;
-    if (block.paperTitle) {
-      md += ` ${block.paperTitle}`;
+    if (annotations.length > 0 && annotations[0].paperTitle) {
+      md += ` ${annotations[0].paperTitle}`;
+      if (annotations.length > 1) md += ` (+${annotations.length - 1})`;
     }
     md += '\n\n';
 
-    // Quote
-    if (block.quote) {
-      md += `> \u201C${block.quote}\u201D\n`;
-    }
-
-    // Source line
-    if (block.source?.text) {
-      md += `> \u2014 ${block.source.text}`;
-      if (block.pdf?.page) md += `, p.${block.pdf.page}`;
+    // Each annotation
+    annotations.forEach((ann, ai) => {
+      if (ann.quote) {
+        md += `> \u201C${ann.quote}\u201D\n`;
+      }
+      if (ann.source?.text) {
+        md += `> \u2014 ${ann.source.text}`;
+        if (ann.pdf?.page) md += `, p.${ann.pdf.page}`;
+        md += '\n';
+      }
       md += '\n';
-    }
-    md += '\n';
 
-    // Links
-    const links = [];
-    if (block.source?.zoteroUrl) links.push(`[Zotero](${block.source.zoteroUrl})`);
-    if (block.pdf?.url) links.push(`[PDF${block.pdf.page ? ' p.' + block.pdf.page : ''}](${block.pdf.url})`);
-    if (links.length > 0) {
-      md += links.join(' · ') + '\n\n';
-    }
+      // Links
+      const links = [];
+      if (ann.source?.zoteroUrl) links.push(`[Zotero](${ann.source.zoteroUrl})`);
+      if (ann.pdf?.url) links.push(`[PDF${ann.pdf.page ? ' p.' + ann.pdf.page : ''}](${ann.pdf.url})`);
+      if (links.length > 0) {
+        md += links.join(' · ') + '\n\n';
+      }
 
-    // My note
+      // Separator between annotations within same block
+      if (annotations.length > 1 && ai < annotations.length - 1) {
+        md += '- - -\n\n';
+      }
+    });
+
+    // Block-level note
     if (block.myNote) {
       md += `**Note:** ${block.myNote}\n\n`;
     }
@@ -1480,16 +1552,21 @@ async function migrateFromLocalStorage() {
         const card = oldBoard.cards?.[cardId];
         if (!card) return;
 
+        const ann = {
+          id: generateAnnotationId(),
+          quote: card.quote || '',
+          source: card.source || {},
+          pdf: card.pdf || null,
+          paperId: card.paperId || null,
+          paperTitle: card.paperTitle || null
+        };
+        const hasContent = ann.quote || ann.source?.text || ann.pdf?.url || ann.paperId;
         blocks[card.id] = {
           id: card.id,
           x: xOffset,
           y: cardIdx * 260,
-          quote: card.quote || '',
-          source: card.source || {},
-          pdf: card.pdf || null,
+          annotations: hasContent ? [ann] : [],
           myNote: card.myNote || '',
-          paperId: card.paperId || null,
-          paperTitle: card.paperTitle || null,
           color: card.color || null,
           createdAt: card.createdAt || Date.now()
         };
@@ -1572,82 +1649,204 @@ function showPaperDetail(paperId) {
   paperDetailPanel?.show(paperId);
 }
 
-// ========== Edit Modal Helpers ==========
+// ========== Edit Modal Helpers — Multi-Annotation ==========
 
-function onEditCardPasteAnnotation(e) {
-  const rawText = e.target.value.trim();
-  if (!rawText) return;
+let editingAnnotations = []; // Working copy of annotations array
 
-  const parsed = parseRawAnnotation(rawText);
-  if (!parsed.quote) return;
+/**
+ * Render the annotation list inside the edit modal.
+ */
+function renderEditAnnotationList() {
+  const listEl = document.getElementById('editAnnList');
+  const countEl = document.getElementById('editAnnCount');
+  if (!listEl) return;
 
-  // Fill all fields from parsed data
-  const quoteEl = document.getElementById('editCardQuote');
-  const sourceEl = document.getElementById('editCardSource');
-  const noteEl = document.getElementById('editCardNote');
-  const zoteroUrlEl = document.getElementById('editCardZoteroUrl');
-  const pdfUrlEl = document.getElementById('editCardPdfUrl');
+  countEl.textContent = editingAnnotations.length;
+  listEl.innerHTML = '';
 
-  if (quoteEl) quoteEl.value = parsed.quote;
-  if (sourceEl) sourceEl.value = parsed.source?.text || '';
-  if (noteEl) noteEl.value = parsed.myNote || '';
-  if (zoteroUrlEl) {
-    zoteroUrlEl.value = parsed.source?.zoteroUrl || '';
-    updateRefLinkButton('editCardZoteroOpen', parsed.source?.zoteroUrl);
-  }
-  if (pdfUrlEl) {
-    pdfUrlEl.value = parsed.pdf?.url || '';
-    updateRefLinkButton('editCardPdfOpen', parsed.pdf?.url);
-  }
+  editingAnnotations.forEach((ann, index) => {
+    const quotePreview = (ann.quote || '').length > 60
+      ? ann.quote.substring(0, 60) + '...'
+      : (ann.quote || 'No quote');
+    const sourcePreview = ann.source?.text || ann.paperTitle || '';
 
-  // Auto-match reference paper
-  if (parsed.referencePaperTitle) {
-    const refTitle = parsed.referencePaperTitle.toLowerCase();
-    const match = papers.find(p => {
-      const pt = (p.title || '').toLowerCase();
-      return pt === refTitle || pt.includes(refTitle) || refTitle.includes(pt);
+    const item = document.createElement('div');
+    item.className = 'edit-ann-item';
+    item.dataset.annIndex = index;
+    item.innerHTML = `
+      <div class="edit-ann-item-header">
+        <i data-lucide="chevron-right" class="edit-ann-item-chevron"></i>
+        <div class="edit-ann-item-preview">
+          <div class="edit-ann-item-quote-preview">${escapeHtml(quotePreview)}</div>
+          ${sourcePreview ? `<div class="edit-ann-item-source-preview">${escapeHtml(sourcePreview)}</div>` : ''}
+        </div>
+        <button type="button" class="edit-ann-item-delete" title="Remove annotation">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </div>
+      <div class="edit-ann-item-body">
+        <label>Quote</label>
+        <textarea class="modal-textarea ann-field-quote" placeholder="Quote from the paper...">${escapeHtml(ann.quote || '')}</textarea>
+
+        <div class="edit-card-source-section">
+          <label>Source</label>
+
+          <!-- Paper link: connected state -->
+          <div class="paper-link-display ann-paper-linked" style="display:${ann.paperId ? 'flex' : 'none'};">
+            <i data-lucide="book-open" class="paper-link-icon"></i>
+            <span class="paper-link-title ann-paper-title">${escapeHtml(ann.paperTitle || '')}</span>
+            <button type="button" class="paper-link-unlink ann-unlink-paper" title="Unlink paper">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <!-- Paper link: search state -->
+          <div class="paper-link-search ann-paper-search" style="display:${ann.paperId ? 'none' : 'block'};">
+            <div class="paper-link-search-wrap">
+              <i data-lucide="search" class="paper-link-search-icon"></i>
+              <input type="text" class="paper-link-search-input ann-field-paper-search" placeholder="Search paper to link...">
+            </div>
+            <div class="paper-link-results ann-paper-results"></div>
+          </div>
+
+          <div class="edit-card-ref-links">
+            <div class="ref-link-row">
+              <span class="ref-link-label">Citation</span>
+              <div class="ref-link-input-wrap">
+                <input type="text" class="modal-input ref-link-input ref-link-input-citation ann-field-source" placeholder="Author et al., Year, p.XX" value="${escapeHtml(ann.source?.text || '')}">
+              </div>
+            </div>
+            <div class="ref-link-row">
+              <span class="ref-link-label">Zotero</span>
+              <div class="ref-link-input-wrap">
+                <input type="text" class="modal-input ref-link-input ann-field-zotero-url" placeholder="zotero://select/..." value="${escapeHtml(ann.source?.zoteroUrl || '')}">
+                <a class="ref-link-open ann-zotero-open" href="${ann.source?.zoteroUrl || '#'}" target="_blank" title="Open in Zotero" style="display:${ann.source?.zoteroUrl ? 'flex' : 'none'};">
+                  <i data-lucide="external-link"></i>
+                </a>
+              </div>
+            </div>
+            <div class="ref-link-row">
+              <span class="ref-link-label">PDF</span>
+              <div class="ref-link-input-wrap">
+                <input type="text" class="modal-input ref-link-input ann-field-pdf-url" placeholder="zotero://open-pdf/..." value="${escapeHtml(ann.pdf?.url || '')}">
+                <a class="ref-link-open ann-pdf-open" href="${ann.pdf?.url || '#'}" target="_blank" title="Open PDF" style="display:${ann.pdf?.url ? 'flex' : 'none'};">
+                  <i data-lucide="external-link"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Toggle expand/collapse
+    item.querySelector('.edit-ann-item-header').addEventListener('click', (e) => {
+      if (e.target.closest('.edit-ann-item-delete')) return;
+      // Collapse others
+      listEl.querySelectorAll('.edit-ann-item.expanded').forEach(other => {
+        if (other !== item) {
+          syncAnnItemToData(other);
+          other.classList.remove('expanded');
+        }
+      });
+      item.classList.toggle('expanded');
     });
-    if (match) {
-      updatePaperLinkDisplay(match.id, match.title);
-    } else {
-      updatePaperLinkDisplay(null, null);
-    }
-  }
 
-  // Collapse paste section after filling
-  const section = document.querySelector('.edit-card-paste-section');
-  const body = document.getElementById('editCardPasteBody');
-  if (section && body) {
-    section.classList.remove('open');
-    body.style.display = 'none';
-  }
-  e.target.value = '';
+    // Delete annotation
+    item.querySelector('.edit-ann-item-delete').addEventListener('click', (e) => {
+      e.stopPropagation();
+      editingAnnotations.splice(index, 1);
+      renderEditAnnotationList();
+      lucide.createIcons();
+    });
+
+    // Paper search within annotation
+    const searchInput = item.querySelector('.ann-field-paper-search');
+    const resultsEl = item.querySelector('.ann-paper-results');
+    searchInput?.addEventListener('input', () => {
+      onAnnPaperSearch(searchInput, resultsEl, item, index);
+    });
+
+    // Unlink paper
+    item.querySelector('.ann-unlink-paper')?.addEventListener('click', () => {
+      const linkedEl = item.querySelector('.ann-paper-linked');
+      const searchEl = item.querySelector('.ann-paper-search');
+      linkedEl.style.display = 'none';
+      searchEl.style.display = 'block';
+      editingAnnotations[index].paperId = null;
+      editingAnnotations[index].paperTitle = null;
+      lucide.createIcons();
+    });
+
+    // Ref link live updates
+    item.querySelector('.ann-field-zotero-url')?.addEventListener('input', (e) => {
+      const btn = item.querySelector('.ann-zotero-open');
+      if (btn) {
+        const v = e.target.value.trim();
+        btn.style.display = v ? 'flex' : 'none';
+        btn.href = v || '#';
+      }
+    });
+    item.querySelector('.ann-field-pdf-url')?.addEventListener('input', (e) => {
+      const btn = item.querySelector('.ann-pdf-open');
+      if (btn) {
+        const v = e.target.value.trim();
+        btn.style.display = v ? 'flex' : 'none';
+        btn.href = v || '#';
+      }
+    });
+
+    listEl.appendChild(item);
+  });
 
   lucide.createIcons();
 }
 
-function updatePaperLinkDisplay(paperId, paperTitle) {
-  editingPaperId = paperId;
-  editingPaperTitle = paperTitle;
+/**
+ * Sync DOM form fields of an annotation item back to editingAnnotations[].
+ */
+function syncAnnItemToData(itemEl) {
+  const idx = parseInt(itemEl.dataset.annIndex);
+  if (isNaN(idx) || !editingAnnotations[idx]) return;
 
-  const linkedEl = document.getElementById('editCardPaperLinked');
-  const searchEl = document.getElementById('editCardPaperSearch');
-  if (!linkedEl || !searchEl) return;
+  const ann = editingAnnotations[idx];
+  ann.quote = (itemEl.querySelector('.ann-field-quote')?.value || '').trim();
 
-  if (paperId && paperTitle) {
-    const titleEl = document.getElementById('editCardPaperTitle');
-    if (titleEl) titleEl.textContent = paperTitle;
-    linkedEl.style.display = 'flex';
-    searchEl.style.display = 'none';
+  const zoteroUrl = (itemEl.querySelector('.ann-field-zotero-url')?.value || '').trim();
+  const zoteroKeyMatch = zoteroUrl.match(/items\/([A-Z0-9]+)/i);
+  ann.source = {
+    ...ann.source,
+    text: (itemEl.querySelector('.ann-field-source')?.value || '').trim(),
+    zoteroUrl: zoteroUrl || undefined,
+    zoteroKey: zoteroKeyMatch ? zoteroKeyMatch[1] : (ann.source?.zoteroKey || undefined)
+  };
+
+  const pdfUrl = (itemEl.querySelector('.ann-field-pdf-url')?.value || '').trim();
+  const pageMatch = pdfUrl.match(/page=(\d+)/);
+  if (pdfUrl) {
+    ann.pdf = {
+      ...(ann.pdf || {}),
+      url: pdfUrl,
+      page: pageMatch ? parseInt(pageMatch[1]) : (ann.pdf?.page || null)
+    };
   } else {
-    linkedEl.style.display = 'none';
-    searchEl.style.display = 'block';
+    ann.pdf = null;
   }
 }
 
-function onEditCardPaperSearch(e) {
-  const query = e.target.value.trim().toLowerCase();
-  const resultsEl = document.getElementById('editCardPaperResults');
+/**
+ * Sync ALL expanded annotation items to data before saving.
+ */
+function syncAllAnnItemsToData() {
+  document.querySelectorAll('#editAnnList .edit-ann-item').forEach(itemEl => {
+    syncAnnItemToData(itemEl);
+  });
+}
+
+/**
+ * Paper search within an annotation item.
+ */
+function onAnnPaperSearch(inputEl, resultsEl, itemEl, annIndex) {
+  const query = inputEl.value.trim().toLowerCase();
 
   if (!query || query.length < 2) {
     resultsEl.innerHTML = '';
@@ -1679,48 +1878,121 @@ function onEditCardPaperSearch(e) {
   lucide.createIcons();
   resultsEl.classList.add('has-results');
 
-  // Click handler for each result
-  resultsEl.querySelectorAll('.paper-link-result').forEach(el => {
+  resultsEl.querySelectorAll('.paper-link-result[data-paper-id]').forEach(el => {
     el.addEventListener('click', () => {
       const pid = el.dataset.paperId;
       const paper = papers.find(pp => String(pp.id) === pid);
       if (!paper) return;
 
-      updatePaperLinkDisplay(paper.id, paper.title);
+      // Update annotation data
+      editingAnnotations[annIndex].paperId = paper.id;
+      editingAnnotations[annIndex].paperTitle = paper.title;
+
+      // Update UI: show linked state
+      const linkedEl = itemEl.querySelector('.ann-paper-linked');
+      const searchEl = itemEl.querySelector('.ann-paper-search');
+      const titleEl = itemEl.querySelector('.ann-paper-title');
+      if (titleEl) titleEl.textContent = paper.title;
+      if (linkedEl) linkedEl.style.display = 'flex';
+      if (searchEl) searchEl.style.display = 'none';
 
       // Auto-fill source text if empty
-      const sourceInput = document.getElementById('editCardSource');
+      const sourceInput = itemEl.querySelector('.ann-field-source');
       if (sourceInput && !sourceInput.value.trim()) {
         sourceInput.value = abbreviateAuthors(paper.authors) + (paper.year ? ', ' + paper.year : '');
       }
 
       // Auto-fill zotero URL if empty
-      const zoteroInput = document.getElementById('editCardZoteroUrl');
+      const zoteroInput = itemEl.querySelector('.ann-field-zotero-url');
       if (zoteroInput && !zoteroInput.value.trim() && paper.zotero_key) {
         const url = getZoteroUrl(paper.zotero_key);
         zoteroInput.value = url;
-        updateRefLinkButton('editCardZoteroOpen', url);
+        const btn = itemEl.querySelector('.ann-zotero-open');
+        if (btn) { btn.href = url; btn.style.display = 'flex'; }
       }
 
-      // Clear search
-      const searchInputEl = document.getElementById('editCardPaperSearchInput');
-      if (searchInputEl) searchInputEl.value = '';
+      inputEl.value = '';
       resultsEl.innerHTML = '';
       resultsEl.classList.remove('has-results');
-
       lucide.createIcons();
     });
   });
 }
 
-function updateRefLinkButton(buttonId, url) {
-  const btn = document.getElementById(buttonId);
-  if (!btn) return;
-  if (url && url.trim()) {
-    btn.href = url.trim();
-    btn.style.display = 'flex';
-  } else {
-    btn.style.display = 'none';
+/**
+ * Handle paste annotation in edit modal — adds to annotation list.
+ */
+function onEditCardPasteAnnotation(e) {
+  const rawText = e.target.value.trim();
+  if (!rawText) return;
+
+  const parsed = parseRawAnnotation(rawText);
+  if (!parsed.quote) return;
+
+  // Build annotation object
+  const ann = {
+    id: generateAnnotationId(),
+    quote: parsed.quote,
+    source: parsed.source || {},
+    pdf: parsed.pdf || null,
+    paperId: null,
+    paperTitle: null
+  };
+
+  // Auto-match reference paper
+  if (parsed.referencePaperTitle) {
+    const refTitle = parsed.referencePaperTitle.toLowerCase();
+    const match = papers.find(p => {
+      const pt = (p.title || '').toLowerCase();
+      return pt === refTitle || pt.includes(refTitle) || refTitle.includes(pt);
+    });
+    if (match) {
+      ann.paperId = match.id;
+      ann.paperTitle = match.title;
+    }
+  }
+
+  // If paste had a user note, set it as block note if empty
+  if (parsed.myNote) {
+    const noteEl = document.getElementById('editCardNote');
+    if (noteEl && !noteEl.value.trim()) {
+      noteEl.value = parsed.myNote;
+    }
+  }
+
+  editingAnnotations.push(ann);
+  renderEditAnnotationList();
+
+  // Collapse paste section
+  const section = document.querySelector('.edit-card-paste-section');
+  const body = document.getElementById('editCardPasteBody');
+  if (section && body) {
+    section.classList.remove('open');
+    body.style.display = 'none';
+  }
+  e.target.value = '';
+}
+
+/**
+ * Add an empty annotation to the list.
+ */
+function addEmptyAnnotation() {
+  editingAnnotations.push({
+    id: generateAnnotationId(),
+    quote: '',
+    source: {},
+    pdf: null,
+    paperId: null,
+    paperTitle: null
+  });
+  renderEditAnnotationList();
+
+  // Auto-expand the new item
+  const listEl = document.getElementById('editAnnList');
+  const lastItem = listEl?.lastElementChild;
+  if (lastItem) {
+    lastItem.classList.add('expanded');
+    lastItem.querySelector('.ann-field-quote')?.focus();
   }
 }
 

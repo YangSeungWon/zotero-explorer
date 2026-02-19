@@ -179,6 +179,7 @@
         </button>
       </div>
       <div class="edit-card-form">
+        <!-- Paste Annotation (adds to list) -->
         <div class="edit-card-paste-section">
           <div class="edit-card-paste-header" id="editCardPasteToggle">
             <i data-lucide="clipboard-paste"></i>
@@ -186,63 +187,27 @@
             <i data-lucide="chevron-down" class="edit-card-paste-chevron"></i>
           </div>
           <div class="edit-card-paste-body" id="editCardPasteBody" style="display:none;">
-            <textarea id="editCardPasteRaw" class="modal-textarea" placeholder="Paste Zotero annotation here to auto-fill all fields..."></textarea>
+            <textarea id="editCardPasteRaw" class="modal-textarea" placeholder="Paste Zotero annotation here to add to this block..."></textarea>
           </div>
         </div>
 
-        <label>Quote</label>
-        <textarea id="editCardQuote" class="modal-textarea" placeholder="Original quote from the paper..."></textarea>
-
-        <div class="edit-card-source-section">
-          <label>Source</label>
-
-          <!-- Paper link: connected state -->
-          <div id="editCardPaperLinked" class="paper-link-display" style="display:none;">
-            <i data-lucide="book-open" class="paper-link-icon"></i>
-            <span id="editCardPaperTitle" class="paper-link-title"></span>
-            <button type="button" id="editCardUnlinkPaper" class="paper-link-unlink" title="Unlink paper">
-              <i data-lucide="x"></i>
-            </button>
+        <!-- Annotation List -->
+        <div class="edit-ann-list-section">
+          <div class="edit-ann-list-header">
+            <label>Annotations</label>
+            <span id="editAnnCount" class="edit-ann-count">0</span>
           </div>
-          <!-- Paper link: search state -->
-          <div id="editCardPaperSearch" class="paper-link-search" style="display:none;">
-            <div class="paper-link-search-wrap">
-              <i data-lucide="search" class="paper-link-search-icon"></i>
-              <input type="text" id="editCardPaperSearchInput" class="paper-link-search-input" placeholder="Search paper to link...">
-            </div>
-            <div id="editCardPaperResults" class="paper-link-results"></div>
+          <div id="editAnnList" class="edit-ann-list">
+            <!-- Annotation items rendered by JS -->
           </div>
-
-          <div class="edit-card-ref-links">
-            <div class="ref-link-row">
-              <span class="ref-link-label">Citation</span>
-              <div class="ref-link-input-wrap">
-                <input type="text" id="editCardSource" class="modal-input ref-link-input ref-link-input-citation" placeholder="Author et al., Year, p.XX">
-              </div>
-            </div>
-            <div class="ref-link-row">
-              <span class="ref-link-label">Zotero</span>
-              <div class="ref-link-input-wrap">
-                <input type="text" id="editCardZoteroUrl" class="modal-input ref-link-input" placeholder="zotero://select/...">
-                <a id="editCardZoteroOpen" class="ref-link-open" href="#" target="_blank" title="Open in Zotero" style="display:none;">
-                  <i data-lucide="external-link"></i>
-                </a>
-              </div>
-            </div>
-            <div class="ref-link-row">
-              <span class="ref-link-label">PDF</span>
-              <div class="ref-link-input-wrap">
-                <input type="text" id="editCardPdfUrl" class="modal-input ref-link-input" placeholder="zotero://open-pdf/...">
-                <a id="editCardPdfOpen" class="ref-link-open" href="#" target="_blank" title="Open PDF" style="display:none;">
-                  <i data-lucide="external-link"></i>
-                </a>
-              </div>
-            </div>
-          </div>
+          <button type="button" id="editAnnAddBtn" class="edit-ann-add-btn">
+            <i data-lucide="plus"></i> Add Annotation
+          </button>
         </div>
 
+        <!-- Block-level Note -->
         <label>Your Note</label>
-        <textarea id="editCardNote" class="modal-textarea-large" placeholder="Your interpretation or analysis..."></textarea>
+        <textarea id="editCardNote" class="modal-textarea-large" placeholder="Overarching synthesis or analysis..."></textarea>
 
         <div class="edit-card-category-row">
           <label>Category</label>

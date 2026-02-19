@@ -97,11 +97,16 @@ Free-canvas argument flow builder (Miro/FigJam style). Paper annotation blocks a
     "blocks": {
       "ann_xxx": {
         "id": "ann_xxx", "x": 100, "y": 200,
-        "quote": "citation text",
-        "source": { "text": "Author, 2024", "zoteroKey": "ABC", "zoteroUrl": "zotero://..." },
-        "pdf": { "url": "zotero://...", "page": 5 },
-        "myNote": "my interpretation",
-        "paperId": 42, "paperTitle": "Paper Title",
+        "annotations": [
+          {
+            "id": "ann_item_1", "quote": "citation text",
+            "source": { "text": "Author, 2024", "zoteroKey": "ABC", "zoteroUrl": "zotero://..." },
+            "pdf": { "url": "zotero://...", "page": 5 },
+            "paperId": 42, "paperTitle": "Paper Title"
+          }
+        ],
+        "myNote": "overarching synthesis note",
+        "category": "evidence",
         "color": null, "createdAt": 1700000000
       }
     },
