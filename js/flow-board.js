@@ -444,11 +444,13 @@ function createBlockElement(block) {
 
   const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
   const isUnlinked = sourceText && !block.paperId;
+  const isPaperOnly = block.paperId && !block.source?.zoteroUrl;
   const headerLabel = sourceText || paperTitle || (block.myNote || '').split('\n')[0] || 'No source';
 
   el.innerHTML = `
     <div class="flow-block-header">
-      ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to Zotero"><i data-lucide="link-2-off"></i></span>' : ''}
+      ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to paper"><i data-lucide="link-2-off"></i></span>' : ''}
+      ${isPaperOnly ? '<span class="flow-block-paper-only" title="Paper linked, no annotation"><i data-lucide="bookmark-minus"></i></span>' : ''}
       <span class="flow-block-paper-title" title="${escapeHtml(paperTitle || headerLabel)}">${escapeHtml(headerLabel)}</span>
       <div class="flow-block-actions">
         <button class="flow-block-action edit" title="Edit"><i data-lucide="pencil"></i></button>

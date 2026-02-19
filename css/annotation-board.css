@@ -267,6 +267,19 @@
   height: calc(13px * var(--zc, 1));
 }
 
+.flow-block-paper-only {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-right: calc(5px * var(--zc, 1));
+  opacity: 0.5;
+}
+.flow-block-paper-only svg {
+  width: calc(13px * var(--zc, 1));
+  height: calc(13px * var(--zc, 1));
+}
+
 .flow-block-paper-title {
   flex: 1;
   min-width: 0;
