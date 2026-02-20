@@ -364,6 +364,24 @@
   margin-bottom: 0;
 }
 
+.flow-block-ann.placeholder {
+  border-left-color: var(--orange-400);
+  opacity: 0.7;
+}
+
+.flow-block-ann-placeholder {
+  display: flex;
+  align-items: center;
+  color: var(--orange-400);
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.flow-block-ann-placeholder svg {
+  width: calc(11px * var(--zc, 1));
+  height: calc(11px * var(--zc, 1));
+}
+
 .flow-block-ann-quote {
   font-size: calc(12.5px * var(--zc, 1));
   font-style: italic;
@@ -1589,6 +1607,23 @@
 .edit-ann-item-delete svg {
   width: 13px;
   height: 13px;
+}
+
+/* Placeholder warning in edit modal */
+.edit-ann-item.placeholder {
+  border-left: 3px solid var(--orange-400);
+}
+
+.edit-ann-item-placeholder {
+  display: flex;
+  align-items: center;
+  color: var(--orange-400);
+  flex-shrink: 0;
+}
+
+.edit-ann-item-placeholder svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Expanded form */

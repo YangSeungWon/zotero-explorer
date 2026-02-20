@@ -468,11 +468,13 @@ function createBlockElement(block, blockNum) {
     const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
     const isUnlinked = srcText && !ann.paperId;
     const isPaperOnly = ann.paperId && !ann.source?.zoteroUrl;
+    const isPlaceholder = !hasZotero && !hasPdf;
 
     annotationsHtml += `
-      <div class="flow-block-ann" data-ann-index="${i}">
+      <div class="flow-block-ann${isPlaceholder ? ' placeholder' : ''}" data-ann-index="${i}">
         <div class="flow-block-ann-quote">${escapeHtml(quotePreview)}</div>
         <div class="flow-block-ann-meta">
+          ${isPlaceholder ? '<span class="flow-block-ann-placeholder" title="No source link — placeholder"><i data-lucide="alert-circle"></i></span>' : ''}
           ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to paper"><i data-lucide="link-2-off"></i></span>' : ''}
           ${isPaperOnly ? '<span class="flow-block-paper-only" title="Paper linked, no annotation"><i data-lucide="bookmark-minus"></i></span>' : ''}
           <span class="flow-block-ann-source">${escapeHtml(srcText)}</span>
@@ -1669,13 +1671,15 @@ function renderEditAnnotationList() {
       ? ann.quote.substring(0, 60) + '...'
       : (ann.quote || 'No quote');
     const sourcePreview = ann.source?.text || ann.paperTitle || '';
+    const isPlaceholder = !ann.source?.zoteroUrl && !ann.pdf?.url;
 
     const item = document.createElement('div');
-    item.className = 'edit-ann-item';
+    item.className = 'edit-ann-item' + (isPlaceholder ? ' placeholder' : '');
     item.dataset.annIndex = index;
     item.innerHTML = `
       <div class="edit-ann-item-header">
         <i data-lucide="chevron-right" class="edit-ann-item-chevron"></i>
+        ${isPlaceholder ? '<span class="edit-ann-item-placeholder" title="No source link — placeholder"><i data-lucide="alert-circle"></i></span>' : ''}
         <div class="edit-ann-item-preview">
           <div class="edit-ann-item-quote-preview">${escapeHtml(quotePreview)}</div>
           ${sourcePreview ? `<div class="edit-ann-item-source-preview">${escapeHtml(sourcePreview)}</div>` : ''}
