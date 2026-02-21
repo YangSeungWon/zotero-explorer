@@ -1489,8 +1489,15 @@ function exportBoard() {
     md += '---\n\n';
   });
 
-  document.getElementById('exportContent').value = md;
-  document.getElementById('exportModal').style.display = 'flex';
+  navigator.clipboard.writeText(md).then(() => {
+    const btn = document.getElementById('exportBtn');
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="check"></i>';
+      lucide.createIcons();
+      setTimeout(() => { btn.innerHTML = orig; lucide.createIcons(); }, 1500);
+    }
+  });
 }
 
 function topologicalSort(blocks, edges) {
