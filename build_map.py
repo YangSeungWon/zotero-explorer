@@ -309,7 +309,7 @@ TYPE_SCORE = {
     "blogPost": 1,
 }
 
-CURRENT_YEAR = 2025
+CURRENT_YEAR = datetime.now().year
 
 # ============================================================
 # 유틸리티 함수
