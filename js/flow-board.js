@@ -1717,14 +1717,17 @@ function renderEditAnnotationList() {
       : (ann.quote || 'No quote');
     const sourcePreview = ann.source?.text || ann.paperTitle || '';
     const isPlaceholder = !ann.source?.zoteroUrl && !ann.pdf?.url;
+    const hasAnnotationLink = ann.pdf?.url && /annotation=/.test(ann.pdf.url);
+    const noAnnotationLink = !isPlaceholder && !hasAnnotationLink;
 
     const item = document.createElement('div');
-    item.className = 'edit-ann-item' + (isPlaceholder ? ' placeholder' : '');
+    item.className = 'edit-ann-item' + (isPlaceholder ? ' placeholder' : '') + (noAnnotationLink ? ' no-ann-link' : '');
     item.dataset.annIndex = index;
     item.innerHTML = `
       <div class="edit-ann-item-header">
         <i data-lucide="chevron-right" class="edit-ann-item-chevron"></i>
         ${isPlaceholder ? '<span class="edit-ann-item-placeholder" title="No source link — placeholder"><i data-lucide="alert-circle"></i></span>' : ''}
+        ${noAnnotationLink ? '<span class="edit-ann-item-no-ann-link" title="No annotation link — generic PDF only"><i data-lucide="link-2-off"></i></span>' : ''}
         <div class="edit-ann-item-preview">
           <div class="edit-ann-item-quote-preview">${escapeHtml(quotePreview)}</div>
           ${sourcePreview ? `<div class="edit-ann-item-source-preview">${escapeHtml(sourcePreview)}</div>` : ''}

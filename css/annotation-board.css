@@ -1664,6 +1664,21 @@
   height: 14px;
 }
 
+/* No annotation link warning (lighter than placeholder) */
+.edit-ann-item.no-ann-link {
+  border-left: 3px solid var(--text-muted);
+}
+.edit-ann-item-no-ann-link {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.edit-ann-item-no-ann-link svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* Expanded form */
 .edit-ann-item-body {
   display: none;
