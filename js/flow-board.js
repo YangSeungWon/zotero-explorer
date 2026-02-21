@@ -464,13 +464,14 @@ function createBlockElement(block, blockNum) {
       ? ann.quote.substring(0, 100) + '...'
       : (ann.quote || '');
     const srcText = ann.source?.text || '';
-    const hasZotero = !!ann.source?.zoteroUrl;
-    const hasPdf = !!ann.pdf?.url;
     const zoteroKey = ann.source?.zoteroKey;
+    const zoteroUrl = ann.source?.zoteroUrl || (zoteroKey ? getZoteroUrl(zoteroKey) : null);
+    const linkedPaper = ann.paperId ? papers.find(p => p.id === ann.paperId) : null;
+    const hasAnnotationLink = !!ann.pdf?.url;
+    const pdfUrl = ann.pdf?.url || (linkedPaper?.pdf_key ? getZoteroPdfUrl(linkedPaper.pdf_key) : null);
     const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
     const isUnlinked = srcText && !ann.paperId;
-    const isPaperOnly = ann.paperId && !ann.source?.zoteroUrl;
-    const isPlaceholder = !hasZotero && !hasPdf;
+    const isPlaceholder = !zoteroUrl && !pdfUrl;
 
     annotationsHtml += `
       <div class="flow-block-ann${isPlaceholder ? ' placeholder' : ''}" data-ann-index="${i}">
@@ -478,12 +479,11 @@ function createBlockElement(block, blockNum) {
         <div class="flow-block-ann-meta">
           ${isPlaceholder ? '<span class="flow-block-ann-placeholder" title="No source link — placeholder"><i data-lucide="alert-circle"></i></span>' : ''}
           ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to paper"><i data-lucide="link-2-off"></i></span>' : ''}
-          ${isPaperOnly ? '<span class="flow-block-paper-only" title="Paper linked, no annotation"><i data-lucide="bookmark-minus"></i></span>' : ''}
           <span class="flow-block-ann-source">${escapeHtml(srcText)}</span>
           <span class="flow-block-ann-links">
             ${explorerLink ? `<a href="${explorerLink}" target="_blank" class="flow-block-link" title="Explorer"><i data-lucide="compass"></i></a>` : ''}
-            ${hasZotero ? `<a href="${ann.source.zoteroUrl}" class="flow-block-link" title="Zotero"><i data-lucide="book-open"></i></a>` : ''}
-            ${hasPdf ? `<a href="${ann.pdf.url}" class="flow-block-link" title="PDF${ann.pdf.page ? ' p.' + ann.pdf.page : ''}"><i data-lucide="file-text"></i></a>` : ''}
+            ${zoteroUrl ? `<a href="${zoteroUrl}" class="flow-block-link" title="Zotero"><i data-lucide="book-open"></i></a>` : ''}
+            ${pdfUrl ? `<a href="${pdfUrl}" class="flow-block-link" title="${hasAnnotationLink ? 'Annotation' : 'PDF'}${ann.pdf?.page ? ' p.' + ann.pdf.page : ''}"><i data-lucide="${hasAnnotationLink ? 'highlighter' : 'file-text'}"></i></a>` : ''}
           </span>
         </div>
       </div>
