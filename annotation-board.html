@@ -209,6 +209,18 @@
         <label>Your Note</label>
         <textarea id="editCardNote" class="modal-textarea-large" placeholder="Overarching synthesis or analysis..."></textarea>
 
+        <!-- Caution -->
+        <div class="edit-card-caution-section" id="editCardCautionSection">
+          <div class="edit-card-caution-toggle" id="editCardCautionToggle">
+            <i data-lucide="triangle-alert"></i>
+            <span>Caution</span>
+            <i data-lucide="chevron-down" class="edit-card-caution-chevron"></i>
+          </div>
+          <div class="edit-card-caution-body" id="editCardCautionBody" style="display:none;">
+            <textarea id="editCardCaution" class="modal-textarea caution-textarea" placeholder="이 블록에서 빠지면 안 되는 논증 방향, 리뷰어 오독 가능성..."></textarea>
+          </div>
+        </div>
+
         <div class="edit-card-category-row">
           <label>Category</label>
           <select id="editCardCategory" class="modal-input">

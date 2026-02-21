@@ -439,6 +439,34 @@
   display: none;
 }
 
+.flow-block-caution {
+  padding: calc(6px * var(--zc, 1)) calc(14px * var(--zc, 1));
+  font-size: calc(11.5px * var(--zc, 1));
+  color: var(--color-warning, #e67700);
+  background: color-mix(in srgb, var(--color-warning, #e67700) 8%, transparent);
+  line-height: 1.5;
+  max-height: calc(44px * var(--zc, 1));
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(5px * var(--zc, 1));
+}
+
+.flow-block-caution-icon {
+  flex-shrink: 0;
+  width: calc(13px * var(--zc, 1));
+  height: calc(13px * var(--zc, 1));
+  margin-top: calc(2px * var(--zc, 1));
+}
+
+.flow-block-caution:empty {
+  display: none;
+}
+
+.canvas-viewport.zoom-mid .flow-block-caution {
+  display: none;
+}
+
 /* (flow-block-links removed — links are now per-annotation) */
 
 .flow-block-link {
@@ -1733,6 +1761,67 @@
   margin-bottom: 0;
   min-height: 60px;
   font-size: 12px;
+}
+
+/* ===========================================
+   Edit Block Modal — Caution Section
+   =========================================== */
+
+.edit-card-caution-section {
+  margin-bottom: 16px;
+  border: 1px dashed color-mix(in srgb, var(--color-warning, #e67700) 50%, transparent);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+.edit-card-caution-section:hover {
+  border-color: var(--color-warning, #e67700);
+}
+
+.edit-card-caution-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--color-warning, #e67700);
+  font-size: 13px;
+  user-select: none;
+}
+
+.edit-card-caution-toggle:hover {
+  opacity: 0.85;
+}
+
+.edit-card-caution-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.edit-card-caution-chevron {
+  margin-left: auto;
+  transition: transform var(--transition-fast);
+}
+
+.edit-card-caution-section.open .edit-card-caution-chevron {
+  transform: rotate(180deg);
+}
+
+.edit-card-caution-body {
+  padding: 0 12px 12px;
+}
+
+.caution-textarea {
+  margin-bottom: 0;
+  min-height: 60px;
+  font-size: 12px;
+  border-color: color-mix(in srgb, var(--color-warning, #e67700) 30%, var(--border-color));
+}
+
+.caution-textarea:focus {
+  border-color: var(--color-warning, #e67700);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-warning, #e67700) 15%, transparent);
 }
 
 /* ===========================================

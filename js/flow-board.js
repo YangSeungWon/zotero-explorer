@@ -499,6 +499,7 @@ function createBlockElement(block, blockNum) {
     </div>
     ${annCount > 0 ? `<div class="flow-block-annotations">${annotationsHtml}</div>` : ''}
     ${block.myNote ? `<div class="flow-block-note">${escapeHtml(block.myNote)}</div>` : ''}
+    ${block.caution ? `<div class="flow-block-caution"><i data-lucide="triangle-alert" class="flow-block-caution-icon"></i><span>${escapeHtml(block.caution)}</span></div>` : ''}
     <div class="connector connector-in" data-block-id="${block.id}" data-side="in"></div>
     <div class="connector connector-out" data-block-id="${block.id}" data-side="out"></div>
   `;
@@ -993,6 +994,16 @@ function setupEventListeners() {
   });
   document.getElementById('editCardPasteRaw')?.addEventListener('input', onEditCardPasteAnnotation);
 
+  // Edit block modal — caution toggle
+  document.getElementById('editCardCautionToggle')?.addEventListener('click', () => {
+    const section = document.getElementById('editCardCautionSection');
+    const body = document.getElementById('editCardCautionBody');
+    if (!section || !body) return;
+    const isOpen = section.classList.toggle('open');
+    body.style.display = isOpen ? '' : 'none';
+    if (isOpen) document.getElementById('editCardCaution')?.focus();
+  });
+
   // Edit block modal — add empty annotation
   document.getElementById('editAnnAddBtn')?.addEventListener('click', addEmptyAnnotation);
 
@@ -1063,6 +1074,18 @@ function openEditBlockModal(blockId) {
 
   document.getElementById('editCardCategory').value = block.category || '';
   document.getElementById('editCardNote').value = block.myNote || '';
+  document.getElementById('editCardCaution').value = block.caution || '';
+
+  // Reset caution section visibility
+  const cautionSection = document.getElementById('editCardCautionSection');
+  const cautionBody = document.getElementById('editCardCautionBody');
+  if (block.caution) {
+    cautionSection.classList.add('open');
+    cautionBody.style.display = '';
+  } else {
+    cautionSection.classList.remove('open');
+    cautionBody.style.display = 'none';
+  }
 
   // Reset paste section
   const pasteSection = document.querySelector('.edit-card-paste-section');
@@ -1102,6 +1125,7 @@ function saveEditBlock() {
   block.category = document.getElementById('editCardCategory').value || null;
   block.color = null;
   block.myNote = document.getElementById('editCardNote').value.trim();
+  block.caution = document.getElementById('editCardCaution').value.trim() || null;
 
   // Re-render this block (recompute number)
   const ordered = topologicalSort(currentBoard.blocks, currentBoard.edges || []);
@@ -1434,6 +1458,11 @@ function exportBoard() {
     // Block-level note
     if (block.myNote) {
       md += `**Note:** ${block.myNote}\n\n`;
+    }
+
+    // Caution
+    if (block.caution) {
+      md += `**⚠️ Caution:** ${block.caution}\n\n`;
     }
 
     // Connections

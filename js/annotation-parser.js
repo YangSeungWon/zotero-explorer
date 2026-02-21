@@ -20,7 +20,7 @@ function parseAnnotationsFromNote(noteText, paper = {}) {
 
   // Pattern to match annotation blocks (curly quotes U+201C, U+201D)
   // Groups: 1=quote, 2=citation text, 3=citation zotero url, 4=pdf url (optional), 5=user note
-  const annotationPattern = /\u201C([^\u201D]+)\u201D\s*\(\[([^\]]+)\]\((zotero:\/\/[^)]+)\)\)\s*(?:\(\[pdf\]\((zotero:\/\/[^)]+)\)\))?\s*([\s\S]*?)(?=\u201C|$)/g;
+  const annotationPattern = /\u201C([\s\S]+?)\u201D(?=\s*\(\[)\s*\(\[([^\]]+)\]\((zotero:\/\/[^)]+)\)\)\s*(?:\(\[pdf\]\((zotero:\/\/[^)]+)\)\))?\s*([\s\S]*?)(?=\u201C|$)/g;
 
   let match;
   while ((match = annotationPattern.exec(noteText)) !== null) {
@@ -261,15 +261,28 @@ function parseRawAnnotation(rawText) {
   }
 
   // Try to extract quoted text — curly quotes first, then straight quotes
+  // Use greedy match to the LAST closing quote before a link pattern (zotero://)
   const quotePatterns = [
-    /\u201C([^\u201D]+)\u201D/,     // curly quotes
-    /"([^"]+)"/                       // straight quotes
+    /\u201C([\s\S]+)\u201D(?=\s*\()/,     // curly quotes, greedy to last close before link
+    /"([\s\S]+)"(?=\s*\()/                  // straight quotes, greedy to last close before link
   ];
 
   let quoteMatch = null;
   for (const pat of quotePatterns) {
     quoteMatch = mainText.match(pat);
     if (quoteMatch) break;
+  }
+
+  // Fallback: non-greedy if no link follows
+  if (!quoteMatch) {
+    const fallbackPatterns = [
+      /\u201C([^\u201D]+)\u201D/,
+      /"([^"]+)"/
+    ];
+    for (const pat of fallbackPatterns) {
+      quoteMatch = mainText.match(pat);
+      if (quoteMatch) break;
+    }
   }
 
   if (!quoteMatch) {
