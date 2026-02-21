@@ -768,6 +768,11 @@
 .modal-header h3 {
   margin: 0;
 }
+.edit-block-number {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.85em;
+}
 
 .btn-close {
   display: flex;

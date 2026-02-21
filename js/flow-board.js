@@ -1072,6 +1072,12 @@ function openEditBlockModal(blockId) {
 
   editingBlockId = blockId;
 
+  // Compute block number from topological order
+  const ordered = topologicalSort(currentBoard.blocks, currentBoard.edges || []);
+  const blockNum = ordered.findIndex(b => b.id === blockId) + 1;
+  const numEl = document.getElementById('editBlockNumber');
+  if (numEl) numEl.textContent = blockNum > 0 ? `[${blockNum}]` : '';
+
   // Deep-copy annotations for editing
   editingAnnotations = (block.annotations || []).map(ann => ({
     id: ann.id || generateAnnotationId(),
