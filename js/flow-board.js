@@ -263,6 +263,8 @@ function initPanZoom() {
 
     // Deselect
     deselectAll();
+    document.querySelectorAll('.flow-block-ann.active').forEach(el => el.classList.remove('active'));
+    closeDetailPanel();
 
     isPanning = true;
     panStart = { x: e.clientX, y: e.clientY };
@@ -516,6 +518,31 @@ function createBlockElement(block, blockNum) {
     }
   });
 
+  // Per-annotation click to show that annotation's paper
+  el.querySelectorAll('.flow-block-ann').forEach(annEl => {
+    annEl.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      e.stopPropagation();
+      if (isDraggingBlock?.moved) return;
+
+      const idx = parseInt(annEl.dataset.annIndex);
+      const ann = (block.annotations || [])[idx];
+      if (!ann) return;
+
+      let paper = null;
+      const zk = ann.source?.zoteroKey;
+      if (zk) paper = papers.find(p => p.zotero_key === zk);
+      if (!paper && ann.paperId) paper = papers.find(p => p.id === ann.paperId);
+      if (paper) {
+        // Mark active annotation
+        document.querySelectorAll('.flow-block-ann.active').forEach(el => el.classList.remove('active'));
+        annEl.classList.add('active');
+        showPaperDetail(paper.id);
+        openDetailPanel();
+      }
+    });
+  });
+
   // Block drag
   el.addEventListener('mousedown', (e) => {
     if (e.target.closest('.connector') || e.target.closest('button') || e.target.closest('a')) return;
@@ -533,23 +560,11 @@ function createBlockElement(block, blockNum) {
     el.classList.add('dragging');
   });
 
-  // Click to show paper detail (use first annotation's paper)
+  // Click on block (outside annotations) — deselect annotation, close panel
   el.addEventListener('click', (e) => {
-    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.connector')) return;
-    if (isDraggingBlock?.moved) return;
-
-    const anns = block.annotations || [];
-    let paper = null;
-    for (const ann of anns) {
-      const zk = ann.source?.zoteroKey;
-      if (zk) paper = papers.find(p => p.zotero_key === zk);
-      if (!paper && ann.paperId) paper = papers.find(p => p.id === ann.paperId);
-      if (paper) break;
-    }
-    if (paper) {
-      showPaperDetail(paper.id);
-      openDetailPanel();
-    }
+    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.connector') || e.target.closest('.flow-block-ann')) return;
+    document.querySelectorAll('.flow-block-ann.active').forEach(el => el.classList.remove('active'));
+    closeDetailPanel();
   });
 
   // Connector drag to create edges

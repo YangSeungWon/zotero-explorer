@@ -358,6 +358,16 @@
   margin-bottom: calc(4px * var(--zc, 1));
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+}
+
+.flow-block-ann:hover {
+  background: var(--bg-tertiary);
+}
+
+.flow-block-ann.active {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
 }
 
 .flow-block-ann:last-child {
