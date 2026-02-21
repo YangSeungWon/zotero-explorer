@@ -503,7 +503,7 @@
   border-radius: 50%;
   background: var(--bg-tertiary);
   border: calc(2px * var(--zc, 1)) solid var(--accent);
-  top: 50%;
+  top: 30px;
   transform: translateY(-50%);
   cursor: crosshair;
   opacity: 0;

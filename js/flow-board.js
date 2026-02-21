@@ -646,17 +646,13 @@ function createEdgePath(edge) {
 }
 
 function computeEdgePath(fromBlock, toBlock) {
-  // From: right center of fromBlock
-  const fromEl = document.querySelector(`.flow-block[data-block-id="${fromBlock.id}"]`);
-  const toEl = document.querySelector(`.flow-block[data-block-id="${toBlock.id}"]`);
-
-  const fromH = fromEl ? fromEl.offsetHeight : 120;
-  const toH = toEl ? toEl.offsetHeight : 120;
+  // Fixed connector Y at header height (top of block)
+  const CONNECTOR_Y = 30;
 
   const x1 = fromBlock.x + BLOCK_WIDTH;
-  const y1 = fromBlock.y + fromH / 2;
+  const y1 = fromBlock.y + CONNECTOR_Y;
   const x2 = toBlock.x;
-  const y2 = toBlock.y + toH / 2;
+  const y2 = toBlock.y + CONNECTOR_Y;
 
   const dx = Math.abs(x2 - x1);
   const cpOffset = Math.max(60, dx * 0.4);
@@ -697,11 +693,10 @@ function startEdgeDraw(fromBlockId, e) {
   line.setAttribute('marker-end', 'url(#arrowhead)');
 
   const block = currentBoard.blocks[fromBlockId];
-  const fromEl = document.querySelector(`.flow-block[data-block-id="${fromBlockId}"]`);
-  const fromH = fromEl ? fromEl.offsetHeight : 120;
+  const CONNECTOR_Y = 30;
 
   const startX = block.x + BLOCK_WIDTH;
-  const startY = block.y + fromH / 2;
+  const startY = block.y + CONNECTOR_Y;
 
   line.setAttribute('x1', startX);
   line.setAttribute('y1', startY);
@@ -1487,7 +1482,7 @@ function topologicalSort(blocks, edges) {
   const blockIds = Object.keys(blocks);
   if (blockIds.length === 0) return [];
 
-  // Build adjacency and in-degree
+  // Build adjacency and in-degree (Kahn's algorithm)
   const inDegree = {};
   const adj = {};
   blockIds.forEach(id => {
@@ -1502,32 +1497,31 @@ function topologicalSort(blocks, edges) {
     }
   });
 
-  // BFS from roots
-  const queue = blockIds.filter(id => inDegree[id] === 0);
-  const visited = new Set();
+  // Start with roots (in-degree 0), sorted by y-coordinate
+  const queue = blockIds
+    .filter(id => inDegree[id] === 0)
+    .sort((a, b) => (blocks[a].y || 0) - (blocks[b].y || 0));
   const ordered = [];
-
-  // Sort roots by y-coordinate
-  queue.sort((a, b) => (blocks[a].y || 0) - (blocks[b].y || 0));
 
   while (queue.length > 0) {
     const id = queue.shift();
-    if (visited.has(id)) continue;
-    visited.add(id);
     ordered.push(blocks[id]);
 
-    const neighbors = adj[id] || [];
-    neighbors.sort((a, b) => (blocks[a].y || 0) - (blocks[b].y || 0));
+    const neighbors = (adj[id] || [])
+      .sort((a, b) => (blocks[a].y || 0) - (blocks[b].y || 0));
     neighbors.forEach(n => {
-      if (!visited.has(n)) {
+      inDegree[n]--;
+      if (inDegree[n] === 0) {
         queue.push(n);
+        // Re-sort queue by y to maintain stable ordering
+        queue.sort((a, b) => (blocks[a].y || 0) - (blocks[b].y || 0));
       }
     });
   }
 
-  // Add any unvisited blocks (disconnected), sorted by y
+  // Add any remaining blocks (cycles or disconnected), sorted by y
   blockIds
-    .filter(id => !visited.has(id))
+    .filter(id => !ordered.some(b => b.id === id))
     .sort((a, b) => (blocks[a].y || 0) - (blocks[b].y || 0))
     .forEach(id => ordered.push(blocks[id]));
 
