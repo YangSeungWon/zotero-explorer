@@ -101,11 +101,12 @@ Free-canvas argument flow builder (Miro/FigJam style). Paper annotation blocks a
           {
             "id": "ann_item_1", "quote": "citation text",
             "source": { "text": "Author, 2024", "zoteroKey": "ABC", "zoteroUrl": "zotero://..." },
-            "pdf": { "url": "zotero://...", "page": 5 },
+            "pdf": { "url": "zotero://...", "page": 5, "annotationId": "XYZ123" },
             "paperId": 42, "paperTitle": "Paper Title"
           }
         ],
         "myNote": "overarching synthesis note",
+        "caution": "argument guard rail note (optional)",
         "category": "evidence",
         "color": null, "createdAt": 1700000000
       }
@@ -130,7 +131,19 @@ Free-canvas argument flow builder (Miro/FigJam style). Paper annotation blocks a
 - Block drag: mousedown on block → move → edges follow
 - Edge create: mousedown on right connector → drag to target block
 - Edge/block delete: select → Delete key
+- Annotation click: clicking an individual annotation in a block shows that paper in the detail panel (with `.active` highlight)
+- Block empty area click / canvas click: closes the detail panel
 - Auto-save: 1.5s debounce after any change
+
+**Edge connectors**: Fixed at 30px from the top of each block (not vertically centered), so arrow positions stay stable regardless of block content height.
+
+**Caution field**: Optional per-block argument guard rail. Rendered as an orange warning bar on the canvas block (hidden at mid-zoom). Collapsible section in the edit modal with orange dashed border styling. Included in export as `**⚠️ Caution:** ...`.
+
+**Auto-generated links**: When an annotation has `zoteroKey` but no `zoteroUrl`, the URL is auto-generated via `getZoteroUrl(key)`. Similarly, if a linked paper has `pdf_key` but the annotation has no `pdf.url`, a generic PDF link is generated via `getZoteroPdfUrl(pdfKey)`. Annotation-specific PDF links (with `annotation=` param) use a highlighter icon; generic PDF links use a file-text icon.
+
+**Topological sort**: Uses Kahn's algorithm (in-degree tracking) for consistent block numbering in export. Blocks with no incoming edges are processed first.
+
+**Export**: Copies topologically-sorted Markdown directly to clipboard (no modal). Button shows a check icon for 2 seconds as confirmation.
 
 **Export format** — topologically sorted Markdown with flow map and numbered cross-references:
 ```markdown
@@ -155,6 +168,8 @@ Free-canvas argument flow builder (Miro/FigJam style). Paper annotation blocks a
 [Zotero](zotero://...) · [PDF p.3](zotero://...)
 
 **Note:** Transformer 아키텍처의 핵심 동기 제시
+
+**⚠️ Caution:** 이 블록에서 빠지면 안 되는 논증 방향...
 
 **[1]** → [2]
 
@@ -184,6 +199,18 @@ Free-canvas argument flow builder (Miro/FigJam style). Paper annotation blocks a
 
 ---
 ```
+
+### Annotation Parser (`js/annotation-parser.js`)
+
+Parses Zotero-style annotations from notes and raw pasted text. Two main entry points:
+- `parseAnnotationsFromNote(noteText, paper)` — bulk parse from paper notes (curly quotes `\u201C`/`\u201D`)
+- `parseRawAnnotation(rawText)` — parse single pasted annotation (supports both curly and straight quotes)
+
+Quote extraction uses greedy regex with lookahead anchor on the link pattern `(?=\s*\()` to correctly handle nested quotes (e.g., `"the 'Best Take' paradigm"` won't truncate at the inner quotes). Fallback to non-greedy patterns when no link follows.
+
+Also handles `[reference]` markers at the end of pasted text to extract the paper title.
+
+**Caution when editing boards.json directly**: The browser auto-saves board state with a 1.5s debounce. If you edit `boards.json` via Python/script while the browser has the flow board open, the browser will overwrite your changes on next interaction. Always close the browser tab before making direct file edits.
 
 ### Deployment
 
