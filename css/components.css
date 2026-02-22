@@ -242,6 +242,28 @@ input[type="checkbox"] {
   display: inline-block;
 }
 
+.header-shortcut-btn {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.header-shortcut-btn:hover {
+  opacity: 0.85;
+}
+.header-shortcut-btn.btn-board {
+  background: var(--color-semantic, #8b5cf6);
+}
+
 .header-dropdown-btn {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);

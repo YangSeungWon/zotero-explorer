@@ -467,18 +467,18 @@ function createBlockElement(block, blockNum) {
     const zoteroKey = ann.source?.zoteroKey;
     const zoteroUrl = ann.source?.zoteroUrl || (zoteroKey ? getZoteroUrl(zoteroKey) : null);
     const linkedPaper = ann.paperId ? papers.find(p => p.id === ann.paperId) : null;
-    const hasAnnotationLink = !!ann.pdf?.url;
+    const hasAnnotationLink = ann.pdf?.url && /annotation=/.test(ann.pdf.url);
     const pdfUrl = ann.pdf?.url || (linkedPaper?.pdf_key ? getZoteroPdfUrl(linkedPaper.pdf_key) : null);
     const explorerLink = zoteroKey ? `/?paper=${zoteroKey}` : null;
-    const isUnlinked = srcText && !ann.paperId;
     const isPlaceholder = !zoteroUrl && !pdfUrl;
+    const noAnnotationLink = !isPlaceholder && !hasAnnotationLink;
 
     annotationsHtml += `
-      <div class="flow-block-ann${isPlaceholder ? ' placeholder' : ''}" data-ann-index="${i}">
+      <div class="flow-block-ann${isPlaceholder ? ' placeholder' : ''}${noAnnotationLink ? ' no-ann-link' : ''}" data-ann-index="${i}">
         <div class="flow-block-ann-quote">${escapeHtml(quotePreview)}</div>
         <div class="flow-block-ann-meta">
           ${isPlaceholder ? '<span class="flow-block-ann-placeholder" title="No source link — placeholder"><i data-lucide="alert-circle"></i></span>' : ''}
-          ${isUnlinked ? '<span class="flow-block-unlinked" title="Not linked to paper"><i data-lucide="link-2-off"></i></span>' : ''}
+          ${noAnnotationLink ? '<span class="flow-block-no-ann-link" title="No annotation link"><i data-lucide="link-2-off"></i></span>' : ''}
           <span class="flow-block-ann-source">${escapeHtml(srcText)}</span>
           <span class="flow-block-ann-links">
             ${explorerLink ? `<a href="${explorerLink}" target="_blank" class="flow-block-link" title="Explorer"><i data-lucide="compass"></i></a>` : ''}
@@ -1116,11 +1116,32 @@ function openEditBlockModal(blockId) {
 
   document.getElementById('editCardModal').style.display = 'flex';
   lucide.createIcons();
+
+  // Snapshot initial state for dirty check
+  editingSnapshot = getEditModalState();
 }
 
-function closeEditBlockModal() {
+function getEditModalState() {
+  syncAllAnnItemsToData();
+  return JSON.stringify({
+    annotations: editingAnnotations,
+    note: document.getElementById('editCardNote').value,
+    caution: document.getElementById('editCardCaution').value,
+    category: document.getElementById('editCardCategory').value
+  });
+}
+
+function isEditModalDirty() {
+  return getEditModalState() !== editingSnapshot;
+}
+
+function closeEditBlockModal(force) {
+  if (!force && isEditModalDirty()) {
+    if (!confirm('변경사항이 저장되지 않았습니다. 닫으시겠습니까?')) return;
+  }
   editingBlockId = null;
   editingAnnotations = [];
+  editingSnapshot = '';
   document.getElementById('editCardModal').style.display = 'none';
 }
 
@@ -1155,7 +1176,7 @@ function saveEditBlock() {
     lucide.createIcons();
   }
 
-  closeEditBlockModal();
+  closeEditBlockModal(true);
   scheduleSave();
 }
 
@@ -1452,7 +1473,10 @@ function exportBoard() {
       }
       if (ann.source?.text) {
         md += `> \u2014 ${ann.source.text}`;
-        if (ann.pdf?.page) md += `, p.${ann.pdf.page}`;
+        // Only append page if source text doesn't already contain it
+        if (ann.pdf?.page && !ann.source.text.includes(`p.${ann.pdf.page}`)) {
+          md += `, p.${ann.pdf.page}`;
+        }
         md += '\n';
       }
       md += '\n';
@@ -1705,6 +1729,7 @@ function showPaperDetail(paperId) {
 // ========== Edit Modal Helpers — Multi-Annotation ==========
 
 let editingAnnotations = []; // Working copy of annotations array
+let editingSnapshot = '';    // JSON snapshot of initial state for dirty check
 
 /**
  * Render the annotation list inside the edit modal.

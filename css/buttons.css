@@ -207,6 +207,7 @@ button [data-lucide] {
 }
 
 /* Header dropdown icons */
+.header-shortcut-btn [data-lucide],
 .header-dropdown-btn [data-lucide],
 .header-dropdown-item [data-lucide] {
   width: 14px;
