@@ -481,12 +481,23 @@ function setImpact(level) {
   showPaper(currentIndex);
 
   // Add tags in background
+  pendingTags++;
   addTags(paper.zotero_key, [impactTag, statusTag])
     .catch(e => {
       console.error('Failed to add tags:', e);
       showToast('Failed to add tags: ' + e.message, 'error');
-    });
+    })
+    .finally(() => pendingTags--);
 }
+
+let pendingTags = 0;
+
+window.addEventListener('beforeunload', (e) => {
+  if (pendingTags > 0) {
+    e.preventDefault();
+    return '';
+  }
+});
 
 async function addTags(zoteroKey, tags) {
   const resp = await fetch(`${API_BASE}/tags/batch`, {
