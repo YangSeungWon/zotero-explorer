@@ -9,3 +9,4 @@ papers_filtered.json
 .claude/
 outlines.json
 boards.json
+boards_backup_*.json

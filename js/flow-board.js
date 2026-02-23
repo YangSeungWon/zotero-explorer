@@ -344,7 +344,7 @@ function applyViewportTransform() {
   // Counter-scale text so it stays readable at any zoom
   const compensate = Math.min(1 / viewport.zoom, 2);
   vp.style.setProperty('--zc', compensate);
-  vp.classList.toggle('zoom-mid', viewport.zoom < 0.55);
+  vp.classList.toggle('zoom-mid', viewport.zoom < 0.40);
   updateZoomDisplay();
 }
 

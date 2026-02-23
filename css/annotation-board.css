@@ -432,7 +432,7 @@
   font-size: calc(12.5px * var(--zc, 1));
   color: var(--text-secondary);
   line-height: 1.55;
-  max-height: calc(56px * var(--zc, 1));
+  max-height: calc(120px * var(--zc, 1));
   overflow: hidden;
 }
 
@@ -474,6 +474,12 @@
 
 .flow-block-caution:empty {
   display: none;
+}
+
+.canvas-viewport.zoom-mid .flow-block-note {
+  font-size: calc(17px * var(--zc, 1));
+  max-height: calc(280px * var(--zc, 1));
+  line-height: 1.65;
 }
 
 .canvas-viewport.zoom-mid .flow-block-caution {
