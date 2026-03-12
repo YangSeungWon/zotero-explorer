@@ -4,5 +4,6 @@ pandas==2.3.3
 pyzotero>=1.5.0
 requests==2.32.5
 scikit-learn==1.7.2
+hdbscan>=0.8.33
 sentence-transformers==5.1.2
 umap-learn>=0.5.0

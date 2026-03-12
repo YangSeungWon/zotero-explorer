@@ -26,8 +26,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 import umap
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+import hdbscan
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # ============================================================
@@ -720,7 +721,9 @@ def main():
     parser.add_argument("--embedding", choices=["multi", "local", "local-large", "weighted", "openai"], default="multi",
                         help="Embedding: multi (multi-vector, recommended), weighted (legacy), local, local-large, openai")
     parser.add_argument("--clusters", type=int, default=0,
-                        help="Number of clusters (0 = auto-detect optimal k)")
+                        help="Number of clusters (0 = HDBSCAN auto, >0 = force KMeans with k)")
+    parser.add_argument("--min-cluster-size", type=int, default=15,
+                        help="HDBSCAN min_cluster_size (smaller = more clusters)")
     parser.add_argument("--dim-reduction", choices=["tsne", "pca", "umap"], default="umap",
                         help="Dimensionality reduction method (umap recommended)")
     parser.add_argument("--min-dist", type=float, default=0.3,
@@ -861,32 +864,54 @@ def main():
     df["y"] = coords[:, 1]
 
     # 5. 클러스터링
-    n_clusters = args.clusters
-    if n_clusters == 0:
-        # 최적 k 탐색 (Silhouette score)
-        print("\n[5/5] Finding optimal number of clusters...")
-        k_range = range(5, min(20, len(df) // 10))
-        best_k = 10
-        best_score = -1
-        scores = []
-
-        for k in k_range:
-            kmeans_test = KMeans(n_clusters=k, random_state=42, n_init=10)
-            labels = kmeans_test.fit_predict(combined)
-            score = silhouette_score(combined, labels)
-            scores.append((k, score))
-            print(f"  k={k}: silhouette={score:.3f}")
-            if score > best_score:
-                best_score = score
-                best_k = k
-
-        n_clusters = best_k
-        print(f"\n  → Best k={best_k} (silhouette={best_score:.3f})")
+    n_clusters_manual = args.clusters
+    if n_clusters_manual > 0:
+        # 수동 지정: KMeans 사용
+        print(f"\n[5/5] Clustering into {n_clusters_manual} clusters (KMeans)...")
+        kmeans = KMeans(n_clusters=n_clusters_manual, random_state=42, n_init=10)
+        df["cluster"] = kmeans.fit_predict(combined)
+        n_clusters = n_clusters_manual
     else:
-        print(f"\n[5/5] Clustering into {n_clusters} clusters...")
+        # HDBSCAN on 2D UMAP coordinates (고차원에서는 밀도 추정 실패)
+        min_cs = args.min_cluster_size
+        print(f"\n[5/5] Clustering with HDBSCAN on UMAP coords (min_cluster_size={min_cs})...")
+        clusterer = hdbscan.HDBSCAN(
+            min_cluster_size=min_cs,
+            min_samples=5,
+            metric='euclidean',
+            cluster_selection_method='eom',
+        )
+        labels = clusterer.fit_predict(coords)
 
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    df["cluster"] = kmeans.fit_predict(combined)
+        n_found = len(set(labels) - {-1})
+        n_noise = (labels == -1).sum()
+        print(f"  Found {n_found} clusters, {n_noise} noise points ({n_noise*100//len(df)}%)")
+
+        # 노이즈 포인트(-1)를 가장 가까운 클러스터에 할당 (2D 좌표 기준)
+        if n_noise > 0 and n_found > 0:
+            from sklearn.neighbors import NearestCentroid
+            non_noise_mask = labels != -1
+            nc = NearestCentroid()
+            nc.fit(coords[non_noise_mask], labels[non_noise_mask])
+            noise_mask = labels == -1
+            noise_predictions = nc.predict(coords[noise_mask])
+            labels[noise_mask] = noise_predictions
+            print(f"  Reassigned {n_noise} noise points to nearest clusters")
+
+        # 클러스터 ID를 0부터 연속으로 재매핑
+        unique_labels = sorted(set(labels))
+        label_map = {old: new for new, old in enumerate(unique_labels)}
+        labels = np.array([label_map[l] for l in labels])
+
+        df["cluster"] = labels
+        n_clusters = len(unique_labels)
+        print(f"  Final: {n_clusters} clusters")
+
+        # 클러스터 크기 분포 출력
+        from collections import Counter
+        size_dist = Counter(labels)
+        for cid in sorted(size_dist.keys()):
+            print(f"    Cluster {cid}: {size_dist[cid]} papers")
 
     # 6. 클러스터 라벨 생성 (TF-IDF 키워드)
     print("\nGenerating cluster labels...")
