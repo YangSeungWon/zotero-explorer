@@ -894,6 +894,9 @@ function initStatsModals() {
 
   // External Search Modal
   initExternalSearchModal();
+
+  // BibTeX Modal
+  initBibtexModal();
 }
 
 function showGlobalStatsModal(modal, list) {
@@ -1373,6 +1376,94 @@ function showAuthorStats() {
 // ============================================================
 // External Search Modal (Semantic Scholar)
 // ============================================================
+function initBibtexModal() {
+  const modal = document.getElementById('bibtexModal');
+  const input = document.getElementById('bibtexDoiInput');
+  const fetchBtn = document.getElementById('bibtexFetchBtn');
+  const resultDiv = document.getElementById('bibtexResult');
+  const closeBtn = document.getElementById('closeBibtex');
+
+  if (!modal || !input || !fetchBtn || !resultDiv) return;
+
+  // Open modal
+  document.getElementById('openBibtex')?.addEventListener('click', () => {
+    modal.classList.add('active');
+    input.focus();
+  });
+
+  // Close modal
+  closeBtn?.addEventListener('click', () => modal.classList.remove('active'));
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('active');
+  });
+
+  // Fetch on button click or Enter
+  fetchBtn.addEventListener('click', fetchBibtex);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') fetchBibtex();
+  });
+
+  async function fetchBibtex() {
+    let doi = input.value.trim();
+    if (!doi) return;
+
+    // Strip https://doi.org/ prefix
+    doi = doi.replace(/^https?:\/\/doi\.org\//i, '');
+
+    resultDiv.innerHTML = '<div class="external-search-loading"><i data-lucide="loader" class="spin"></i> Fetching BibTeX...</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    try {
+      const resp = await fetch(`https://doi.org/${encodeURI(doi)}`, {
+        headers: { 'Accept': 'application/x-bibtex' }
+      });
+
+      if (!resp.ok) throw new Error(`DOI not found (HTTP ${resp.status})`);
+
+      let bibtex = await resp.text();
+
+      // Fix HTML entities
+      bibtex = bibtex.replace(/&amp;/g, '\\&');
+
+      // Replace citation key if paper is in library
+      if (typeof allPapers !== 'undefined') {
+        const doiLower = doi.toLowerCase();
+        const paper = allPapers.find(p => p.doi && p.doi.toLowerCase() === doiLower);
+        if (paper) {
+          const newKey = generateCitationKey(paper);
+          if (newKey) {
+            bibtex = bibtex.replace(/@(\w+)\{[^,]+,/, `@$1{${newKey},`);
+          }
+        }
+      }
+
+      resultDiv.innerHTML = `
+        <div class="bibtex-result-wrap">
+          <button class="bibtex-copy-btn ghost-btn" title="Copy"><i data-lucide="copy"></i></button>
+          <pre class="bibtex-output">${escapeHtml(bibtex)}</pre>
+        </div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      // Copy button handler
+      resultDiv.querySelector('.bibtex-copy-btn').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        try {
+          await navigator.clipboard.writeText(bibtex);
+          btn.innerHTML = '<i data-lucide="check"></i>';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+          setTimeout(() => {
+            btn.innerHTML = '<i data-lucide="copy"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }, 1500);
+        } catch (_) {}
+      });
+    } catch (e) {
+      resultDiv.innerHTML = `<div class="external-search-error"><i data-lucide="alert-circle"></i> ${escapeHtml(e.message)}</div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+}
+
 function initExternalSearchModal() {
   const modal = document.getElementById('externalSearchModal');
   const input = document.getElementById('externalSearchQuery');

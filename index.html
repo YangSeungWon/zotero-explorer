@@ -72,6 +72,7 @@
         <button class="dropdown-item header-dropdown-item" id="showClassics" style="color: var(--accent);"><i data-lucide="book-open"></i> Classics</button>
         <button class="dropdown-item header-dropdown-item" id="showNewWork" style="color: var(--color-orange);"><i data-lucide="sparkles"></i> New</button>
         <button class="dropdown-item header-dropdown-item" id="externalSearch" style="color: var(--color-purple);"><i data-lucide="globe"></i> S2 Search</button>
+        <button class="dropdown-item header-dropdown-item" id="openBibtex"><i data-lucide="braces"></i> BibTeX</button>
       </div>
     </div>
     <div class="legend">
@@ -541,6 +542,25 @@
         <div class="external-search-hint">
           <p>Search for papers on Semantic Scholar.</p>
           <p>Papers already in your library will be marked.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BibTeX Modal -->
+  <div class="modal-overlay" id="bibtexModal">
+    <div class="modal" style="width: 600px;">
+      <div class="modal-header">
+        <h3><i data-lucide="braces"></i> DOI → BibTeX</h3>
+        <button class="modal-close" id="closeBibtex"><i data-lucide="x"></i></button>
+      </div>
+      <div class="external-search-input">
+        <input type="text" id="bibtexDoiInput" placeholder="10.1145/xxxxx or https://doi.org/...">
+        <button id="bibtexFetchBtn" class="primary-btn"><i data-lucide="download"></i></button>
+      </div>
+      <div class="modal-content" id="bibtexResult">
+        <div class="external-search-hint">
+          <p>DOI를 입력하면 doi.org에서 BibTeX를 가져옵니다.</p>
         </div>
       </div>
     </div>

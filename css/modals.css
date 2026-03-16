@@ -454,6 +454,33 @@
   overflow: hidden;
 }
 
+/* ===========================================
+   BibTeX Modal
+   =========================================== */
+
+.bibtex-result-wrap {
+  position: relative;
+}
+
+.bibtex-output {
+  font-family: monospace;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+.bibtex-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
 .search-results-header {
   padding: 10px 16px;
   font-size: 12px;
