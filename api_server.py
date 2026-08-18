@@ -336,6 +336,308 @@ def reload_papers():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/quick-sync/<zotero_key>', methods=['POST'])
+def quick_sync_paper(zotero_key):
+    """Quick sync a single paper from Zotero without full rebuild.
+    Updates metadata (title, authors, abstract, tags, notes, DOI, URL) in place.
+    Preserves x/y coordinates, cluster, and embeddings."""
+    try:
+        from build_map import (
+            get_venue_abbrev, get_venue_score, get_type_score,
+            parse_year, is_review_paper, extract_text_from_html
+        )
+
+        zot = get_zotero_client()
+
+        # Fetch single item + its children (notes, attachments)
+        try:
+            item = zot.item(zotero_key)
+        except Exception:
+            return jsonify({"error": f"Item {zotero_key} not found in Zotero"}), 404
+
+        children = zot.children(zotero_key)
+        item['_notes'] = [c for c in children if c['data'].get('itemType') == 'note']
+        pdf_child = next((c for c in children if c['data'].get('contentType') == 'application/pdf'), None)
+        item['_pdf_key'] = pdf_child['key'] if pdf_child else ''
+
+        row = item_to_row(item)
+
+        # Load papers.json
+        papers_path = Path(__file__).parent / "papers.json"
+        with open(papers_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        papers = data.get('papers', data)
+
+        # Find existing paper
+        existing_idx = None
+        for i, p in enumerate(papers):
+            if p.get('zotero_key') == zotero_key:
+                existing_idx = i
+                break
+
+        # Build updated metadata
+        title = str(row.get("Title", "") or "")
+        abstract = str(row.get("Abstract Note", "") or "")
+        venue_full = str(row.get("Publication Title", "") or
+                        row.get("Proceedings Title", "") or
+                        row.get("Conference Name", "") or "")
+        raw_tags = str(row.get("Manual Tags", "") or "")
+
+        if is_review_paper(title, abstract) and "method-review" not in raw_tags:
+            raw_tags = f"{raw_tags}; method-review" if raw_tags else "method-review"
+
+        notes_raw = row.get("Notes", "")
+        year_clean = parse_year(row.get("Publication Year", ""))
+
+        updated_fields = {
+            "zotero_key": zotero_key,
+            "title": title,
+            "year": int(year_clean) if year_clean else None,
+            "authors": str(row.get("Author", "") or ""),
+            "venue": get_venue_abbrev(venue_full),
+            "venue_full": venue_full,
+            "item_type": str(row.get("Item Type", "") or ""),
+            "is_paper": row.get("Item Type", "") in [
+                "conferencePaper", "journalArticle", "bookSection", "preprint", "book"
+            ],
+            "venue_quality": get_venue_score(row),
+            "url": str(row.get("Url", "") or ""),
+            "doi": str(row.get("DOI", "") or ""),
+            "pdf_key": str(row.get("PDF Key", "") or ""),
+            "abstract": abstract[:500],
+            "tags": raw_tags,
+            "has_notes": bool(notes_raw and len(str(notes_raw)) > 50),
+            "notes_html": str(notes_raw)[:5000] if notes_raw else "",
+            "notes": extract_text_from_html(notes_raw)[:2000] if notes_raw else "",
+        }
+
+        if existing_idx is not None:
+            # Update existing: preserve spatial/cluster/embedding data
+            for k, v in updated_fields.items():
+                papers[existing_idx][k] = v
+            action = "updated"
+        else:
+            # New paper: assign next ID, place near cluster centroid or origin
+            max_id = max((p.get('id', 0) for p in papers), default=-1)
+            updated_fields['id'] = max_id + 1
+            updated_fields['x'] = 0.0
+            updated_fields['y'] = 0.0
+            updated_fields['cluster'] = 0
+            updated_fields['cluster_label'] = ""
+            updated_fields['embeddings'] = []
+            papers.append(updated_fields)
+            action = "added"
+
+        if 'papers' in data:
+            data['papers'] = papers
+        else:
+            data = papers
+
+        with open(papers_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        return jsonify({
+            "success": True,
+            "action": action,
+            "zotero_key": zotero_key,
+            "title": updated_fields["title"],
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+def run_partial_sync_background():
+    """Background task for partial sync"""
+    global sync_status
+    try:
+        from build_map import (
+            get_venue_abbrev, get_venue_score, parse_year,
+            is_review_paper, extract_text_from_html, chunk_text
+        )
+
+        update_sync_progress("partial_sync", "Fetching item keys from Zotero...")
+
+        zot = get_zotero_client()
+
+        all_items = []
+        start = 0
+        while True:
+            batch = zot.top(limit=100, start=start)
+            if not batch:
+                break
+            all_items.extend(batch)
+            start += len(batch)
+
+        zotero_keys = {}
+        for item in all_items:
+            if item['data'].get('itemType') not in ('note', 'attachment'):
+                zotero_keys[item['key']] = item
+
+        print(f"  Zotero has {len(zotero_keys)} top-level items")
+
+        papers_path = Path(__file__).parent / "papers.json"
+        with open(papers_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        papers = data.get('papers', data)
+        existing_keys = {p.get('zotero_key') for p in papers if p.get('zotero_key')}
+
+        missing_keys = set(zotero_keys.keys()) - existing_keys
+        print(f"  papers.json has {len(existing_keys)} items, {len(missing_keys)} missing")
+
+        if not missing_keys:
+            sync_status = {"running": False, "step": "partial_sync", "detail": "No missing items", "completed": True, "result": {"added": 0}}
+            return
+
+        import numpy as np
+        from sentence_transformers import SentenceTransformer
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        existing_mean_embs = []
+        valid_indices = []
+        for i, p in enumerate(papers):
+            embs = p.get('embeddings', [])
+            if embs and len(embs) > 0 and len(embs[0]) > 0:
+                mean_vec = np.mean(np.array(embs), axis=0)
+                existing_mean_embs.append(mean_vec)
+                valid_indices.append(i)
+        existing_mean_embs = np.array(existing_mean_embs) if existing_mean_embs else None
+
+        update_sync_progress("partial_sync", "Loading embedding model...")
+        print(f"  Loading embedding model...")
+        st_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+
+        max_id = max((p.get('id', 0) for p in papers), default=-1)
+        added = []
+
+        for idx, key in enumerate(missing_keys):
+            try:
+                update_sync_progress("partial_sync", f"Processing {idx+1}/{len(missing_keys)}...", current=idx+1, total=len(missing_keys))
+
+                item = zotero_keys[key]
+                children = zot.children(key)
+                item['_notes'] = [c for c in children if c['data'].get('itemType') == 'note']
+                pdf_child = next((c for c in children if c['data'].get('contentType') == 'application/pdf'), None)
+                item['_pdf_key'] = pdf_child['key'] if pdf_child else ''
+
+                row = item_to_row(item)
+
+                title = str(row.get("Title", "") or "")
+                abstract = str(row.get("Abstract Note", "") or "")
+                venue_full = str(row.get("Publication Title", "") or
+                                row.get("Proceedings Title", "") or
+                                row.get("Conference Name", "") or "")
+                raw_tags = str(row.get("Manual Tags", "") or "")
+
+                if is_review_paper(title, abstract) and "method-review" not in raw_tags:
+                    raw_tags = f"{raw_tags}; method-review" if raw_tags else "method-review"
+
+                notes_raw = row.get("Notes", "")
+                year_clean = parse_year(row.get("Publication Year", ""))
+
+                paper_embs = []
+                if title:
+                    paper_embs.append(st_model.encode(title).tolist())
+                if abstract:
+                    for chunk in chunk_text(abstract):
+                        paper_embs.append(st_model.encode(chunk).tolist())
+                notes_text = extract_text_from_html(notes_raw) if notes_raw else ""
+                if notes_text:
+                    for chunk in chunk_text(notes_text):
+                        paper_embs.append(st_model.encode(chunk).tolist())
+                if not paper_embs:
+                    paper_embs.append(st_model.encode(title or "Untitled").tolist())
+
+                new_x, new_y, new_cluster, new_cluster_label = 0.0, 0.0, 0, ""
+                if existing_mean_embs is not None:
+                    new_mean = np.mean(np.array(paper_embs), axis=0).reshape(1, -1)
+                    sims = cosine_similarity(new_mean, existing_mean_embs)[0]
+                    nn_idx = valid_indices[int(np.argmax(sims))]
+                    nn_paper = papers[nn_idx]
+                    jitter_x = np.random.uniform(-0.3, 0.3)
+                    jitter_y = np.random.uniform(-0.3, 0.3)
+                    new_x = nn_paper['x'] + jitter_x
+                    new_y = nn_paper['y'] + jitter_y
+                    new_cluster = nn_paper.get('cluster', 0)
+                    new_cluster_label = nn_paper.get('cluster_label', '')
+                    print(f"    Nearest neighbor: {nn_paper['title'][:50]} (sim={sims[np.argmax(sims)]:.3f})")
+
+                max_id += 1
+                new_paper = {
+                    "id": max_id,
+                    "zotero_key": key,
+                    "title": title,
+                    "year": int(year_clean) if year_clean else None,
+                    "authors": str(row.get("Author", "") or ""),
+                    "venue": get_venue_abbrev(venue_full),
+                    "venue_full": venue_full,
+                    "item_type": str(row.get("Item Type", "") or ""),
+                    "is_paper": row.get("Item Type", "") in [
+                        "conferencePaper", "journalArticle", "bookSection", "preprint", "book"
+                    ],
+                    "venue_quality": get_venue_score(row),
+                    "x": float(new_x),
+                    "y": float(new_y),
+                    "cluster": new_cluster,
+                    "cluster_label": new_cluster_label,
+                    "url": str(row.get("Url", "") or ""),
+                    "doi": str(row.get("DOI", "") or ""),
+                    "pdf_key": str(row.get("PDF Key", "") or ""),
+                    "abstract": abstract[:500],
+                    "tags": raw_tags,
+                    "has_notes": bool(notes_raw and len(str(notes_raw)) > 50),
+                    "notes_html": str(notes_raw)[:5000] if notes_raw else "",
+                    "notes": extract_text_from_html(notes_raw)[:2000] if notes_raw else "",
+                    "embeddings": paper_embs,
+                }
+                papers.append(new_paper)
+                added.append({"key": key, "title": title})
+                print(f"  Added: {title[:60]}")
+
+            except Exception as e:
+                print(f"  Error fetching {key}: {e}")
+                import traceback
+                traceback.print_exc()
+
+        if 'papers' in data:
+            data['papers'] = papers
+        else:
+            data = papers
+
+        with open(papers_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        sync_status = {"running": False, "step": "partial_sync", "detail": f"Added {len(added)} papers", "completed": True, "result": {"added": len(added), "papers": added}}
+        print(f"Partial sync complete: added {len(added)} papers")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        sync_status = {"running": False, "step": "partial_sync", "error": str(e)}
+
+
+@app.route('/api/partial-sync', methods=['POST'])
+def partial_sync():
+    """Find papers in Zotero that are missing from papers.json and add them."""
+    global sync_status
+    if sync_status.get("running"):
+        return jsonify({"error": "Another sync is already running", "status": sync_status}), 409
+
+    sync_status = {"running": True, "step": "partial_sync", "detail": "Starting..."}
+    thread = threading.Thread(target=run_partial_sync_background)
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({
+        "success": True,
+        "message": "Partial sync started in background. Check /api/sync-status for progress."
+    })
+
+
 def update_sync_progress(step, detail=None, current=None, total=None):
     """Update sync progress for frontend polling"""
     global sync_status

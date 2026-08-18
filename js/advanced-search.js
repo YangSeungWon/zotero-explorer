@@ -2,6 +2,28 @@
    Advanced Search / Filter Pipeline
    =========================================== */
 
+function fuzzyMatchAS(term, text) {
+  if (text.includes(term)) return true;
+  if (term.length < 4) return false;
+  const words = text.split(/[\s,;.:()]+/);
+  for (const word of words) {
+    if (Math.abs(word.length - term.length) > 1) continue;
+    let prev = Array.from({length: term.length + 1}, (_, i) => i);
+    for (let i = 1; i <= word.length; i++) {
+      const curr = [i];
+      for (let j = 1; j <= term.length; j++) {
+        const cost = word[i-1] === term[j-1] ? 0 : 1;
+        curr[j] = Math.min(curr[j-1] + 1, prev[j] + 1, prev[j-1] + cost);
+        if (i > 1 && j > 1 && word[i-1] === term[j-2] && word[i-2] === term[j-1])
+          curr[j] = Math.min(curr[j], prev[j-2] + 1);
+      }
+      prev = curr;
+    }
+    if (prev[term.length] <= 1) return true;
+  }
+  return false;
+}
+
 let filterBlocks = [];
 let blockIdCounter = 0;
 
@@ -270,7 +292,7 @@ function setupBlockContentListeners(blockEl, block) {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         updateBlockValue(block.id, e.target.value || null);
-      }, 300);
+      }, 500);
     });
   }
 
@@ -406,10 +428,18 @@ async function applyBlockFilter(papers, block) {
 
     case 'text':
       const query = block.value.toLowerCase();
-      return papers.filter(p => {
+      const queryTerms = query.split(/\s+/).filter(t => t);
+      let textResults = papers.filter(p => {
         const text = `${p.title} ${p.authors || ''} ${p.abstract || ''} ${p.notes || ''}`.toLowerCase();
-        return text.includes(query);
+        return queryTerms.every(term => text.includes(term));
       });
+      if (textResults.length === 0) {
+        textResults = papers.filter(p => {
+          const text = `${p.title} ${p.authors || ''} ${p.abstract || ''} ${p.notes || ''}`.toLowerCase();
+          return queryTerms.every(term => fuzzyMatchAS(term, text));
+        });
+      }
+      return textResults;
 
     case 'semantic':
       return await applySemanticFilter(papers, block.value);

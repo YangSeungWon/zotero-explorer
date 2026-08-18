@@ -104,6 +104,9 @@ ACM_VENUE_ABBREV = {
     "extended abstracts.*chi": "CHI EA",
     "adjunct.*pervasive.*ubiquitous": "UbiComp Adjunct",
     "adjunct.*ubicomp": "UbiComp Adjunct",
+    "adjunct.*user interface software": "UIST Adjunct",
+    "adjunct.*uist": "UIST Adjunct",
+    "companion.*user interface software": "UIST Companion",
     "companion.*computer-human interaction in play": "CHI PLAY Companion",
     "companion.*computer supported cooperative": "CSCW Companion",
     "companion.*designing interactive systems": "DIS Companion",
@@ -722,12 +725,14 @@ def main():
                         help="Embedding: multi (multi-vector, recommended), weighted (legacy), local, local-large, openai")
     parser.add_argument("--clusters", type=int, default=0,
                         help="Number of clusters (0 = HDBSCAN auto, >0 = force KMeans with k)")
-    parser.add_argument("--min-cluster-size", type=int, default=15,
+    parser.add_argument("--min-cluster-size", type=int, default=35,
                         help="HDBSCAN min_cluster_size (smaller = more clusters)")
     parser.add_argument("--dim-reduction", choices=["tsne", "pca", "umap"], default="umap",
                         help="Dimensionality reduction method (umap recommended)")
     parser.add_argument("--min-dist", type=float, default=0.3,
                         help="UMAP min_dist: 0.1(tight) ~ 0.5(spread)")
+    parser.add_argument("--merge-threshold", type=float, default=0.90,
+                        help="After HDBSCAN, merge clusters with cosine similarity above this threshold (0 = no merge)")
     parser.add_argument("--all", action="store_true",
                         help="Include all papers (default: notes-only)")
     parser.add_argument("--notes-only", action="store_true", default=True,
@@ -912,6 +917,61 @@ def main():
         size_dist = Counter(labels)
         for cid in sorted(size_dist.keys()):
             print(f"    Cluster {cid}: {size_dist[cid]} papers")
+
+    # 5.5. 클러스터 병합 (HDBSCAN 후 비슷한 클러스터끼리 합치기)
+    merge_thresh = args.merge_threshold
+    if merge_thresh > 0 and n_clusters > 1:
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        print(f"\n[5.5] Merging clusters with cosine similarity > {merge_thresh}...")
+
+        # 클러스터별 평균 임베딩 (고차원)
+        cluster_mean_emb = np.zeros((n_clusters, embeddings.shape[1]))
+        for c in range(n_clusters):
+            mask = df["cluster"].values == c
+            cluster_mean_emb[c] = embeddings[mask].mean(axis=0)
+
+        # 반복적으로 가장 유사한 쌍을 병합
+        old_to_new = {c: c for c in range(n_clusters)}
+        merged = True
+        while merged:
+            merged = False
+            # 현재 활성 클러스터 목록
+            active = sorted(set(old_to_new.values()))
+            if len(active) <= 1:
+                break
+            # 활성 클러스터의 평균 임베딩 재계산
+            active_embs = np.zeros((len(active), embeddings.shape[1]))
+            for i, c in enumerate(active):
+                mask = np.array([old_to_new[orig] == c for orig in df["cluster"].values])
+                active_embs[i] = embeddings[mask].mean(axis=0)
+            sim_matrix = cosine_similarity(active_embs)
+            np.fill_diagonal(sim_matrix, 0)
+            max_sim = sim_matrix.max()
+            if max_sim >= merge_thresh:
+                i, j = np.unravel_index(sim_matrix.argmax(), sim_matrix.shape)
+                c_keep, c_merge = active[min(i,j)], active[max(i,j)]
+                # c_merge → c_keep
+                for orig, cur in old_to_new.items():
+                    if cur == c_merge:
+                        old_to_new[orig] = c_keep
+                print(f"    Merged cluster {c_merge} → {c_keep} (sim={max_sim:.3f})")
+                merged = True
+
+        # 연속 ID로 재매핑
+        final_active = sorted(set(old_to_new.values()))
+        remap = {old: new for new, old in enumerate(final_active)}
+        for orig in old_to_new:
+            old_to_new[orig] = remap[old_to_new[orig]]
+
+        df["cluster"] = [old_to_new[c] for c in df["cluster"].values]
+        n_clusters = len(final_active)
+
+        from collections import Counter
+        new_counts = Counter(df["cluster"].values)
+        print(f"  After merge: {n_clusters} clusters")
+        for c in sorted(new_counts.keys()):
+            print(f"    Cluster {c}: {new_counts[c]} papers")
 
     # 6. 클러스터 라벨 생성 (TF-IDF 키워드)
     print("\nGenerating cluster labels...")

@@ -19,6 +19,28 @@
  * @param {number} config.options.minChars - Minimum characters to trigger search (default: 2)
  * @param {number} config.options.maxResults - Maximum results to show (default: 10)
  */
+function fuzzyMatch(term, text) {
+  if (text.includes(term)) return true;
+  if (term.length < 4) return false;
+  const words = text.split(/[\s,;.:()]+/);
+  for (const word of words) {
+    if (Math.abs(word.length - term.length) > 1) continue;
+    let prev = Array.from({length: term.length + 1}, (_, i) => i);
+    for (let i = 1; i <= word.length; i++) {
+      const curr = [i];
+      for (let j = 1; j <= term.length; j++) {
+        const cost = word[i-1] === term[j-1] ? 0 : 1;
+        curr[j] = Math.min(curr[j-1] + 1, prev[j] + 1, prev[j-1] + cost);
+        if (i > 1 && j > 1 && word[i-1] === term[j-2] && word[i-2] === term[j-1])
+          curr[j] = Math.min(curr[j], prev[j-2] + 1);
+      }
+      prev = curr;
+    }
+    if (prev[term.length] <= 1) return true;
+  }
+  return false;
+}
+
 function createPaperSearch(config) {
   const {
     inputEl,
@@ -119,12 +141,18 @@ function createPaperSearch(config) {
 
     // Use text search if not semantic mode or no results
     if (!isSemanticMode || results.length === 0) {
-      const lowerQuery = query.toLowerCase();
-      results = papers.filter(p =>
-        p.title?.toLowerCase().includes(lowerQuery) ||
-        p.authors?.toLowerCase().includes(lowerQuery) ||
-        p.year?.toString().includes(lowerQuery)
-      ).slice(0, maxResults);
+      const terms = query.toLowerCase().split(/\s+/).filter(t => t);
+      results = papers.filter(p => {
+        const text = `${p.title || ''} ${p.authors || ''} ${p.year || ''}`.toLowerCase();
+        return terms.every(term => text.includes(term));
+      }).slice(0, maxResults);
+      // Fuzzy fallback if exact match found nothing
+      if (results.length === 0) {
+        results = papers.filter(p => {
+          const text = `${p.title || ''} ${p.authors || ''} ${p.year || ''}`.toLowerCase();
+          return terms.every(term => fuzzyMatch(term, text));
+        }).slice(0, maxResults);
+      }
     }
 
     renderResults(results);

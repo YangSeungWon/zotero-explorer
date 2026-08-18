@@ -45,6 +45,12 @@ function initSyncPanel() {
     startFullSync();
   });
 
+  // Partial Sync button
+  const syncPartialBtn = document.getElementById('syncPartialBtn');
+  syncPartialBtn?.addEventListener('click', () => {
+    startPartialSync();
+  });
+
   // Sync Clusters button
   syncClustersBtn?.addEventListener('click', () => {
     syncClusterTagsFromPanel();
@@ -277,6 +283,79 @@ async function syncClusterTagsFromPanel() {
     updateSyncStatus('error', 'Error');
     addSyncLog(`Error: ${e.message}`, 'error');
   }
+}
+
+async function startPartialSync() {
+  updateSyncStatus('running', 'Starting...');
+  addSyncLog('Starting Partial Sync...');
+
+  try {
+    const data = await apiCall('/partial-sync', { method: 'POST' });
+
+    if (data.error) {
+      updateSyncStatus('error', 'Error');
+      addSyncLog(data.error, 'error');
+      return;
+    }
+
+    addSyncLog('Fetching from Zotero API...');
+    startPartialSyncPolling();
+  } catch (e) {
+    updateSyncStatus('error', 'Error');
+    addSyncLog(`Error: ${e.message}`, 'error');
+  }
+}
+
+let partialSyncPolling = null;
+let lastPartialDetail = null;
+
+function startPartialSyncPolling() {
+  if (partialSyncPolling) return;
+
+  partialSyncPolling = setInterval(async () => {
+    try {
+      const resp = await fetch('/api/sync-status');
+      const data = await resp.json();
+
+      if (data.running && data.current_step === 'partial_sync') {
+        const detail = data.step_detail;
+        updateSyncStatus('running', detail || 'Syncing...');
+        if (detail && detail !== lastPartialDetail) {
+          addSyncLog(detail);
+          lastPartialDetail = detail;
+        }
+      } else if (!data.running) {
+        clearInterval(partialSyncPolling);
+        partialSyncPolling = null;
+        lastPartialDetail = null;
+
+        if (data.error) {
+          updateSyncStatus('error', 'Error');
+          addSyncLog(`Error: ${data.error}`, 'error');
+        } else {
+          const result = data.result || data.last_result || {};
+          const added = result.added || 0;
+          if (added === 0) {
+            updateSyncStatus('idle', 'Ready');
+            addSyncLog('No missing papers found — already in sync.');
+          } else {
+            updateSyncStatus('success', 'Complete');
+            addSyncLog(`Added ${added} paper(s). Reloading...`, 'success');
+            if (result.papers) {
+              result.papers.forEach(p => addSyncLog(`  + ${p.title}`));
+            }
+            setTimeout(() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set('_t', Date.now());
+              window.location.href = url.toString();
+            }, 2000);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Partial sync polling error:', e);
+    }
+  }, 1500);
 }
 
 // Cluster stats tooltip
