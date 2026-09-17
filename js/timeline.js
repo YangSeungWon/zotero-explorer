@@ -80,7 +80,7 @@ function renderTimeline(filteredPapers) {
     showlegend: false,
     marker: {
       size: bgPositions.map(pos => getSize(pos.paper)),
-      color: bgPositions.map(pos => muteColor(CLUSTER_COLORS[pos.paper.cluster % CLUSTER_COLORS.length])),
+      color: bgPositions.map(pos => muteColor(clusterColor(pos.paper.cluster))),
       opacity: 1,
       line: { width: 0.5, color: isLight ? '#ddd' : '#333' }
     },
@@ -98,7 +98,7 @@ function renderTimeline(filteredPapers) {
     name: 'Papers',
     marker: {
       size: fgPositions.map(pos => getSize(pos.paper)),
-      color: fgPositions.map(pos => CLUSTER_COLORS[pos.paper.cluster % CLUSTER_COLORS.length]),
+      color: fgPositions.map(pos => clusterColor(pos.paper.cluster)),
       opacity: fgPositions.map(pos => {
         const p = pos.paper;
         if (selectedPaper !== null) {
@@ -296,7 +296,7 @@ function renderMiniTimeline(papers) {
       const y = canvas.height - padding.bottom - yOffset - segmentHeight;
 
       // Get cluster color with opacity
-      const baseColor = CLUSTER_COLORS[cluster % CLUSTER_COLORS.length];
+      const baseColor = clusterColor(cluster);
       ctx.globalAlpha = inRange ? 0.8 : 0.25;
       ctx.fillStyle = baseColor;
       ctx.fillRect(x - barWidth / 2, y, barWidth, segmentHeight);

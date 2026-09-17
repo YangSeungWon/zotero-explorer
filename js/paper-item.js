@@ -111,13 +111,17 @@ function renderPaperDetailHtml(paper, options = {}) {
   } = options;
 
   const clusterLabel = paper.cluster_label || `C${paper.cluster}`;
-  const clusterColor = clusterColors[paper.cluster % clusterColors.length];
+  // Prefer the family-based color resolver when the host page provides it
+  // (index.html); flow-board and other standalone pages fall back to the array.
+  const clusterSwatch = typeof clusterColor === 'function'
+    ? clusterColor(paper.cluster)
+    : clusterColors[paper.cluster % clusterColors.length];
 
   // Meta line
   const metaHtml = `
     <div class="paper-detail-meta-line">
       <span class="detail-year">${paper.year || '?'}</span>
-      <span class="detail-cluster" style="background: ${clusterColor};">${escapeHtml(clusterLabel)}</span>
+      <span class="detail-cluster" style="background: ${clusterSwatch};">${escapeHtml(clusterLabel)}</span>
       <span class="detail-authors" title="${escapeHtml(paper.authors || '')}">${escapeHtml(abbreviateAuthors(paper.authors, 2))}</span>
       <span class="detail-venue" title="${escapeHtml(paper.venue_full || paper.venue || '')}">${escapeHtml(paper.venue || '')}</span>
     </div>
@@ -191,7 +195,11 @@ function renderPaperItemHtml(paper, options = {}) {
   } = options;
 
   const clusterLabel = clusterLabels[paper.cluster] || `C${paper.cluster}`;
-  const clusterColor = clusterColors[paper.cluster % clusterColors.length];
+  // Prefer the family-based color resolver when the host page provides it
+  // (index.html); flow-board and other standalone pages fall back to the array.
+  const clusterSwatch = typeof clusterColor === 'function'
+    ? clusterColor(paper.cluster)
+    : clusterColors[paper.cluster % clusterColors.length];
 
   // Similarity score
   const simScore = similarity !== null
@@ -231,7 +239,7 @@ function renderPaperItemHtml(paper, options = {}) {
         <div class="list-item-meta-line">
           ${simScore}
           <span class="list-item-year">${paper.year || '?'}</span>
-          <span class="list-item-cluster" style="background: ${clusterColor};">${escapeHtml(clusterLabel)}</span>
+          <span class="list-item-cluster" style="background: ${clusterSwatch};">${escapeHtml(clusterLabel)}</span>
           <span class="list-item-authors" title="${escapeHtml(paper.authors || '')}">${escapeHtml(abbreviateAuthors(paper.authors))}</span>
           <span class="list-item-venue" title="${escapeHtml(paper.venue_full || paper.venue || '')}">${escapeHtml(paper.venue || '')}</span>
         </div>

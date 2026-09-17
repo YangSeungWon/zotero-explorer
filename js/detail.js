@@ -708,7 +708,7 @@ function showDefaultPanel() {
 
   let clusterHtml = Object.entries(clusterStats)
     .sort((a, b) => b[1].count - a[1].count)
-    .map(([c, s]) => `<div class="stat-row"><span style="color: ${CLUSTER_COLORS[c % CLUSTER_COLORS.length]}">●</span> ${s.label || 'Cluster ' + c}: ${s.count}</div>`)
+    .map(([c, s]) => `<div class="stat-row"><span style="color: ${clusterColor(c)}">●</span> ${s.label || 'Cluster ' + c}: ${s.count}</div>`)
     .join('');
 
   // Check active filters - build chips with icons like header
@@ -902,7 +902,7 @@ function showDetail(item) {
   setupDetailIdeaDropdown(item);
 
   // Meta - compact list view style
-  const clusterColor = CLUSTER_COLORS[item.cluster % CLUSTER_COLORS.length];
+  const clusterColor = clusterColor(item.cluster);
   const venueDisplay = item.venue || '';
   const venueFull = item.venue_full || item.venue || '';
   const authorsAbbrev = typeof abbreviateAuthors === 'function' ? abbreviateAuthors(item.authors) : (item.authors?.split(/[,;]/)[0] || '');

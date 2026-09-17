@@ -64,6 +64,23 @@ Re-parameterizing (e.g. `eom` → `leaf`) legitimately breaks most matches and a
 **Cluster IDs are therefore not contiguous.** Iterate over the keys of `cluster_labels` /
 `cluster_centroids`, never `range(n_clusters)`.
 
+**Cluster colors encode the topic FAMILY, not the cluster.** 44 clusters cannot be told apart
+by color -- a colorblind-safe categorical palette tops out around 8, and the old frontend cycled
+15 colors with `cluster % 15`, so unrelated topics shared a color and the color meant nothing.
+Step 6.6 instead groups clusters into <= 8 families by centroid-embedding similarity (singleton
+families are merged away), and gives each family one validated hue. Clusters are told apart by
+position, label and hover; the color says which neighbourhood a paper lives in.
+
+Slots come from the dataviz reference palette, with per-mode steps (light/dark). Which family
+gets which slot is solved per build: only families that actually *touch* on the 2D map need to
+be separable (~10 of 21 pairs here), so the assignment maximizes the worst separation over those
+contact pairs, using the `SLOT_SEPARATION` matrix measured with `validate_palette.js`. The
+current build scores 8.4 against a target of 8.
+
+Frontend reads this through `clusterColor(cluster)` in `js/config.js`, which honours
+`documentElement.dataset.theme` and falls back to the legacy `CLUSTER_COLORS` array when
+`papers.json` has no `cluster_colors` (standalone pages like the flow board).
+
 **Cluster labels are assigned globally, not per cluster.** Picking each cluster's top c-TF-IDF
 terms independently put `기억` in 5 labels and `사진` in 3. Instead each label slot is filled by a
 Hungarian 1:1 assignment over (cluster × candidate term), so a term appears in at most one label
@@ -109,6 +126,8 @@ Single JSON file (~70MB) containing:
 - `cluster_centroids` — `{cluster_id: [x, y]}`
 - `cluster_labels` — `{cluster_id: "label"}` (top-3 c-TF-IDF keywords)
 - `cluster_keywords` — `{cluster_id: [top-10 keywords]}`, input for richer/LLM labeling
+- `cluster_colors` — `{cluster_id: {light, dark}}`, one hue per topic family (see below)
+- `cluster_family` — `{cluster_id: family_index}`
 - `citation_links` — `[{source, target, type}]`
 - `reference_cache` — cached Semantic Scholar data by DOI
 - `meta` — build metadata (timestamp, model name, paper count)

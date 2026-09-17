@@ -165,7 +165,7 @@ function render(filteredPapers) {
     showlegend: false,
     marker: {
       size: bgPapers.map(p => getSize(p) * zoomScale),
-      color: bgPapers.map(p => muteColor(CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length])),
+      color: bgPapers.map(p => muteColor(clusterColor(p.cluster))),
       opacity: 1,
       line: { width: 0.5, color: isLight ? '#ddd' : '#333' }
     },
@@ -184,7 +184,7 @@ function render(filteredPapers) {
       const clusterName = getClusterLabel(p.cluster);
       return `<b>${title}</b><br>` +
         `${p.year || 'N/A'} · ${(p.venue || 'Unknown').substring(0, 25)}${citationInfo}<br>` +
-        `<span style="color: ${CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]}">● </span>${clusterName}` +
+        `<span style="color: ${clusterColor(p.cluster)}">● </span>${clusterName}` +
         noteSection;
     }),
     customdata: fgPapers,
@@ -193,7 +193,7 @@ function render(filteredPapers) {
     name: 'Papers',
     marker: {
       size: fgPapers.map(p => getSize(p) * zoomScale),
-      color: fgPapers.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
+      color: fgPapers.map(p => clusterColor(p.cluster)),
       opacity: fgPapers.map(p => getFgOpacity(p, 0.8)),
       line: {
         width: fgPapers.map(p => getLineWidth(p)),
@@ -230,7 +230,7 @@ function render(filteredPapers) {
     marker: {
       size: 14 * zoomScale,
       symbol: 'diamond',
-      color: bgApps.map(p => muteColor(CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length])),
+      color: bgApps.map(p => muteColor(clusterColor(p.cluster))),
       opacity: 1,
       line: { width: 1, color: isLight ? '#ddd' : '#444' }
     },
@@ -246,7 +246,7 @@ function render(filteredPapers) {
       const clusterName = getClusterLabel(p.cluster);
       return `<b>${title}</b><br>` +
         `App/Service<br>` +
-        `<span style="color: ${CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]}">● </span>${clusterName}`;
+        `<span style="color: ${clusterColor(p.cluster)}">● </span>${clusterName}`;
     }),
     customdata: fgApps,
     mode: 'markers',
@@ -255,7 +255,7 @@ function render(filteredPapers) {
     marker: {
       size: 14 * zoomScale,
       symbol: 'diamond',
-      color: fgApps.map(p => CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length]),
+      color: fgApps.map(p => clusterColor(p.cluster)),
       opacity: fgApps.map(p => getFgOpacity(p, 0.9)),
       line: { width: 2, color: '#bc8cff' }
     },

@@ -19,6 +19,7 @@ import re
 import math
 import argparse
 import collections
+import itertools
 from scipy.optimize import linear_sum_assignment
 import glob
 from datetime import datetime
@@ -1339,6 +1340,116 @@ def main():
             cluster_centroids[i] = {"x": centroid_x, "y": centroid_y}
             print(f"  Cluster {i}: ({centroid_x:.2f}, {centroid_y:.2f})")
 
+    # 6.6. 클러스터 색상 — 주제 계열(family)마다 하나의 hue
+    #
+    # 색으로 44개 클러스터를 구분하는 건 불가능하다. 색맹 안전 분리도를 지키면서
+    # 만들 수 있는 범주형 색은 8개 남짓이고, 그 이상은 색이 정보를 잃는다.
+    # (기존 프론트엔드는 15색 팔레트를 cluster % 15로 돌려써서, 무관한 주제가
+    #  같은 색을 갖고 있었다.)
+    #
+    # 그래서 색은 '계열'에만 배정한다. 비슷한 주제 = 같은 색, 클러스터 구분은
+    # 지도상 위치·라벨·호버가 맡는다.
+    #
+    # 팔레트는 dataviz 기준 팔레트의 검증된 8슬롯(밝은/어두운 모드 각각)이다.
+    PALETTE_LIGHT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100',
+                     '#e87ba4', '#008300', '#4a3aa7', '#e34948']
+    PALETTE_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500',
+                     '#d55181', '#008300', '#9085e9', '#e66767']
+    # 슬롯 쌍의 색 분리도. validate_palette.js로 두 모드를 모두 재서 나쁜 쪽을 취한 값
+    # (CVD ΔE와 정상시야 ΔE/2 중 최솟값). 클수록 헷갈리지 않는다. 목표는 >= 8.
+    SLOT_SEPARATION = [
+        [  0.0, 15.9, 10.5, 15.4, 13.0, 14.5,  1.9, 14.5],
+        [ 15.9,  0.0,  9.2,  4.8,  5.8,  2.7, 13.5,  3.6],
+        [ 10.5,  9.2,  0.0,  8.4,  1.6,  6.0, 12.3,  6.5],
+        [ 15.4,  4.8,  8.4,  0.0,  9.7,  6.9, 13.8,  6.5],
+        [ 13.0,  5.8,  1.6,  9.7,  0.0, 13.0,  9.9,  3.9],
+        [ 14.5,  2.7,  6.0,  6.9, 13.0,  0.0, 17.0,  7.2],
+        [  1.9, 13.5, 12.3, 13.8,  9.9, 17.0,  0.0, 11.3],
+        [ 14.5,  3.6,  6.5,  6.5,  3.9,  7.2, 11.3,  0.0],
+    ]
+
+    print("\nAssigning cluster colors by topic family...")
+    from sklearn.cluster import AgglomerativeClustering
+    from sklearn.metrics.pairwise import cosine_similarity
+    from sklearn.neighbors import NearestNeighbors
+
+    centroid_emb = np.zeros((len(cluster_ids), embeddings.shape[1]))
+    for pos, c in enumerate(cluster_ids):
+        centroid_emb[pos] = embeddings[df["cluster"].values == c].mean(axis=0)
+    centroid_emb = centroid_emb / np.maximum(
+        np.linalg.norm(centroid_emb, axis=1, keepdims=True), 1e-12)
+
+    n_families = min(len(PALETTE_LIGHT), max(1, len(cluster_ids)))
+    if len(cluster_ids) <= n_families:
+        fam_of_pos = np.arange(len(cluster_ids))
+    else:
+        fam_of_pos = AgglomerativeClustering(
+            n_clusters=n_families, metric='cosine', linkage='average'
+        ).fit_predict(centroid_emb)
+        # 클러스터 하나뿐인 계열은 색 하나를 통째로 낭비한다. 가장 가까운 계열로 합친다.
+        while True:
+            counts = collections.Counter(fam_of_pos.tolist())
+            lonely = [f for f, n in counts.items() if n < 2 and len(counts) > 1]
+            if not lonely:
+                break
+            f = lonely[0]
+            fc = centroid_emb[fam_of_pos == f].mean(axis=0, keepdims=True)
+            others = [g for g in counts if g != f]
+            sims = {g: float(cosine_similarity(
+                fc, centroid_emb[fam_of_pos == g].mean(axis=0, keepdims=True))[0][0])
+                for g in others}
+            fam_of_pos[fam_of_pos == f] = max(sims, key=sims.get)
+
+    families = sorted(set(fam_of_pos.tolist()))
+    fam_index = {f: i for i, f in enumerate(families)}
+
+    # 지도에서 실제로 맞닿는 계열 쌍만 구분되면 된다 — 지도 반대편의 두 색은
+    # 헷갈릴 일이 없다. 논문의 최근접 이웃이 다른 계열인 횟수로 인접도를 잰다.
+    fam_of_paper = np.array([fam_index[fam_of_pos[cluster_ids.index(int(c))]]
+                             for c in df["cluster"].values])
+    xy = df[["x", "y"]].values
+    k_adj = int(min(8, len(xy)))
+    _, nbr = NearestNeighbors(n_neighbors=k_adj).fit(xy).kneighbors(xy)
+    contact = collections.Counter()
+    for i in range(len(xy)):
+        for j in nbr[i][1:]:
+            a, b = fam_of_paper[i], fam_of_paper[j]
+            if a != b:
+                contact[tuple(sorted((int(a), int(b))))] += 1
+    total_contact = sum(contact.values()) or 1
+    # 전체 접촉의 3% 이상인 쌍만 '구분이 필요한 쌍'으로 본다
+    adjacent_pairs = [p for p, n in contact.items() if n * 100.0 / total_contact >= 3.0]
+    if not adjacent_pairs:
+        adjacent_pairs = list(contact.keys())
+
+    # 인접 쌍의 최소 분리도를 최대화하도록 계열 → 팔레트 슬롯 배정 (전수 탐색, <= 8!)
+    best_assign, best_score = None, -1.0
+    for perm in itertools.permutations(range(len(PALETTE_LIGHT)), len(families)):
+        score = min((SLOT_SEPARATION[perm[a]][perm[b]] for a, b in adjacent_pairs),
+                    default=99.0)
+        if score > best_score:
+            best_score, best_assign = score, perm
+
+    cluster_colors = {}
+    cluster_family = {}
+    for pos, c in enumerate(cluster_ids):
+        fi = fam_index[fam_of_pos[pos]]
+        slot = best_assign[fi]
+        cluster_family[c] = fi
+        cluster_colors[c] = {"light": PALETTE_LIGHT[slot], "dark": PALETTE_DARK[slot]}
+        if noise_cluster_id is not None and c == noise_cluster_id:
+            cluster_colors[c] = {"light": "#9aa0a6", "dark": "#6e7681"}
+
+    print(f"  {len(families)} topic families over {len(cluster_ids)} clusters; "
+          f"worst adjacent-family separation {best_score:.1f} (target >= 8)")
+    for fi, f in enumerate(families):
+        mem = [cluster_ids[pos] for pos in range(len(cluster_ids)) if fam_of_pos[pos] == f]
+        n_papers_fam = int(sum((df["cluster"].values == c).sum() for c in mem))
+        head = " / ".join(cluster_labels[c].split(", ")[0] for c in mem[:6])
+        more = f" (+{len(mem) - 6})" if len(mem) > 6 else ""
+        print(f"    F{fi} {PALETTE_LIGHT[best_assign[fi]]} "
+              f"({len(mem)} clusters, {n_papers_fam} papers): {head}{more}")
+
     # 7. JSON 출력
     print(f"\nWriting {args.output}...")
 
@@ -1459,6 +1570,8 @@ def main():
         "cluster_centroids": cluster_centroids,
         "cluster_labels": cluster_labels,
         "cluster_keywords": cluster_keywords,
+        "cluster_colors": cluster_colors,
+        "cluster_family": cluster_family,
         "citation_links": citation_links,  # S2 ID 기반 재생성
         "reference_cache": existing_reference_cache,  # S2 외부 참조 캐시 보존
         "meta": {

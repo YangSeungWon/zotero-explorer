@@ -66,7 +66,7 @@ function populateMobileClusterChips() {
     chip.className = 'cluster-chip' + (highlightCluster === c ? ' active' : '');
     chip.dataset.cluster = c;
     const shortLabel = label.length > 12 ? label.substring(0, 12) + '..' : label;
-    chip.innerHTML = `<span class="chip-dot" style="background: ${CLUSTER_COLORS[c % CLUSTER_COLORS.length]}"></span>${shortLabel}`;
+    chip.innerHTML = `<span class="chip-dot" style="background: ${clusterColor(c)}"></span>${shortLabel}`;
     chip.addEventListener('click', () => {
       if (highlightCluster === c) {
         highlightCluster = null;
@@ -445,7 +445,7 @@ function populateMobileClusterList() {
     </div>
     ${clusters.map(c => {
       const label = clusterLabels[c] || `Cluster ${c}`;
-      const color = CLUSTER_COLORS[c % CLUSTER_COLORS.length];
+      const color = clusterColor(c);
       return `
         <div class="mobile-cluster-item ${highlightCluster === c ? 'active' : ''}" data-cluster="${c}">
           <span class="mobile-cluster-dot" style="background: ${color}"></span>

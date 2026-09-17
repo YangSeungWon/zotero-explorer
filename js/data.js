@@ -13,6 +13,7 @@ async function loadData() {
       allPapers = data.papers;
       clusterCentroids = data.cluster_centroids || {};
       clusterLabels = data.cluster_labels || {};
+      clusterColorMap = data.cluster_colors || {};
       citationLinks = data.citation_links || [];
       referenceCache = data.reference_cache || {};
       dataMeta = data.meta || {};
@@ -60,7 +61,7 @@ async function loadData() {
       item.className = 'cluster-item';
       item.dataset.cluster = c;
       item.innerHTML = `
-        <div class="dot" style="background: ${CLUSTER_COLORS[c % CLUSTER_COLORS.length]}"></div>
+        <div class="dot" style="background: ${clusterColor(c)}"></div>
         <div class="label" title="Double-click to edit">${label || 'Cluster ' + c}</div>
         <div class="count">${count}</div>
         <button class="stats-btn" title="Cluster stats"><i data-lucide="bar-chart-2"></i></button>
