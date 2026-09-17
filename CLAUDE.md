@@ -29,10 +29,45 @@ python api_server.py                       # flask on port 5000
 ```bash
 python build_map.py --source api           # fetch from Zotero API
 python build_map.py --source csv           # use exported CSV
-python build_map.py --clusters 10          # set cluster count
+python build_map.py --clusters 10          # force KMeans with k=10 (0 = HDBSCAN auto, the default)
 python build_map.py --notes-only           # only papers with notes
 python build_map.py --embedding openai     # use OpenAI embeddings
+
+# clustering tuning (defaults produce ~44 clusters, sizes 20~127)
+python build_map.py --min-cluster-size 35  # coarser: fewer, larger clusters
+python build_map.py --cluster-selection eom  # coarser still; keeps dense regions as single blobs
+python build_map.py --cluster-dims 10      # dims of the clustering space (display stays 2D)
+python build_map.py --keep-noise           # leave HDBSCAN noise in a separate "미분류" cluster
+python build_map.py --merge-threshold 0.9  # re-enable post-hoc cluster merging (off by default)
+python build_map.py --no-inherit-ids       # renumber clusters 0..n instead of inheriting previous IDs
 ```
+
+**Clustering defaults and why** — changing these silently changes every cluster ID:
+- Clustering runs on a **separate 10D UMAP** (`min_dist=0.0`), not on the 2D display coords.
+  The 2D layout is optimized for viewing and cannot separate ~40 topics across 2200 papers.
+- `--cluster-selection leaf` (not `eom`): `eom` keeps dense regions as single ~400-paper
+  blobs (AR/VR, autobiographical memory). `leaf` costs more noise (~32% vs ~11%) but
+  those points are reassigned by 15-NN, not by nearest centroid.
+- `--merge-threshold 0` (merging off): at `0.90` it re-collapsed substructure HDBSCAN had
+  just found — it merged autobiographical-memory psychology with lifelogging HCI.
+- HDBSCAN noise is reassigned with **distance-weighted 15-NN**. Do not use `NearestCentroid`
+  here: UMAP clusters are often crescent-shaped and their centroid falls outside the cluster.
+
+**Cluster IDs are inherited across builds** (step 5.7). Each new cluster is matched to the
+previous `papers.json` by Jaccard overlap of their `zotero_key` sets, solved as a global 1:1
+assignment (Hungarian); a cluster inherits the old ID when overlap >= `--id-inherit-threshold`
+(0.5). Clusters that do not match get IDs allocated *above* `meta.max_cluster_id`, so **an ID is
+never reused for a different cluster** — a stale custom label in localStorage can at worst stop
+showing, never land on an unrelated cluster. A rebuild with unchanged data inherits every ID.
+Re-parameterizing (e.g. `eom` → `leaf`) legitimately breaks most matches and allocates fresh IDs.
+
+**Cluster IDs are therefore not contiguous.** Iterate over the keys of `cluster_labels` /
+`cluster_centroids`, never `range(n_clusters)`.
+
+**Cluster labels are assigned globally, not per cluster.** Picking each cluster's top c-TF-IDF
+terms independently put `기억` in 5 labels and `사진` in 3. Instead each label slot is filled by a
+Hungarian 1:1 assignment over (cluster × candidate term), so a term appears in at most one label
+and goes to the cluster it best describes. `cluster_keywords` keeps the unconstrained top 10.
 
 There are no test suites, linters, or build steps configured.
 
@@ -62,7 +97,7 @@ All JS files are loaded via `<script>` tags in order. There is no module bundler
 ### Backend (Python)
 
 - `api_server.py` — Flask server with REST endpoints for tags, sync, semantic search, ideas, outlines, boards. Uses `X-API-Key` header authentication. Runs background tasks for long operations (cluster sync, full sync, citation fetching).
-- `build_map.py` — Offline data pipeline: Zotero API → sentence-transformers embeddings → UMAP → KMeans → `papers.json`
+- `build_map.py` — Offline data pipeline: Zotero API → sentence-transformers embeddings → UMAP (2D display + 10D clustering) → HDBSCAN → c-TF-IDF cluster labels → `papers.json`
 - `zotero_api.py` — Pyzotero wrapper for Zotero API operations
 - `fetch_citations.py` — Enriches `papers.json` with Semantic Scholar citation data
 - `sync_tags.py` — Two-way tag synchronization with Zotero
@@ -72,7 +107,8 @@ All JS files are loaded via `<script>` tags in order. There is no module bundler
 Single JSON file (~70MB) containing:
 - `papers[]` — array of paper objects with: `id`, `zotero_key`, `title`, `authors`, `venue`, `year`, `x`/`y` (UMAP coords), `cluster`, `abstract`, `doi`, `tags`, `notes_html`
 - `cluster_centroids` — `{cluster_id: [x, y]}`
-- `cluster_labels` — `{cluster_id: "label"}`
+- `cluster_labels` — `{cluster_id: "label"}` (top-3 c-TF-IDF keywords)
+- `cluster_keywords` — `{cluster_id: [top-10 keywords]}`, input for richer/LLM labeling
 - `citation_links` — `[{source, target, type}]`
 - `reference_cache` — cached Semantic Scholar data by DOI
 - `meta` — build metadata (timestamp, model name, paper count)

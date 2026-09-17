@@ -18,18 +18,20 @@ import json
 import re
 import math
 import argparse
+import collections
+from scipy.optimize import linear_sum_assignment
 import glob
 from datetime import datetime
 from pathlib import Path
 from bs4 import BeautifulSoup
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, normalize
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 import umap
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import hdbscan
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 # ============================================================
 # 설정
@@ -725,14 +727,27 @@ def main():
                         help="Embedding: multi (multi-vector, recommended), weighted (legacy), local, local-large, openai")
     parser.add_argument("--clusters", type=int, default=0,
                         help="Number of clusters (0 = HDBSCAN auto, >0 = force KMeans with k)")
-    parser.add_argument("--min-cluster-size", type=int, default=35,
+    parser.add_argument("--min-cluster-size", type=int, default=18,
                         help="HDBSCAN min_cluster_size (smaller = more clusters)")
+    parser.add_argument("--cluster-dims", type=int, default=10,
+                        help="Dimensions of the clustering space (display stays 2D). <=2 reuses display coords")
+    parser.add_argument("--cluster-selection", choices=["eom", "leaf"], default="leaf",
+                        help="HDBSCAN cluster_selection_method: leaf (more, evener) or eom (fewer, larger). "
+                             "eom keeps dense regions (AR/VR, memory) as single 400-paper blobs")
+    parser.add_argument("--no-inherit-ids", action="store_true",
+                        help="Renumber clusters 0..n instead of inheriting IDs from the existing output file")
+    parser.add_argument("--id-inherit-threshold", type=float, default=0.5,
+                        help="Minimum Jaccard overlap of paper sets for a cluster to inherit a previous ID")
+    parser.add_argument("--keep-noise", action="store_true",
+                        help="Keep HDBSCAN noise points as a separate unassigned cluster instead of kNN-assigning them")
     parser.add_argument("--dim-reduction", choices=["tsne", "pca", "umap"], default="umap",
                         help="Dimensionality reduction method (umap recommended)")
     parser.add_argument("--min-dist", type=float, default=0.3,
                         help="UMAP min_dist: 0.1(tight) ~ 0.5(spread)")
-    parser.add_argument("--merge-threshold", type=float, default=0.90,
-                        help="After HDBSCAN, merge clusters with cosine similarity above this threshold (0 = no merge)")
+    parser.add_argument("--merge-threshold", type=float, default=0.0,
+                        help="After HDBSCAN, merge clusters with cosine similarity above this threshold (0 = no merge). "
+                             "Off by default: at 0.90 it re-collapsed the substructure HDBSCAN had just found "
+                             "(e.g. merged autobiographical-memory psychology with lifelogging HCI)")
     parser.add_argument("--all", action="store_true",
                         help="Include all papers (default: notes-only)")
     parser.add_argument("--notes-only", action="store_true", default=True,
@@ -841,6 +856,11 @@ def main():
     combined = np.hstack([emb_scaled, meta_scaled * 0.3])
 
     # 차원 축소
+    # coords       = 화면 표시용 2D 좌표 (min_dist 크게 → 보기 좋게 퍼짐)
+    # cluster_space = 클러스터링용 중간 차원 (min_dist=0 → 밀도 구조 보존)
+    # 2D 레이아웃은 시각화를 위해 위상을 뭉개므로 여기서 밀도 클러스터링을 하면
+    # 서로 다른 토픽이 겹쳐버린다. 두 공간을 분리한다.
+    cluster_space = None
     if args.dim_reduction == "umap":
         reducer = umap.UMAP(
             n_components=2,
@@ -850,7 +870,22 @@ def main():
             random_state=42
         )
         coords = reducer.fit_transform(combined)
-        print(f"  UMAP: min_dist={args.min_dist}")
+        print(f"  UMAP (display): 2D, min_dist={args.min_dist}")
+
+        cluster_dims = min(args.cluster_dims, combined.shape[1])
+        if cluster_dims <= 2:
+            cluster_space = coords
+            print(f"  UMAP (clustering): reusing 2D display coords")
+        else:
+            cluster_reducer = umap.UMAP(
+                n_components=cluster_dims,
+                n_neighbors=15,
+                min_dist=0.0,
+                metric='cosine',
+                random_state=42
+            )
+            cluster_space = cluster_reducer.fit_transform(combined)
+            print(f"  UMAP (clustering): {cluster_dims}D, min_dist=0.0")
     elif args.dim_reduction == "tsne":
         # t-SNE는 고차원에서 바로 하면 느리므로 PCA로 먼저 축소
         if combined.shape[1] > 50:
@@ -865,6 +900,16 @@ def main():
         pca = PCA(n_components=2, random_state=42)
         coords = pca.fit_transform(combined)
 
+    if cluster_space is None:
+        # tsne/pca 경로: 클러스터링은 PCA로 중간 차원까지만 줄여서 수행
+        cluster_dims = min(args.cluster_dims, combined.shape[1])
+        if cluster_dims <= 2:
+            cluster_space = coords
+        else:
+            cluster_space = PCA(n_components=cluster_dims,
+                                random_state=42).fit_transform(combined)
+        print(f"  Clustering space: PCA {cluster_space.shape[1]}D")
+
     df["x"] = coords[:, 0]
     df["y"] = coords[:, 1]
 
@@ -877,46 +922,58 @@ def main():
         df["cluster"] = kmeans.fit_predict(combined)
         n_clusters = n_clusters_manual
     else:
-        # HDBSCAN on 2D UMAP coordinates (고차원에서는 밀도 추정 실패)
+        # HDBSCAN은 표시용 2D가 아니라 중간 차원 cluster_space 위에서 수행
         min_cs = args.min_cluster_size
-        print(f"\n[5/5] Clustering with HDBSCAN on UMAP coords (min_cluster_size={min_cs})...")
+        print(f"\n[5/5] Clustering with HDBSCAN on {cluster_space.shape[1]}D space "
+              f"(min_cluster_size={min_cs}, selection={args.cluster_selection})...")
         clusterer = hdbscan.HDBSCAN(
             min_cluster_size=min_cs,
             min_samples=5,
             metric='euclidean',
-            cluster_selection_method='eom',
+            cluster_selection_method=args.cluster_selection,
         )
-        labels = clusterer.fit_predict(coords)
+        labels = clusterer.fit_predict(cluster_space)
 
         n_found = len(set(labels) - {-1})
-        n_noise = (labels == -1).sum()
+        n_noise = int((labels == -1).sum())
         print(f"  Found {n_found} clusters, {n_noise} noise points ({n_noise*100//len(df)}%)")
 
-        # 노이즈 포인트(-1)를 가장 가까운 클러스터에 할당 (2D 좌표 기준)
-        if n_noise > 0 and n_found > 0:
-            from sklearn.neighbors import NearestCentroid
+        # 노이즈 포인트(-1) 처리
+        #   기본: kNN으로 가장 가까운 '이웃 점들'의 다수결에 배정.
+        #   (NearestCentroid는 초승달/고리 모양 클러스터에서 centroid가 클러스터
+        #    바깥에 놓여 엉뚱한 배정을 만든다.)
+        #   --keep-noise: 배정하지 않고 별도 '미분류' 클러스터로 남긴다.
+        if n_noise > 0 and n_found > 0 and not args.keep_noise:
+            from sklearn.neighbors import KNeighborsClassifier
             non_noise_mask = labels != -1
-            nc = NearestCentroid()
-            nc.fit(coords[non_noise_mask], labels[non_noise_mask])
+            k = int(min(15, non_noise_mask.sum()))
+            knn = KNeighborsClassifier(n_neighbors=k, weights='distance')
+            knn.fit(cluster_space[non_noise_mask], labels[non_noise_mask])
             noise_mask = labels == -1
-            noise_predictions = nc.predict(coords[noise_mask])
-            labels[noise_mask] = noise_predictions
-            print(f"  Reassigned {n_noise} noise points to nearest clusters")
+            probs = knn.predict_proba(cluster_space[noise_mask])
+            labels[noise_mask] = knn.classes_[probs.argmax(axis=1)]
+            confident = int((probs.max(axis=1) >= 0.5).sum())
+            print(f"  Reassigned {n_noise} noise points via {k}-NN "
+                  f"({confident} with >=50% neighbor agreement)")
+        elif n_noise > 0 and args.keep_noise:
+            print(f"  Keeping {n_noise} noise points as a separate unassigned cluster")
 
-        # 클러스터 ID를 0부터 연속으로 재매핑
-        unique_labels = sorted(set(labels))
+        # 클러스터 ID를 0부터 연속으로 재매핑 (노이즈 -1은 그대로 둔다)
+        unique_labels = sorted(set(labels) - {-1})
         label_map = {old: new for new, old in enumerate(unique_labels)}
-        labels = np.array([label_map[l] for l in labels])
+        labels = np.array([label_map.get(l, -1) for l in labels])
 
         df["cluster"] = labels
         n_clusters = len(unique_labels)
-        print(f"  Final: {n_clusters} clusters")
+        print(f"  Final: {n_clusters} clusters"
+              + (f" + unassigned" if (labels == -1).any() else ""))
 
         # 클러스터 크기 분포 출력
         from collections import Counter
         size_dist = Counter(labels)
         for cid in sorted(size_dist.keys()):
-            print(f"    Cluster {cid}: {size_dist[cid]} papers")
+            name = "unassigned" if cid == -1 else f"Cluster {cid}"
+            print(f"    {name}: {size_dist[cid]} papers")
 
     # 5.5. 클러스터 병합 (HDBSCAN 후 비슷한 클러스터끼리 합치기)
     merge_thresh = args.merge_threshold
@@ -964,38 +1021,145 @@ def main():
         for orig in old_to_new:
             old_to_new[orig] = remap[old_to_new[orig]]
 
-        df["cluster"] = [old_to_new[c] for c in df["cluster"].values]
+        # 미분류(-1)는 병합 대상이 아니므로 그대로 통과시킨다
+        df["cluster"] = [old_to_new.get(c, -1) for c in df["cluster"].values]
         n_clusters = len(final_active)
 
         from collections import Counter
         new_counts = Counter(df["cluster"].values)
         print(f"  After merge: {n_clusters} clusters")
         for c in sorted(new_counts.keys()):
-            print(f"    Cluster {c}: {new_counts[c]} papers")
+            name = "unassigned" if c == -1 else f"Cluster {c}"
+            print(f"    {name}: {new_counts[c]} papers")
 
-    # 6. 클러스터 라벨 생성 (TF-IDF 키워드)
-    print("\nGenerating cluster labels...")
-    cluster_texts = {}
-    for idx, row in df.iterrows():
-        c = int(row["cluster"])
-        title = row.get('Title', '') if pd.notna(row.get('Title', '')) else ''
-        abstract = row.get('Abstract Note', '') if pd.notna(row.get('Abstract Note', '')) else ''
-        notes = row.get('Notes', '') if pd.notna(row.get('Notes', '')) else ''
-        notes_text = extract_text_from_html(notes) if notes else ''
-        text = f"{title} {abstract} {notes_text}"
-        cluster_texts[c] = cluster_texts.get(c, "") + " " + str(text)
+    # 5.6. 미분류(-1) 논문을 마지막 클러스터 ID로 승격 (다운스트림은 음수 ID를 모른다)
+    noise_cluster_id = None
+    if (df["cluster"].values == -1).any():
+        noise_cluster_id = n_clusters
+        df["cluster"] = [noise_cluster_id if c == -1 else c for c in df["cluster"].values]
+        n_clusters += 1
+        print(f"  Unassigned papers collected into cluster {noise_cluster_id}")
 
-    corpus = [cluster_texts.get(i, "") for i in range(n_clusters)]
+    # 5.7. 클러스터 ID 승계
+    #
+    # HDBSCAN은 매 빌드마다 클러스터를 0..n으로 새로 번호 매긴다. 논문 몇 편만 늘어도
+    # 번호가 밀려서, localStorage에 저장된 커스텀 클러스터 라벨이 전혀 다른 주제의
+    # 클러스터에 붙어버린다.
+    #
+    # 이전 빌드의 papers.json과 zotero_key 교집합을 재서, 같은 논문 집합을 이어받은
+    # 클러스터에는 예전 ID를 물려준다. 승계 기준을 못 넘긴 클러스터는 '한 번도 쓰인 적
+    # 없는' 번호를 새로 받는다 — ID를 재활용하지 않으므로, 오래된 커스텀 라벨이 엉뚱한
+    # 클러스터에 얹히는 일이 원천적으로 생기지 않는다.
+    cluster_ids = sorted(set(int(c) for c in df["cluster"].values))
+    id_inheritance = None
+    if not args.no_inherit_ids and Path(args.output).exists():
+        try:
+            from scipy.optimize import linear_sum_assignment
+            with open(args.output, encoding="utf-8") as f:
+                prev = json.load(f)
+            prev_of_key = {}
+            for p in prev.get("papers", []):
+                k = p.get("zotero_key")
+                if k:
+                    prev_of_key[k] = int(p["cluster"])
+            prev_ids = sorted(set(prev_of_key.values()))
+
+            if prev_ids:
+                print(f"\n[5.7] Inheriting cluster IDs from existing {args.output} "
+                      f"({len(prev_ids)} previous clusters, threshold jaccard>={args.id_inherit_threshold})...")
+                keys = [str(row.get("Key", "") or "") for _, row in df.iterrows()]
+                new_members = {c: set() for c in cluster_ids}
+                for k, c in zip(keys, df["cluster"].values):
+                    if k:
+                        new_members[int(c)].add(k)
+                prev_members = {c: set() for c in prev_ids}
+                for k, c in prev_of_key.items():
+                    prev_members[c].add(k)
+
+                # 자카드 유사도 행렬 → 헝가리안 알고리즘으로 전역 최적 1:1 배정
+                J = np.zeros((len(cluster_ids), len(prev_ids)))
+                for a, nc in enumerate(cluster_ids):
+                    A = new_members[nc]
+                    if not A:
+                        continue
+                    for b, pc in enumerate(prev_ids):
+                        B = prev_members[pc]
+                        inter = len(A & B)
+                        if inter:
+                            J[a, b] = inter / len(A | B)
+                rows, cols = linear_sum_assignment(-J)
+
+                inherited = {}
+                for a, b in zip(rows, cols):
+                    if J[a, b] >= args.id_inherit_threshold:
+                        inherited[cluster_ids[a]] = prev_ids[b]
+
+                # 새 ID는 '지금까지 쓰인 적 없는' 번호부터 — 절대 재활용하지 않는다
+                prev_max = prev.get("meta", {}).get("max_cluster_id")
+                next_id = max(prev_ids) if prev_max is None else max(int(prev_max), max(prev_ids))
+                next_id += 1
+                remap = {}
+                for nc in cluster_ids:
+                    if nc in inherited:
+                        remap[nc] = inherited[nc]
+                    else:
+                        remap[nc] = next_id
+                        next_id += 1
+
+                df["cluster"] = [remap[int(c)] for c in df["cluster"].values]
+                if noise_cluster_id is not None:
+                    noise_cluster_id = remap[noise_cluster_id]
+                cluster_ids = sorted(remap.values())
+                id_inheritance = {
+                    "inherited": len(inherited),
+                    "fresh": len(cluster_ids) - len(inherited),
+                    "max_cluster_id": next_id - 1,
+                }
+                print(f"  Inherited {len(inherited)} IDs, allocated "
+                      f"{id_inheritance['fresh']} new ones (IDs are never reused)")
+                for nc in sorted(remap, key=lambda x: remap[x]):
+                    n = int((df["cluster"].values == remap[nc]).sum())
+                    if nc in inherited:
+                        print(f"    c{remap[nc]:<3d} ({n:4d})  ← previous c{inherited[nc]}")
+                    else:
+                        print(f"    c{remap[nc]:<3d} ({n:4d})  ← new cluster")
+        except Exception as e:
+            print(f"  [5.7] Cluster ID inheritance skipped: {e}")
+            cluster_ids = sorted(set(int(c) for c in df["cluster"].values))
+
+    n_clusters = len(cluster_ids)
+
+    # 지금까지 발급된 적 있는 최대 ID. 이번 빌드에서 큰 ID의 클러스터가 사라지더라도
+    # 값이 내려가면 안 된다 — 내려가면 다음 빌드가 그 번호를 재활용해버린다.
+    max_cluster_id_ever = max(cluster_ids) if cluster_ids else -1
+    if id_inheritance:
+        max_cluster_id_ever = max(max_cluster_id_ever, id_inheritance["max_cluster_id"])
+
+    # 6. 클러스터 라벨 생성 (c-TF-IDF)
+    #
+    # 기존 방식은 클러스터별로 텍스트를 이어붙여 "문서 n_clusters개" 코퍼스를 만들고
+    # TfidfVectorizer를 돌렸다. 그러면 IDF의 분모가 클러스터 수(=16 남짓)뿐이라
+    # IDF가 사실상 작동하지 않고, 그 공백을 1/n² 패널티로 메우고 있었다.
+    #
+    # c-TF-IDF는 TF만 클러스터 단위로 모으고 IDF는 '논문 전체 코퍼스' 기준으로 잰다.
+    #   tf   : 논문별 term count를 L2 정규화한 뒤 클러스터로 합산 → 클러스터 내 비율
+    #          (정규화하지 않으면 초록 긴 논문 몇 편이 큰 클러스터의 라벨을 좌우한다)
+    #   idf  : log(N_papers / (1 + df_t)),  df_t = 해당 단어를 포함한 '논문' 수
+    #   excl : 그 단어의 전체 질량 중 이 클러스터가 차지하는 비율 (0~1)
+    #          — 1/n² 대신 쓰는 부드러운 변별력 가중치.
+    #          지수를 1.0으로 두면 한 클러스터에만 나오는 희소 약어(ogm, pf, esm …)가
+    #          과보상되어 라벨을 차지한다. 0.7로 눌러 풀어쓴 용어가 올라오게 한다.
+    print("\nGenerating cluster labels (c-TF-IDF)...")
 
     # 한국어 조사 제거 전처리
     def strip_korean_particles(text):
         import re
-        # 조사 패턴 (단어 끝에 붙는 것들)
-        particles = r'(을|를|이|가|은|는|에|의|로|으로|와|과|도|만|까지|부터|에서|으로서|이라|라|란|라는|이라는)$'
+        # 조사 패턴 (단어 끝에 붙는 것들). 긴 것부터 매칭해야 '에서'가 '에'로 잘리지 않는다.
+        particles = (r'(으로서|이라는|에서는|에게서|이라고|라는|이라|으로|에서|에게|까지|'
+                     r'부터|보다|처럼|마다|조차|뿐만|을|를|이|가|은|는|에|의|로|와|과|도|만|란|라)$')
         words = text.split()
         cleaned = []
         for word in words:
-            # 한글 단어에서 조사 제거
             if re.search(r'[가-힣]', word):
                 cleaned_word = re.sub(particles, '', word)
                 if len(cleaned_word) >= 2:  # 너무 짧아지면 원본 유지
@@ -1006,7 +1170,17 @@ def main():
                 cleaned.append(word)
         return ' '.join(cleaned)
 
-    corpus = [strip_korean_particles(c) for c in corpus]
+    # 논문 단위 문서 (클러스터별로 이어붙이지 않는다)
+    paper_docs = []
+    paper_clusters = []
+    for idx, row in df.iterrows():
+        title = row.get('Title', '') if pd.notna(row.get('Title', '')) else ''
+        abstract = row.get('Abstract Note', '') if pd.notna(row.get('Abstract Note', '')) else ''
+        notes = row.get('Notes', '') if pd.notna(row.get('Notes', '')) else ''
+        notes_text = extract_text_from_html(notes) if notes else ''
+        paper_docs.append(strip_korean_particles(f"{title} {abstract} {notes_text}"))
+        paper_clusters.append(int(row["cluster"]))
+    paper_clusters = np.array(paper_clusters)
 
     # 다국어 불용어 (영어 + 한국어)
     multilingual_stop_words = [
@@ -1018,44 +1192,146 @@ def main():
         'can', 'also', 'more', 'how', 'what', 'which', 'who', 'when', 'where', 'why',
         'using', 'use', 'used', 'based', 'through', 'between', 'into', 'such', 'than',
         'study', 'research', 'paper', 'results', 'findings', 'analysis', 'data', 'method',
+        'however', 'while', 'these', 'both', 'each', 'other', 'some', 'many', 'most',
+        'show', 'shows', 'showed', 'propose', 'proposed', 'present', 'presented',
+        'approach', 'approaches', 'work', 'works', 'new', 'novel', 'different',
+        'participants', 'participant', 'user', 'users', 'system', 'systems', 'design',
         # Korean
         '및', '등', '를', '을', '이', '가', '은', '는', '에', '의', '로', '으로', '와', '과',
         '하는', '있는', '되는', '한', '된', '수', '것', '대한', '통해', '위해', '대해',
         '연구', '기술', '위한', '사용', '제안', '보여', '제시', '기반', '활용', '가능',
         '사용자', '논문', '시스템', '인터페이스', '사람', '정보', '방법', '결과',
         '모델', '분석', '설계', '개발', '평가', '실험', '참여자', '프로세스',
+        # 이전 빌드에서 라벨로 새어나온 기능어/범용어
+        '있다', '없다', '한다', '된다', '하다', '이다', '있음', '같은', '통한', '따라',
+        '실제', '기존', '인간', '이러한', '그러나', '또한', '때문', '경우', '다양',
+        '중요', '필요', '영향', '관련', '특정', '일부', '전체', '최근', '다른', '모든',
+        '하지만', '그리고', '먼저', '다음', '이를', '우리', '자신', '서로', '더욱',
     ]
 
-    tfidf_vec = TfidfVectorizer(
-        max_features=500,
+    # 논문 단위 term count. IDF의 분모가 되는 '문서'는 이제 논문이다.
+    count_vec = CountVectorizer(
+        max_features=20000,
         stop_words=multilingual_stop_words,
         ngram_range=(1, 2),
-        min_df=1,
+        min_df=5,   # 5편 미만에만 등장하는 단어는 라벨 후보에서 제외
         token_pattern=r'(?u)\b[가-힣a-zA-Z]{2,}\b'  # 한글/영어 2글자 이상
     )
-    tfidf_matrix = tfidf_vec.fit_transform(corpus)
-    feature_names = tfidf_vec.get_feature_names_out()
-    tfidf_dense = tfidf_matrix.toarray()
+    X = count_vec.fit_transform(paper_docs)          # (n_papers, vocab)
+    feature_names = count_vec.get_feature_names_out()
+    n_papers_total = X.shape[0]
+    print(f"  Vocabulary: {len(feature_names)} terms over {n_papers_total} papers")
 
-    # 각 단어가 몇 개의 클러스터에서 등장하는지 계산
-    term_cluster_count = (tfidf_dense > 0).sum(axis=0)
+    # 전역 IDF: 단어를 포함한 '논문' 수 기준
+    df_global = np.asarray((X > 0).sum(axis=0)).ravel()
+    idf = np.log(n_papers_total / (1.0 + df_global))
+    idf = np.maximum(idf, 0.0)
+
+    # 논문별 L2 정규화 후 클러스터 합산 → 긴 초록이 라벨을 독점하지 못하게
+    X_norm = normalize(X, norm='l2', axis=1)
+    class_tf = np.zeros((len(cluster_ids), len(feature_names)))
+    for pos, c in enumerate(cluster_ids):
+        mask = paper_clusters == c
+        if mask.any():
+            class_tf[pos] = np.asarray(X_norm[mask].sum(axis=0)).ravel()
+
+    # 클러스터 내 비율로 정규화
+    row_sums = class_tf.sum(axis=1, keepdims=True)
+    tf_ratio = class_tf / np.maximum(row_sums, 1e-12)
+
+    # 변별력: 이 단어의 전체 질량 중 해당 클러스터의 몫 (1/n² 패널티 대체)
+    col_sums = class_tf.sum(axis=0, keepdims=True)
+    exclusivity = class_tf / np.maximum(col_sums, 1e-12)
+
+    EXCLUSIVITY_POWER = 0.7
+    ctfidf = tf_ratio * idf[None, :] * (exclusivity ** EXCLUSIVITY_POWER)
+
+    def pick_keywords(scores, k):
+        """상위 키워드 선택. 이미 고른 n-gram에 포함되는 단어는 건너뛴다.
+        (예전 라벨 '다크 패턴, 다크, 패턴'처럼 같은 말이 세 번 나오는 것을 막는다)"""
+        picked = []
+        for j in scores.argsort()[::-1]:
+            if scores[j] <= 0:
+                break
+            term = feature_names[j]
+            parts = set(term.split())
+            redundant = False
+            for prev in picked:
+                prev_parts = set(prev.split())
+                if parts <= prev_parts or prev_parts <= parts:
+                    redundant = True
+                    break
+            if not redundant:
+                picked.append(term)
+            if len(picked) >= k:
+                break
+        return picked
+
+    # 표시용 라벨은 클러스터마다 따로 뽑으면 안 된다. c-TF-IDF 상위 단어를 독립적으로
+    # 고르면 같은 단어가 여러 라벨에 동시에 뽑힌다 — 이전 빌드에서 '기억'은 5개,
+    # '사진'은 3개 클러스터의 라벨에 들어가 범례를 읽을 수 없게 만들었다.
+    #
+    # 그래서 라운드마다 헝가리안 알고리즘으로 (클러스터 × 후보 단어) 1:1 배정을 풀어,
+    # 한 단어가 최대 한 라벨에만 들어가게 한다. 총점을 최대화하므로, 겹치는 단어는
+    # 그 단어가 가장 잘 설명하는 클러스터에 돌아간다.
+    LABEL_TERMS = 3        # 라벨에 넣을 단어 수
+    LABEL_CANDIDATES = 40  # 클러스터당 배정 후보 수
+
+    label_positions = [pos for pos, i in enumerate(cluster_ids) if i != noise_cluster_id]
+    candidates = {}
+    for pos in label_positions:
+        order = [j for j in ctfidf[pos].argsort()[::-1][:400] if ctfidf[pos][j] > 0]
+        candidates[pos] = order[:LABEL_CANDIDATES]
+
+    chosen = {pos: [] for pos in label_positions}
+    used_terms = set()
+    for _ in range(LABEL_TERMS):
+        pool = sorted({j for pos in label_positions for j in candidates[pos] if j not in used_terms})
+        if not pool:
+            break
+        col_of = {j: x for x, j in enumerate(pool)}
+        cost = np.full((len(label_positions), len(pool)), -1e9)
+        for r, pos in enumerate(label_positions):
+            for j in candidates[pos]:
+                if j in used_terms:
+                    continue
+                # 이미 고른 n-gram에 포함되는 단어는 건너뛴다 ('다크 패턴' 다음의 '다크')
+                parts = set(feature_names[j].split())
+                if any(parts <= set(q.split()) or set(q.split()) <= parts for q in chosen[pos]):
+                    continue
+                cost[r, col_of[j]] = ctfidf[pos][j]
+        rows, cols = linear_sum_assignment(-cost)
+        for r, x in zip(rows, cols):
+            if cost[r, x] <= -1e8:
+                continue
+            j = pool[x]
+            chosen[label_positions[r]].append(feature_names[j])
+            used_terms.add(j)
 
     cluster_labels = {}
-    for i in range(n_clusters):
-        scores = tfidf_dense[i].copy()
-        # 여러 클러스터에 등장하는 단어는 점수 강하게 낮춤 (1/n² 패널티)
-        distinctiveness = 1.0 / np.maximum(term_cluster_count, 1) ** 2
-        adjusted_scores = scores * distinctiveness
+    cluster_keywords = {}
+    for pos, i in enumerate(cluster_ids):
+        # cluster_keywords는 배정 제약 없이 그대로 상위 10개 (LLM 라벨링 등의 입력용)
+        cluster_keywords[i] = pick_keywords(ctfidf[pos], 10)
+        if noise_cluster_id is not None and i == noise_cluster_id:
+            cluster_labels[i] = "미분류"
+            cluster_keywords[i] = []
+        else:
+            terms = chosen.get(pos) or pick_keywords(ctfidf[pos], LABEL_TERMS)
+            cluster_labels[i] = ", ".join(terms) if terms else f"Cluster {i}"
+        size = int((paper_clusters == i).sum())
+        print(f"  Cluster {i} ({size} papers): {cluster_labels[i]}")
+        if cluster_keywords[i][3:]:
+            print(f"      also: {', '.join(cluster_keywords[i][3:])}")
 
-        top_idx = adjusted_scores.argsort()[-3:][::-1]  # 상위 3개 키워드
-        keywords = [feature_names[j] for j in top_idx if scores[j] > 0]
-        cluster_labels[i] = ", ".join(keywords[:3]) if keywords else f"Cluster {i}"
-        print(f"  Cluster {i}: {cluster_labels[i]}")
+    dup = collections.Counter(t for lbl in cluster_labels.values() for t in lbl.split(", "))
+    n_dup = sum(1 for n in dup.values() if n > 1)
+    print(f"  Terms appearing in more than one label: {n_dup}")
 
     # 6.5. 클러스터 중심점 계산 (2D 좌표 기준)
     print("\nCalculating cluster centroids...")
     cluster_centroids = {}
-    for i in range(n_clusters):
+    for i in cluster_ids:
         cluster_points = df[df["cluster"] == i][["x", "y"]].values
         if len(cluster_points) > 0:
             centroid_x = float(np.mean(cluster_points[:, 0]))
@@ -1182,6 +1458,7 @@ def main():
         "papers": records,
         "cluster_centroids": cluster_centroids,
         "cluster_labels": cluster_labels,
+        "cluster_keywords": cluster_keywords,
         "citation_links": citation_links,  # S2 ID 기반 재생성
         "reference_cache": existing_reference_cache,  # S2 외부 참조 캐시 보존
         "meta": {
@@ -1191,6 +1468,9 @@ def main():
             "total_papers": sum(1 for r in records if r['is_paper']),
             "total_apps": sum(1 for r in records if not r['is_paper']),
             "clusters": n_clusters,
+            # 지금까지 한 번이라도 할당된 최대 클러스터 ID.
+            # 다음 빌드가 새 ID를 이 값 위에서부터 발급해 ID 재활용을 막는다.
+            "max_cluster_id": max_cluster_id_ever,
             "zotero_library_id": os.environ.get("ZOTERO_LIBRARY_ID", ""),
             "zotero_library_type": os.environ.get("ZOTERO_LIBRARY_TYPE", "user")
         }
