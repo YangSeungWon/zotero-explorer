@@ -2,11 +2,106 @@
    Data Loading & Filtering
    =========================================== */
 
+/* ---- Initial load progress ---------------------------------------------- */
+
+const loadingUI = {
+  el:     () => document.getElementById('appLoadingOverlay'),
+  title:  () => document.getElementById('appLoadingTitle'),
+  fill:   () => document.getElementById('appLoadingFill'),
+  detail: () => document.getElementById('appLoadingDetail'),
+  bar:    () => document.querySelector('.app-loading-bar'),
+
+  set(title, detail) {
+    const t = this.title(), d = this.detail();
+    if (t && title != null) t.textContent = title;
+    if (d && detail != null) d.textContent = detail;
+  },
+  progress(received, total) {
+    const bar = this.bar(), fill = this.fill();
+    if (!bar || !fill) return;
+    const mb = (received / 1048576).toFixed(1);
+    if (total) {
+      bar.classList.remove('indeterminate');
+      fill.style.width = `${Math.min(100, (received / total) * 100).toFixed(1)}%`;
+      this.set(null, `${mb} / ${(total / 1048576).toFixed(1)} MB`);
+    } else {
+      // gzipped response: Content-Length is the compressed size, so a percentage
+      // would run past 100%. Show bytes read and let the bar sweep instead.
+      bar.classList.add('indeterminate');
+      this.set(null, `${mb} MB`);
+    }
+  },
+  done() { this.el()?.classList.add('hidden'); },
+  fail(msg) {
+    const el = this.el();
+    if (!el) return;
+    el.classList.add('error');
+    el.classList.remove('hidden');
+    this.bar()?.classList.remove('indeterminate');
+    const fill = this.fill();
+    if (fill) fill.style.width = '0';
+    this.set('Could not load papers.json', msg);
+  }
+};
+
+/** Let the browser paint before a long synchronous block (JSON.parse of ~150MB). */
+const paintTick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
+/** Fetch papers.json while reporting download progress. */
+async function fetchPapersJson(url) {
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+
+  // With `gzip on` (see nginx.conf) the body is decompressed by the browser but
+  // Content-Length reports the compressed size, so only trust it when the
+  // response was not encoded.
+  const encoded = !!resp.headers.get('content-encoding');
+  const len = parseInt(resp.headers.get('content-length') || '', 10);
+  const total = (!encoded && Number.isFinite(len)) ? len : 0;
+
+  if (!resp.body || typeof resp.body.getReader !== 'function') {
+    return resp.json();   // no streaming support: fall back to a plain read
+  }
+
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let received = 0, lastPaint = 0;
+  loadingUI.progress(0, total);
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    // Repainting on every chunk costs more than it shows
+    if (received - lastPaint > 1048576) {
+      lastPaint = received;
+      loadingUI.progress(received, total);
+    }
+  }
+  loadingUI.progress(received, total);
+
+  loadingUI.set('Parsing library…', `${(received / 1048576).toFixed(1)} MB`);
+  await paintTick();   // so the message above is actually painted before we block
+
+  const text = new TextDecoder().decode(
+    chunks.length === 1 ? chunks[0] : (() => {
+      const merged = new Uint8Array(received);
+      let at = 0;
+      for (const c of chunks) { merged.set(c, at); at += c.length; }
+      return merged;
+    })()
+  );
+  chunks.length = 0;
+  return JSON.parse(text);
+}
+
 async function loadData() {
   try {
     const cacheBust = window._papersJsonBust ? `?t=${Date.now()}` : '';
-    const resp = await fetch(`papers.json${cacheBust}`, { cache: 'no-store' });
-    const data = await resp.json();
+    const data = await fetchPapersJson(`papers.json${cacheBust}`);
+
+    loadingUI.set('Building map…', '');
+    await paintTick();
 
     // 새 포맷 (papers 배열 + centroids) vs 기존 포맷 (배열만)
     if (data.papers) {
@@ -130,9 +225,13 @@ async function loadData() {
     if (typeof populateMobileClusterList === 'function') {
       populateMobileClusterList();
     }
+
+    loadingUI.done();
   } catch (e) {
     document.getElementById('stats').textContent = 'Error loading papers.json';
+    loadingUI.fail(e && e.message ? e.message : String(e));
     console.error(e);
+    throw e;
   }
 }
 

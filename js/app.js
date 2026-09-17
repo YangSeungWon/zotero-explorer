@@ -64,5 +64,9 @@ function initApp() {
         render(currentFiltered);
       }
     }
+  }).catch(err => {
+    // loadData() already surfaced this in the loading overlay; nothing below it
+    // can run without data, so just record it.
+    console.error('Initialization aborted: papers.json failed to load', err);
   });
 }

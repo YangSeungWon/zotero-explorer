@@ -255,6 +255,13 @@
       </div>
     </div>
     <div class="plot-container">
+      <!-- Initial data load overlay (papers.json is large; show real progress) -->
+      <div id="appLoadingOverlay" class="app-loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="app-loading-title" id="appLoadingTitle">Loading library…</div>
+        <div class="app-loading-bar"><div class="app-loading-fill" id="appLoadingFill"></div></div>
+        <div class="app-loading-detail" id="appLoadingDetail"></div>
+      </div>
       <div id="plot"></div>
       <div id="timelinePlot" style="display: none;"></div>
       <!-- Semantic Search Loading Overlay -->
